@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Working with SYm/Asym Keys in XPI using Stored Procedure XPA / XPI</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="2232195169.html">Creation Of Symmetric/Assymetric Keys in MSSQL</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Working with SYm/Asym Keys in XPI using Stored Procedure XPA / XPI
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p>Table which has the data</p><p>CREATE TABLE [dbo].[Contacts1](</p><p>               [Id] [int] NULL,</p><p>               [First_Name] [varchar](50) NULL,</p><p>               [Last_Name] [varbinary](max) NULL,</p><p>               [DOJ] [varchar](50) NULL</p><p>) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]</p><p>GO</p><p>Insert statement:</p><p>insert into Contacts1 values (1,'Darpan',CONVERT(varbinary(32), 'Bandil'),GETDATE())</p><p>update statement:</p><p>--UPDATE Contacts1 SET Last_Name = ENCRYPTBYKEY(KEY_GUID('skey'), Last_Name)</p><p>Keys to create</p><p>CREATE ASYMMETRIC KEY akey WITH ALGORITHM = RSA_2048 ENCRYPTION BY PASSWORD = 'aaa123@'</p><p>GO</p><p>CREATE SYMMETRIC KEY skey WITH ALGORITHM = AES_256 ENCRYPTION BY ASYMMETRIC KEY akey</p><p>GO</p><p> </p><p>To execute as 3 statements: <br/>OPEN SYMMETRIC KEY skey DECRYPTION BY ASYMMETRIC KEY akey WITH PASSWORD = 'aaa123@'</p><p>select CAST(DECRYPTBYKEY(Last_Name) as VARCHAR(100)) from contacts1</p><p>CLOSE SYMMETRIC KEY skey</p><p>Solution: Create a procedure combining three statements:</p><p>ALTER proc [dbo].[symkeyproc2]</p><p>    WITH EXECUTE AS OWNER</p><p> </p><p>as</p><p>begin</p><p>    OPEN SYMMETRIC KEY skey DECRYPTION BY ASYMMETRIC KEY akey WITH PASSWORD = 'aaa123@';</p><p>select CAST(DECRYPTBYKEY(Last_Name) as VARCHAR(100)) from contacts1;</p><p>CLOSE SYMMETRIC KEY skey;</p><p>end</p><p> </p><p> </p><p>Now Give rights to specific user to execute the Procedure:</p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232195183/2232195203.png" data-image-src="attachments/2232195183/2232195203.png" data-height="395" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="2232195203" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230510-073721.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232195183" data-linked-resource-container-version="1" data-media-id="30dc8fa4-1a47-49cd-b040-901c24a6fea4" data-media-type="file"></span><p /><p>So the user has permission to execute only permission of that Stored Procedure. </p><p>XPI – Define the statement as below and map it to the destination, so the result will be stored.</p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232195183/2232195197.png" data-image-src="attachments/2232195183/2232195197.png" data-height="237" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="2232195197" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230510-073741.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232195183" data-linked-resource-container-version="1" data-media-id="6a70b79c-cbd5-4d46-9112-fd677318778d" data-media-type="file"></span><p> </p><p> </p>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232195183/2232195197.png">image-20230510-073741.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232195183/2232195200.png">image-20230510-073729.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232195183/2232195203.png">image-20230510-073721.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

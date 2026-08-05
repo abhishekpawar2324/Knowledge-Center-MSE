@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : How to get the date-time string in UTC datetime format?</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : How to get the date-time string in UTC datetime format?
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p>If you want to get the date-time string in UTC datetime format using the Magic Xpi function of the Start Date of Salesforce Trigger.</p><p> </p><p>Start Date of Salesforce Trigger:-</p><p>In Salesforce Trigger-Start Date, we can only use global variables for retrieving the data.</p><p>First, we need to define the global variables, as shown in the below picture.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232195259/2232195288.png?width=680" data-image-src="attachments/2232195259/2232195288.png" data-height="87" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232195288" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230530-081106.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232195259" data-linked-resource-container-version="1" data-media-id="e1f536bb-9b48-4308-a8c8-0a799ef42765" data-media-type="file"></span><p>We have used the following functions in XPI with which we can return the date and time in UTC format.</p><p><strong> </strong></p><p><strong>1.UTCDate()</strong></p><p><strong>2.UTCTime()        </strong></p><p /><span class="confluence-embedded-file-wrapper"><a class="confluence-embedded-file" href="attachments/2232195259/2232195285" data-nice-type="null" data-file-src="/wiki/download/attachments/2232195259/Invalid%20file%20id%20-%20837c3a3c-6845-46e3-b9bb-f725a3ac1653?version=1&amp;modificationDate=1685537281449&amp;cacheVersion=1&amp;api=v2" data-linked-resource-id="2232195285" data-linked-resource-type="attachment" data-linked-resource-container-id="2232195259" data-linked-resource-default-alias="Invalid file id - 837c3a3c-6845-46e3-b9bb-f725a3ac1653" data-mime-type="application/octet-stream" data-has-thumbnail="true" data-linked-resource-version="1" data-media-id="5b6f7996-4c95-4c6a-8db8-2736f7616283" data-media-type="file"><img src="attachments/thumbnails/2232195259/2232195285" height="250"/></a></span><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="566" loading="lazy" src="attachments/2232195259/2232195279.png?width=566" data-image-src="attachments/2232195259/2232195279.png" data-height="425" data-width="395" data-unresolved-comment-count="0" data-linked-resource-id="2232195279" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230530-081215.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232195259" data-linked-resource-container-version="1" data-media-id="5284385b-b238-47da-a5e0-bf38c8af2d80" data-media-type="file"></span><p /><p>The lastest datetime will be shown in the SFTrigger.xml file under %InstallationDir%Runtime%Projects%’Projectname’%Salesforce%SFTrigger.xml</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232195259/2232195273.png?width=680" data-image-src="attachments/2232195259/2232195273.png" data-height="152" data-width="373" data-unresolved-comment-count="0" data-linked-resource-id="2232195273" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230530-081320.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232195259" data-linked-resource-container-version="1" data-media-id="6f8c89ec-f796-4257-a700-141925a241e2" data-media-type="file"></span><p><strong>Note:</strong><br/><strong>This is not explained in Magic XPI help under  ”Start Date description in the Salesforce - Trigger Configuration section” so we have opened a documentation bug #MXPI-29110                                                                                                                                            </strong></p>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232195259/2232195273.png">image-20230530-081320.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232195259/2232195276">Invalid file id - cf1b40f5-abfb-4bed-b44a-9a1dbd41af8a</a> (application/octet-stream)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232195259/2232195279.png">image-20230530-081215.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232195259/2232195282.png">image-20230530-081142.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232195259/2232195285">Invalid file id - 837c3a3c-6845-46e3-b9bb-f725a3ac1653</a> (application/octet-stream)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232195259/2232195288.png">image-20230530-081106.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

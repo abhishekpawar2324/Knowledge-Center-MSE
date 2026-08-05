@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : High CPU usage due to the Gigaspaces running with OSHI service</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : High CPU usage due to the Gigaspaces running with OSHI service
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p>During this time we also see some of the GS processes consume High CPU after starting GS grid.</p><p><br/>Regarding OSHI-Services, We do see same time severe errors like old and latest logs,<br/>2021-06-17 11:16:14,630 GSC SEVERE [oshi.util.platform.windows.PerfCounterQueryHandler] - Counter \Processor(_Total)% Interrupt Time does not exist to query.<br/><br/>And <br/>WMI service also consumes the CPU.</p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232193557/2232193574.png" data-image-src="attachments/2232193557/2232193574.png" data-height="515" data-width="772" data-unresolved-comment-count="0" data-linked-resource-id="2232193574" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20210705-093739.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232193557" data-linked-resource-container-version="1" data-media-id="e6fa9706-d828-4ee3-8948-7f65768c1074" data-media-type="file"></span><p /><p><br/><br/><strong>Solution:</strong><br/><br/>This Flag(&quot;-Dcom.gs.oshi.enabled=false&quot;) was added in Magic xpi 4.13.1,Which was not present in the installation of Magic xpi 4.13.<br/>Disabling the &quot;OSHI-Service&quot; helps to reduce the CPU usage.</p><p>--<br/>In the file - %Installation XPI 413%\Runtime\Gigaspaces-xpi\bin\magicxpi-setenv.bat<br/>set ADDITIONAL_OPTIONS=%ADDITIONAL_OPTIONS% -Dcom.magicsoftware.ibolt.home=%MAGIC_XPI_HOME%\runtime -Dlogback.configurationFile=%MAGIC_XPI_HOME%\runtime\Java\classes\gigaspaces.root.logback.xml <strong>-Dcom.gs.oshi.enabled=false</strong></p><p><br/>After the use of the OSHI flag.<br/></p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232193557/2232193571.png" data-image-src="attachments/2232193557/2232193571.png" data-height="84" data-width="490" data-unresolved-comment-count="0" data-linked-resource-id="2232193571" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20210705-093838.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232193557" data-linked-resource-container-version="1" data-media-id="f4b58633-e433-4717-8248-67a5ce87dfa7" data-media-type="file"></span>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232193557/2232193571.png">image-20210705-093838.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232193557/2232193574.png">image-20210705-093739.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232193557/2232193577.png">image-20210705-093648.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:21</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

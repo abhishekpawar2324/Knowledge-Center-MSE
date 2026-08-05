@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Isolated fix - NHK : Requirement of modification in xpi Web Service Trigger (WSDL)</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Isolated fix - NHK : Requirement of modification in xpi Web Service Trigger (WSDL)
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Shweta Salunkhe</span> on 17,Dec, 2024
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <h2 id="Isolatedfix-NHK:RequirementofmodificationinxpiWebServiceTrigger(WSDL)-Description">Description</h2><p>The customer is exposing the Web Service using xpi which accepts 2 XML Document as Input &amp; 1 XML Document as Output.</p><ul><li><p>As per above configuration, the customer gets below &quot;Actaul xpi Response&quot; via xpi where &quot;xmlns&quot; i.e namespace is given as &quot;<a href="http://magicsoftware.com/wsdl/com/" data-card-appearance="inline" class="external-link" rel="nofollow">http://magicsoftware.com/wsdl/com/</a> .....&quot; with no &quot;Namespace Prefix&quot; at the top level tag of response structure.</p></li></ul><p>The WSDL is generated from the outside provider.When they are integrating with magic ,the WSDL gets changed and they are getting the response</p><p>structure based on the Magic WSDL strucure.<br/>So,they need to change the response structre as per their WSDL where namespace and namespace prefix gets changed.</p><p>In the response structure ,they want the namespace according to the WSDL provided.</p><p>==&gt; Actual xpi Response<br/>&lt;soap:Envelope xmlns:soap=&quot;<a href="http://schemas.xmlsoap.org/soap/envelope/" class="external-link" rel="nofollow">http://schemas.xmlsoap.org/soap/envelope/</a>&quot;&gt;<br/>&lt;soap:Header/&gt;<br/>&lt;soap:Body&gt;<br/>&lt;AW0000DATA_Response xmlns=&quot;<a href="http://magicsoftware.com/wsdl/com/magicsoftware/magicxpi/interface/APT00101/" data-card-appearance="inline" class="external-link" rel="nofollow">http://magicsoftware.com/wsdl/com/magicsoftware/magicxpi/interface/APT00101/</a> &quot;&gt;<br/>&lt;ESB_HEADER&gt;<br/>&lt;SEND_INFO&gt;<br/>&lt;SEND_SYSTEM_ID&gt;AD&lt;/SEND_SYSTEM_ID&gt;</p><p>==&gt; Expected Customer Response<br/>&lt;soap:Envelope xmlns:soap=&quot;<a href="http://schemas.xmlsoap.org/soap/envelope/" class="external-link" rel="nofollow">http://schemas.xmlsoap.org/soap/envelope/</a>&quot;&gt;<br/>&lt;soap:Header/&gt;<br/>&lt;soap:Body&gt;<br/>&lt;ans1:AW0000DATA_Response xmlns:ans1=&quot;<a href="http://shj.nhk.or.jp/AW/types" class="external-link" rel="nofollow">http://shj.nhk.or.jp/AW/types</a>&quot;&gt;<br/>&lt;ESB_HEADER&gt;<br/>&lt;SEND_INFO&gt;<br/>&lt;SEND_SYSTEM_ID&gt;AD&lt;/SEND_SYSTEM_ID&gt;</p><p /><p><strong>Solution</strong>:</p><p>%XPI installation%\Runtime-<strong>ibiowritter.dll</strong></p><p>%XPI installation%\Studio\Extensions\Application-<strong>iBolt.dll</strong></p><p>%XPI installation%\Runtime\ifclib\webservice-<strong>WebService.dll</strong></p><p>%XPI installation%\Runtime\EE-<strong>Languages.dll - with “en/Languages.resources.dll” and “ja-JP/Languages.resources.dll” subfolders</strong></p><p>%XPI installation%\Studio\Extensions\Application-<strong>Languages.dll - with “en/Languages.resources.dll</strong>, <strong>iBolt.resources.dll” and “ja-JP/Languages.resources.dll</strong>, <strong>iBolt.resources.dll” subfolders</strong></p><p>%XPI installation%\Runtime-<strong>ifs.ecf</strong></p><p>%XPI installation%\xpi_webserver\webapps-<strong>webserviceprovider.war</strong></p><p>%XPI installation%\Runtime\java\lib-<strong>mgxpi-gs.jar</strong></p><p><strong>Update the values.yaml imm server image and redeploy the environment</strong> -</p><p>Name: xpi-imm-server-deployment<br/>image: <a href="http://devmcsworkspaceacr.azurecr.io/imm-server" data-card-appearance="inline" class="external-link" rel="nofollow">http://devmcsworkspaceacr.azurecr.io/imm-server</a> <br/>tag: 4.14.100.0</p><p /><p class="media-group"><span class="confluence-embedded-file-wrapper"><a class="confluence-embedded-file" href="attachments/3086155818/3086811149.zip" data-nice-type="Zip Archive" data-file-src="/wiki/download/attachments/3086155818/MXPI-34294%202024-10-24.zip?version=1&amp;modificationDate=1734452927597&amp;cacheVersion=1&amp;api=v2" data-linked-resource-id="3086811149" data-linked-resource-type="attachment" data-linked-resource-container-id="3086155818" data-linked-resource-default-alias="MXPI-34294 2024-10-24.zip" data-mime-type="application/zip" data-has-thumbnail="true" data-linked-resource-version="1" data-media-id="db344caa-cd7d-4d83-8e68-2964b601dd52" data-media-type="file"><img src="attachments/thumbnails/3086155818/3086811149" height="250"/></a></span></p><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3086155818/3086811149.zip">MXPI-34294 2024-10-24.zip</a> (application/zip)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

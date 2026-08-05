@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Uploading files with RESTClient using Postman and XPI</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Uploading files with RESTClient using Postman and XPI
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p>In XPI, when we use the RESTClient Component with the POST method to upload a file.</p><p>It works in Postman, but fails in XPI.</p><p>In XPI 4.13.2 the uploading file with the Post method using REST client works but does not work in XPI 4.13.4</p><p>We have Bug opened for this</p><p>Reference link:</p><p>
+
+    
+
+            
+
+
+
+
+    <span class="confluence-jim-macro jira-issue resolved" data-jira-key="MXPI-26127" >
+                <a href="https://magicsoftware2.atlassian.net/browse/MXPI-26127" class="jira-issue-key"><img class="icon" src="https://magicsoftware2.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/10303?size=medium" />MXPI-26127</a>
+                    -
+            <span class="summary">Isolated fix - RESTClient: Uploading a file fails in xpi 4.13.4</span>
+                                                            <span class="aui-lozenge aui-lozenge-subtle aui-lozenge-success jira-macro-single-issue-export-pdf">Closed</span>
+            </span>
+ </p><p>Project Link:</p><p><a href="https://magicsoftwarecorp-my.sharepoint.com/:u:/g/personal/vaishnavi_marathe_magicsoftware_com/ESu0rkqrSRdItgzEZAhjIXQBGNBz2N3eJX5i6_BgU3WuxQ" class="external-link" rel="nofollow">https://magicsoftwarecorp-my.sharepoint.com/:u:/g/personal/vaishnavi_marathe_magicsoftware_com/ESu0rkqrSRdItgzEZAhjIXQBGNBz2N3eJX5i6_BgU3WuxQ</a></p><p> </p><p>Results in XPI 4.13.4, and Fiddler :</p><p>In XPI, it gives 500 errors in the debugger, as shown in the following screenshot:</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="566" loading="lazy" src="attachments/2232194468/2232194496.png?width=566" data-image-src="attachments/2232194468/2232194496.png" data-height="304" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232194496" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20221108-134028.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194468" data-linked-resource-container-version="1" data-media-id="bbf56d1e-7921-4a5a-858d-a84224322920" data-media-type="file"></span><p /><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="566" loading="lazy" src="attachments/2232194468/2232194493.png?width=566" data-image-src="attachments/2232194468/2232194493.png" data-height="249" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232194493" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20221108-134040.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194468" data-linked-resource-container-version="1" data-media-id="54cf7aa5-be14-4b6a-a1cd-abe0bfd7d2a7" data-media-type="file"></span><p>It works in Postman:</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="566" loading="lazy" src="attachments/2232194468/2232194490.png?width=566" data-image-src="attachments/2232194468/2232194490.png" data-height="163" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232194490" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20221108-134056.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194468" data-linked-resource-container-version="1" data-media-id="b3451910-53f8-421e-b713-a5819b6091b0" data-media-type="file"></span><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="566" loading="lazy" src="attachments/2232194468/2232194487.png?width=566" data-image-src="attachments/2232194468/2232194487.png" data-height="142" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232194487" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20221108-134103.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194468" data-linked-resource-container-version="1" data-media-id="f2872417-209b-4c93-be41-ffb95fd4e254" data-media-type="file"></span><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="566" loading="lazy" src="attachments/2232194468/2232194484.png?width=566" data-image-src="attachments/2232194468/2232194484.png" data-height="195" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232194484" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20221108-134109.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194468" data-linked-resource-container-version="1" data-media-id="13c16499-e5a6-4853-8c42-466b7b5ed1df" data-media-type="file"></span><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194468/2232194484.png">image-20221108-134109.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194468/2232194487.png">image-20221108-134103.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194468/2232194490.png">image-20221108-134056.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194468/2232194493.png">image-20221108-134040.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194468/2232194496.png">image-20221108-134028.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

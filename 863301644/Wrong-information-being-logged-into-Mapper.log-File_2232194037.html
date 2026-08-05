@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Wrong information being logged into Mapper.log File</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Wrong information being logged into Mapper.log File
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p>The customer is using the Datamapper to insert the records into the table.</p><p>Even though there are no errors after executing the Datamapper step and records are inserted into the table successfully.</p><p /><p>The customer observed the following statement in the Mapper.log:</p><p><strong>&quot;The SQL statement that caused the error is too long and therefore cannot be written to the error log. For more information about the problematic SQL statement, you can enable a gateway log instead.“</strong></p><p> </p><p>This may lead to unnecessary confusion among the users that there is something wrong with the insert statement though it is not the case here.</p><p /><ul><li><p><strong>The given table has 212 columns</strong></p></li></ul><ul><li><p><strong>On running the project, Data gets inserted into the table without any errors in the Database.</strong></p></li></ul><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232194037/2232194060.png" data-image-src="attachments/2232194037/2232194060.png" data-height="648" data-width="1152" data-unresolved-comment-count="0" data-linked-resource-id="2232194060" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="Table_Data.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194037" data-linked-resource-container-version="1" data-media-id="862ef436-879a-46d0-9ed2-eca0cb8f1001" data-media-type="file"></span><ul><li><p><strong>No errors were received while debugging the project.</strong></p></li><li><p><strong>No errors were observed in the magic monitor.</strong></p></li></ul><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232194037/2232194057.png" data-image-src="attachments/2232194037/2232194057.png" data-height="648" data-width="1152" data-unresolved-comment-count="0" data-linked-resource-id="2232194057" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="RTView_Data.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194037" data-linked-resource-container-version="1" data-media-id="69cdb159-7861-4a0e-bebf-d74ac8eecfd3" data-media-type="file"></span><ul><li><p><strong>Mapper.log file under &lt;XPI_installation&gt;\Runtime\Logs folder.</strong></p></li></ul><p class="media-group"><span class="confluence-embedded-file-wrapper"><a class="confluence-embedded-file" href="attachments/2232194037/2232194054.log" data-nice-type="null" data-file-src="/wiki/download/attachments/2232194037/Mapper.log?version=1&amp;modificationDate=1685537239609&amp;cacheVersion=1&amp;api=v2" data-linked-resource-id="2232194054" data-linked-resource-type="attachment" data-linked-resource-container-id="2232194037" data-linked-resource-default-alias="Mapper.log" data-mime-type="application/octet-stream" data-has-thumbnail="true" data-linked-resource-version="1" data-media-id="83723ca3-efa4-4fba-adaa-2db8e9a45494" data-media-type="file"><img src="attachments/thumbnails/2232194037/2232194054" height="250"/></a></span></p><ul><li><p><strong>The issue is reproduced in XPI 4.13.1 &amp; 4.13.3 versions.</strong></p></li><li><p><strong>Bug: MXPI-24750 is opened for this issue and it will be evaluated in XPI 4.14 version.</strong></p></li><li><p><strong>See attached project with table script for your reference.</strong></p></li></ul><p class="media-group"><span class="confluence-embedded-file-wrapper"><a class="confluence-embedded-file" href="attachments/2232194037/2232194051.zip" data-nice-type="Zip Archive" data-file-src="/wiki/download/attachments/2232194037/Project%20%26%20Table%20script.zip?version=1&amp;modificationDate=1685537239377&amp;cacheVersion=1&amp;api=v2" data-linked-resource-id="2232194051" data-linked-resource-type="attachment" data-linked-resource-container-id="2232194037" data-linked-resource-default-alias="Project &amp; Table script.zip" data-mime-type="application/zip" data-has-thumbnail="true" data-linked-resource-version="1" data-media-id="f04c4645-c6ec-49a8-9346-7337b9d62b71" data-media-type="file"><img src="attachments/thumbnails/2232194037/2232194051" height="250"/></a></span></p><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194037/2232194051.zip">Project &amp; Table script.zip</a> (application/zip)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194037/2232194054.log">Mapper.log</a> (application/octet-stream)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194037/2232194057.png">RTView_Data.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194037/2232194060.png">Table_Data.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:21</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

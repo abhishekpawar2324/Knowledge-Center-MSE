@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Sending HTTP Body in HTTP Trigger</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Sending HTTP Body in HTTP Trigger
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Balaji Karagir</span> on 11,Jun, 2025
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <hr/><p><strong>Sending HTTP Body in HTTP Trigger</strong></p><hr/><p><strong>Problem:</strong></p><p>You want to receive the <strong>raw HTTP body</strong> (such as JSON or XML) in a Magic XPI HTTP Trigger flow and process it dynamically during runtime.<br/>However, by default, Magic XPI does not save the HTTP body into any variable unless specific configuration is enabled.</p><p>This is required when external systems send payloads in the HTTP POST request body, and you need to extract and use the full body content within your flow logic.</p><hr/><p><strong>Cause:</strong></p><p>Magic XPI's HTTP Trigger does not automatically store the POST body content unless explicitly configured.<br/>This behavior exists to prevent unnecessary memory usage, especially for large payloads, unless the content is required by the integration logic.</p><hr/><p><strong>Solution:</strong></p><p>To capture the <strong>entire HTTP POST body</strong> into a Magic XPI variable, follow these steps:</p><hr/><ol start="1"><li><p><strong>Modify the mgreq.ini File</strong></p></li></ol><p>Open the following file:</p><p>Navigate to:</p><p>&lt;MagicXPI Installation Folder&gt;/Runtime/scripts/config/mgreq.in</p><p>In the [MAGIC_ENV] section, add or update the following line:</p><p>HttpVars=MG_POST_BODY</p><p /><p>This setting enables Magic XPI to capture the HTTP request body.</p><ol start="2"><li><p>Restart IIS</p></li></ol><p> </p><p>After updating the configuration file, run:</p><p>Iisreset</p><p>This is required to apply the new settings.</p><p> </p><ol start="3"><li><p><strong>Use the C.HTTP_Body Variable</strong></p></li></ol><p>The full HTTP request body will now be stored in the <strong>C.HTTP_Body</strong> context variable.<br/>As shown in the screenshot below, this variable is of <strong>Blob Type</strong>:</p><p>📌 <em>C.HTTP_Body – Body of HTTP request (Blob Type)</em></p><p>You can use this variable to save the incoming data, parse it (e.g., JSON/XML), or log it for debugging.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250611-142459.png" width="772" loading="lazy" src="attachments/3472195588/3472293891.png?width=772" data-image-src="attachments/3472195588/3472293891.png" data-height="163" data-width="454" data-unresolved-comment-count="0" data-linked-resource-id="3472293891" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250611-142459.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3472195588" data-linked-resource-container-version="1" data-media-id="53bbc0f4-d7e6-4152-be39-cbdaa297287c" data-media-type="file"></span><p /><p><strong>Flow Steps:</strong></p><ol start="1"><li><p>HTTP Trigger receives the POST request.</p></li><li><p>C.HTTP_Body holds the raw payload.</p></li><li><p>Next steps (e.g., Expression/Data Mapper) parse or save the value.</p></li></ol><p> </p><p>Postman response:</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250611-142525.png" width="752" loading="lazy" src="attachments/3472195588/3472195597.png?width=752" data-image-src="attachments/3472195588/3472195597.png" data-height="179" data-width="454" data-unresolved-comment-count="0" data-linked-resource-id="3472195597" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250611-142525.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3472195588" data-linked-resource-container-version="1" data-media-id="33a68d90-b3d0-4f3e-99f4-b35afb87cd0d" data-media-type="file"></span><p /><hr/><p><strong>Additional Considerations:</strong></p><ul><li><p>You must handle the Blob type carefully—convert it to string if needed for parsing.</p></li><li><p>Add logging for debugging incoming data.</p></li><li><p>Ensure request payloads are within safe size limits.</p></li></ul><hr/><p><strong>Conclusion:</strong></p><p>By enabling MG_POST_BODY in mgreq.ini and using the C.HTTP_Body context variable, you can access and process full HTTP POST request bodies within Magic XPI.<br/>This enables better integration with external systems that send structured data.</p><p> </p><p> </p>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3472195588/3472293891.png">image-20250611-142459.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3472195588/3472195597.png">image-20250611-142525.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:23</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

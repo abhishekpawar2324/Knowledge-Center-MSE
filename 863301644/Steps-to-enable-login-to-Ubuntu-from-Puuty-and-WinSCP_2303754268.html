@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Steps to enable login to Ubuntu from Puuty and WinSCP</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Steps to enable login to Ubuntu from Puuty and WinSCP
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Rohan Karekar</span> on 03,Oct, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p>Need to Edit sshd_config file by using below steps</p><p>Type vi /etc/ssh/sshd_config</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2303754268/2303393801.png?width=680" data-image-src="attachments/2303754268/2303393801.png" data-height="67" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2303393801" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20231003-201246.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2303754268" data-linked-resource-container-version="1" data-media-id="7369fa02-54fa-4950-ba6c-a638907c07f6" data-media-type="file"></span><p /><p>It will open sshd_config file in Vim editor</p><p>Press the Insert key it will allow you to edit the file</p><p>Change the PermitRootLogin Yes</p><p>Set PasswordAuthentication Yes</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2303754268/2303393808.png?width=680" data-image-src="attachments/2303754268/2303393808.png" data-height="224" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2303393808" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20231003-201302.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2303754268" data-linked-resource-container-version="1" data-media-id="7fbced76-99f3-4c0c-9cda-aabcc6aa3739" data-media-type="file"></span><p /><p>Add below line at the end of the file</p><p>add &quot;AllowUsers %Username%&quot; at the end of the file</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2303754268/2303229980.png?width=680" data-image-src="attachments/2303754268/2303229980.png" data-height="93" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2303229980" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20231003-201316.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2303754268" data-linked-resource-container-version="1" data-media-id="2694b953-dca4-417b-b96d-ef09b10c2f08" data-media-type="file"></span><p /><p>In the screenshot, I have added 2 users ‘rohan’ and ‘root’</p><p>After completing the editing press the Esc key and type :wq and press enter it will save the changes and close the file.</p><p>run command “visudo”</p><p>visudo is a special tool for safely updating the /etc/sudoers file, used by the sudo command for providing and managing privileged access.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2303754268/2303098912.png?width=680" data-image-src="attachments/2303754268/2303098912.png" data-height="157" data-width="315" data-unresolved-comment-count="0" data-linked-resource-id="2303098912" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20231003-201328.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2303754268" data-linked-resource-container-version="1" data-media-id="9bf1b839-54eb-4cec-b76e-51ace81e8a94" data-media-type="file"></span><p /><p>Add following line after &quot;%sudo ALL=(ALL:ALL)ALL&quot;</p><p>%sudo ALL=NOPASSWD: /usr/sbin/sshd</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2303754268/2303361037.png?width=680" data-image-src="attachments/2303754268/2303361037.png" data-height="224" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2303361037" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20231003-201345.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2303754268" data-linked-resource-container-version="1" data-media-id="652c76c1-4597-4513-98ed-9d5ded078df9" data-media-type="file"></span><p> </p><p>Restart the Ubuntu machine to apply the changes.</p><p> </p>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2303754268/2303393801.png">image-20231003-201246.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2303754268/2303393808.png">image-20231003-201302.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2303754268/2303229980.png">image-20231003-201316.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2303754268/2303098912.png">image-20231003-201328.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2303754268/2303361037.png">image-20231003-201345.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : How to Install and Connect PostgreSQL Database In Windows(XPI)</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : How to Install and Connect PostgreSQL Database In Windows(XPI)
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Vaishnavi Marathe</span> on 01,Mar, 2024
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p>To connect and use the PostgreSQL database we have the following pre-requisites:</p><p>-PSQl application installer.</p><p>-PSQL ODBC Drivers for the specific version (32 and 64 Bit)</p><p> </p><p>·        Visit the PostgreSQL Download Page:</p><p>Go to the official PostgreSQL download page at <a href="https://www.postgresql.org/download/windows/" data-card-appearance="inline" class="external-link" rel="nofollow">https://www.postgresql.org/download/windows/</a> </p><p>Select Version:</p><p>Choose the version that you want to install. The page may display the latest stable version by default.</p><p> </p><p>·        Select the Installer:</p><p>Choose the installer that corresponds to your Windows version (32-bit or 64-bit).</p><p> </p><p>·        Download  and Run the Installer:</p><p>Click on the download link to start downloading the installer. Save the installer file to your computer.</p><p>Locate the downloaded installer file and double-click on it to run the installer.</p><p> </p><p>·        Select Components:</p><p>During the installation process, you may be asked to select the components you want to install. Make sure that the &quot;PostgreSQL Server&quot; option is selected. You may also choose to install additional tools and libraries..</p><p /><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240301-135812.png" width="451" loading="lazy" src="attachments/2470576129/2470313990.png?width=451" data-image-src="attachments/2470576129/2470313990.png" data-height="310" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="2470313990" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20240301-135812.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2470576129" data-linked-resource-container-version="1" data-media-id="03d44130-9cde-4e74-9a06-48e79192e38c" data-media-type="file"></span><p>·        Select Installation Directory:</p><p>Choose the directory where you want PostgreSQL to be installed. The default directory is usually fine for most users.</p><p> </p><p>·        Set Password for PostgreSQL Superuser:</p><p>During the installation, you'll be asked to set a password for the PostgreSQL superuser (postgres). Choose a strong password and remember it.</p><p> </p><p>·        Select Port:</p><p>Choose the port number that PostgreSQL will use. The default port is 5432, and you can usually leave it as is unless you have a specific reason to change it.</p><p> </p><p>·        Complete the Installation:</p><p>Follow the remaining installation steps, and wait for the process to complete. The installer will create the necessary databases and start the PostgreSQL service.</p><p> </p><p>·        Finish Installation:</p><p>Once the installation is complete, you'll see a completion screen. Ensure that the checkbox to launch Stack Builder is unchecked (unless you want to run it immediately), and click &quot;Finish.&quot;</p><p> </p><p>·        Verify Installation:</p><p>Open the psql command line or pgAdmin (a graphical administration tool that comes with PostgreSQL) to verify that PostgreSQL is installed and running properly.</p><p> </p><p> </p><p><strong>For 32-bit PostgreSQL ODBC Driver:</strong></p><ol start="1"><li><p>Download and Install 32-bit PostgreSQL ODBC Driver:</p><ul><li><p>Go to the official PostgreSQL ODBC Driver download page. <a href="https://www.postgresql.org/ftp/odbc/versions/msi/" data-card-appearance="inline" class="external-link" rel="nofollow">https://www.postgresql.org/ftp/odbc/versions/msi/</a> </p></li><li><p>Download the 32-bit version of the driver installer.</p></li><li><p>Run the installer and follow the installation instructions.</p></li></ul></li><li><p>Configure System DSN:</p><ul><li><p>Open the ODBC Data Source Administrator for 32-bit systems. You can find it in C:\Windows\SysWOW64\odbcad32.exe.</p></li><li><p>Go to the &quot;System DSN&quot; tab.</p></li><li><p>Click &quot;Add&quot; to create a new System DSN.</p></li><li><p>Choose the PostgreSQL ODBC driver from the list.</p></li></ul></li><li><p>Configure Connection Details:</p><ul><li><p>Fill in the necessary connection details, including the database name, server, port, username, and password.</p></li><li><p>Test the connection to ensure it works.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240301-135916.png" width="416" loading="lazy" src="attachments/2470576129/2470150146.png?width=416" data-image-src="attachments/2470576129/2470150146.png" data-height="316" data-width="364" data-unresolved-comment-count="0" data-linked-resource-id="2470150146" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20240301-135916.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2470576129" data-linked-resource-container-version="1" data-media-id="e21c91cd-a35e-4d33-9190-56d4b37006f4" data-media-type="file"></span><p> </p></li></ul></li></ol><p><strong>For 64-bit PostgreSQL ODBC Driver:</strong></p><ol start="1"><li><p>Download and Install 64-bit PostgreSQL ODBC Driver:</p><ul><li><p>Visit the official PostgreSQL ODBC Driver download page.</p></li></ul></li></ol><p><a href="https://www.postgresql.org/ftp/odbc/versions/msi/" data-card-appearance="inline" class="external-link" rel="nofollow">https://www.postgresql.org/ftp/odbc/versions/msi/</a> </p><ol start="1"><li><p>Download the 64-bit version of the driver installer.</p></li><li><p>Run the installer and follow the installation instructions.</p></li><li><p>Configure System DSN:</p><ul><li><p>Open the ODBC Data Source Administrator for 64-bit systems. You can find it in C:\Windows\System32\odbcad32.exe.</p></li><li><p>Go to the &quot;System DSN&quot; tab.</p></li><li><p>Click &quot;Add&quot; to create a new System DSN.</p></li><li><p>Choose the PostgreSQL ODBC driver from the list.</p></li></ul></li><li><p>Configure Connection Details:</p><ul><li><p>Fill in the necessary connection details, similar to the 32-bit configuration.</p></li><li><p>Test the connection to ensure it works.</p><p /><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240301-135943.png" width="515" loading="lazy" src="attachments/2470576129/2470313998.png?width=515" data-image-src="attachments/2470576129/2470313998.png" data-height="315" data-width="443" data-unresolved-comment-count="0" data-linked-resource-id="2470313998" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20240301-135943.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2470576129" data-linked-resource-container-version="1" data-media-id="1592ea15-1f2b-492c-b7e5-bf5bccec9c32" data-media-type="file"></span><p> Configuration in Magic XPI :</p><p>Go to Project Settings-Resource-Select Database Resource, choose DBMS as ODBC, and input the following parameters:</p><p> </p><p>The data source name is of system DSN</p><p>Please refer:</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240301-140023.png" width="712" loading="lazy" src="attachments/2470576129/2470019074.png?width=712" data-image-src="attachments/2470576129/2470019074.png" data-height="233" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="2470019074" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20240301-140023.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2470576129" data-linked-resource-container-version="1" data-media-id="8741e800-9668-42b0-83ab-cd05cbbada9b" data-media-type="file"></span><p> </p></li></ul></li></ol>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2470576129/2470313990.png">image-20240301-135812.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2470576129/2470150146.png">image-20240301-135916.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2470576129/2470313998.png">image-20240301-135943.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2470576129/2470019074.png">image-20240301-140023.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

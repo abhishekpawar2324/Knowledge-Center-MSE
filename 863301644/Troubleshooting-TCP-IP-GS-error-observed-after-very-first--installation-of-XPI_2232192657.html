@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Troubleshooting TCP-IP GS error observed after very first  installation of XPI</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Troubleshooting TCP-IP GS error observed after very first  installation of XPI
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p>This is a commonly observed error which is usually observed when we start GSA services for the first time on a fresh installation</p><p>ERROR [org.hibernate.engine.jdbc.spi.SqlExceptionHelper] - Cannot create PoolableConnectionFactory (The TCP/IP connection to the host ITSW10VM4, port 1433 has failed.</p><p>Error: &quot;Connection refused: connect. Verify the connection properties. Make sure that an instance of SQL Server is running on the host and accepting TCP/IP connections at the port. Make sure that TCP connections to the port are not blocked by a firewall.&quot;.)</p><p /><p> </p><p>This leads to mginfo-gs broken</p><p> </p><p>To resolve this error we need to make sure the TCP properties of SQL server is enabled on internal Database server and XPI server machine both.</p><p>You can enable this as follow</p><p>1.Open SQL configuration manager / MMC</p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232192657/2232192689.png" data-image-src="attachments/2232192657/2232192689.png" data-height="338" data-width="602" data-unresolved-comment-count="0" data-linked-resource-id="2232192689" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20210402-111815.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192657" data-linked-resource-container-version="1" data-media-id="15ff3fd2-a9e4-4376-bcda-e7ac347fee83" data-media-type="file"></span><p>2.Select SQL server network configuration and enable protocols for the instance used as internal XPI database server</p><p> </p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232192657/2232192686.png" data-image-src="attachments/2232192657/2232192686.png" data-height="341" data-width="476" data-unresolved-comment-count="0" data-linked-resource-id="2232192686" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20210402-111900.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192657" data-linked-resource-container-version="1" data-media-id="247ed58b-98f8-4e32-951b-c4e8fc5abf88" data-media-type="file"></span><p /><p> </p><p>3.Select SQL Native client Configuration 32-bit and enable TCP protocols</p><p> </p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232192657/2232192683.png" data-image-src="attachments/2232192657/2232192683.png" data-height="285" data-width="588" data-unresolved-comment-count="0" data-linked-resource-id="2232192683" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20210402-111914.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192657" data-linked-resource-container-version="1" data-media-id="c6758837-78a1-4185-a2a5-42b05f42cbb8" data-media-type="file"></span><p /><p> </p><p>4.After enabling TCP protocols on server and client make sure to restart SQL server services for changes to effect.</p><p> </p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232192657/2232192680.png" data-image-src="attachments/2232192657/2232192680.png" data-height="259" data-width="602" data-unresolved-comment-count="0" data-linked-resource-id="2232192680" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20210402-111928.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192657" data-linked-resource-container-version="1" data-media-id="25580277-8d56-4792-897d-e8b159593c92" data-media-type="file"></span><p /><p> </p><p>5.Restart XPI GSA services and check if the problem is resolved</p><p> </p><p>6. In case the problem is not resolved verify for client and server TCP/IP properties do not point any IPv6 addresses ,if is change the IP to 127.0.0.1</p><p> </p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232192657/2232192677.png" data-image-src="attachments/2232192657/2232192677.png" data-height="380" data-width="602" data-unresolved-comment-count="0" data-linked-resource-id="2232192677" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20210402-111941.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192657" data-linked-resource-container-version="1" data-media-id="43297414-b11a-4285-94e4-91085d5d6ac5" data-media-type="file"></span><p /><p> </p><p>Also make all ports of TCP/IP to 1433</p><p> </p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232192657/2232192674.png" data-image-src="attachments/2232192657/2232192674.png" data-height="379" data-width="602" data-unresolved-comment-count="0" data-linked-resource-id="2232192674" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20210402-112009.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192657" data-linked-resource-container-version="1" data-media-id="2ae4f3d5-0fda-48f2-96f6-358c4733e026" data-media-type="file"></span><p /><p> </p><p>7.Restart GSA and SQL server services for changes to effect and check again</p><p /><p> </p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232192657/2232192671.png" data-image-src="attachments/2232192657/2232192671.png" data-height="468" data-width="592" data-unresolved-comment-count="0" data-linked-resource-id="2232192671" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20210402-112024.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192657" data-linked-resource-container-version="1" data-media-id="85541781-0d05-4f91-9af1-62e53ca03bfa" data-media-type="file"></span><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192657/2232192671.png">image-20210402-112024.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192657/2232192674.png">image-20210402-112009.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192657/2232192677.png">image-20210402-111941.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192657/2232192680.png">image-20210402-111928.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192657/2232192683.png">image-20210402-111914.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192657/2232192686.png">image-20210402-111900.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192657/2232192689.png">image-20210402-111815.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:21</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

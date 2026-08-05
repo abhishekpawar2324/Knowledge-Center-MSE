@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Resolving &quot;Waiting for Agent&quot; Status in Monitor</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Resolving &quot;Waiting for Agent&quot; Status in Monitor
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Abhishek Pawar</span> on 07,May, 2025
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <h2 id="Resolving&quot;WaitingforAgent&quot;StatusinMonitor-Issue">Issue</h2><p>When attempting to run a project from the Monitor, the Server tab displays the status:<br/>&quot;Waiting for Agent&quot;.<br/></p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250507-142359.png" width="432" loading="lazy" src="attachments/3417833481/3417833491.png?width=432" data-image-src="attachments/3417833481/3417833491.png" data-height="161" data-width="432" data-unresolved-comment-count="0" data-linked-resource-id="3417833491" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250507-142359.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3417833481" data-linked-resource-container-version="1" data-media-id="04830c65-da1b-49c4-bf0c-77d636aad41a" data-media-type="file"></span><p /><h2 id="Resolving&quot;WaitingforAgent&quot;StatusinMonitor-Cause">Cause</h2><p>This typically occurs when the IMM agent is either not properly registered, unavailable, or the project is not correctly mapped to a server instance.</p><h2 id="Resolving&quot;WaitingforAgent&quot;StatusinMonitor-ResolutionSteps">Resolution Steps</h2><ol start="1"><li><p>Open Monitor Dashboard</p></li></ol><ul><li><p>Navigate to the Dashboard tab in the Monitor.</p></li><li><p>Check if the IMM Agent status is listed as Available.</p></li></ul><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250507-142428.png" width="576" loading="lazy" src="attachments/3417833481/3417702408.png?width=576" data-image-src="attachments/3417833481/3417702408.png" data-height="244" data-width="576" data-unresolved-comment-count="0" data-linked-resource-id="3417702408" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250507-142428.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3417833481" data-linked-resource-container-version="1" data-media-id="1e0a1b15-7d96-4cd9-8d54-91c489643577" data-media-type="file"></span><p><br/></p><p /><ol start="2"><li><p>Copy Agent Name</p></li></ol><ul><li><p>If available, copy the Agent Name exactly as it appears.</p></li></ul><ol start="3"><li><p>Go to Server Tab</p></li></ol><ul><li><p>Switch to the Server tab in the Monitor interface.</p></li><li><p>Open or create a Server Instance configuration.</p></li></ul><ol start="4"><li><p>Add Server Host and Project Directory</p></li></ol><ul><li><p>In the Server Host field, paste the Agent Name (e.g., in-abhishekplpt).</p></li><li><p>In the Projects Directory, input the correct project path.</p></li></ul><ol start="5"><li><p>Verify Settings</p></li></ol><ul><li><p>Ensure the following checkboxes are selected:</p></li></ul><p><br/>  ✅ Load Triggers<br/>  ✅ Load Schedulers<br/>  ✅ Load Auto-Start<br/></p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250507-142433.png" width="528" loading="lazy" src="attachments/3417833481/3417604101.png?width=528" data-image-src="attachments/3417833481/3417604101.png" data-height="280" data-width="528" data-unresolved-comment-count="0" data-linked-resource-id="3417604101" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250507-142433.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3417833481" data-linked-resource-container-version="1" data-media-id="d7c1ad4a-f52a-4dee-845d-2b3da320c747" data-media-type="file"></span><p /><p /><ol start="6"><li><p>Save and Run</p></li></ol><ul><li><p>Click OK to save the new Server Instance.</p></li><li><p>The project should now start running under the correct agent without showing “Waiting for Agent”.</p></li></ul><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3417833481/3417833491.png">image-20250507-142359.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3417833481/3417997314.png">image-20250507-142423.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3417833481/3417702408.png">image-20250507-142428.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3417833481/3417604101.png">image-20250507-142433.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:23</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

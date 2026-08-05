@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Machine Handle usage and system or operating system level limitation on Handles</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Machine Handle usage and system or operating system level limitation on Handles
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p>We had observed the problem in one of the customer’s environment, Where 100+ engines were running on each of the machines. After some limit new xpi Engine/Project/Instance was getting failed to start.<br/><strong>--Reference-00075806</strong><br/><br/>: <strong><u>Regarding number of projects/instances started on the server.</u></strong></p><p>This seems to be a system or operating system level limitation.<br/>The following log is found from the Events Log (Application level), when MgxpiServer failed to start:</p><p>Application: MgxpiServer.EXE</p><p>Framework Version: v4.0.30319</p><p>Description: The process was terminated due to an unhandled exception.</p><p>Exception Info: System.ComponentModel.Win32Exception</p><p>   at System.Windows.Forms.NativeWindow+WindowClass.RegisterClass()</p><p>   at System.Windows.Forms.NativeWindow+WindowClass.Create(System.String, Int32)</p><p>   at System.Windows.Forms.<strong>NativeWindow.CreateHandle(System.Windows.Forms.CreateParams)</strong></p><p>   at System.Windows.Forms.Timer+TimerNativeWindow.EnsureHandle()</p><p>   at System.Windows.Forms.Timer+TimerNativeWindow.StartTimer(Int32)</p><p>   at System.Windows.Forms.Timer.set_Enabled(Boolean)</p><p>   at System.Windows.Forms.Timer.Start()</p><p>   at com.magicsoftware.unipaas.gui.low.Filter..ctor()</p><p>   at com.magicsoftware.unipaas.gui.low.GUIMain.init(Boolean, System.String)</p><p>   at com.magicsoftware.rte.RTEmanager.InitGui()</p><p>   at com.magicsoftware.rte.RTEmanager.ExecuteMainThread(System.String)</p><p>   at com.magicsoftware.rte.RTEmanager.Main()</p><p> </p><p>From the event log, it seems that the operating system isn’t able to spawn a new process, since it failed to create a handle (i.e Kernel level objects are not getting created).</p><p> </p><p><strong>References:</strong></p><ol><li><p /></li></ol><p><a href="https://msdn.microsoft.com/en-us/library/ms724485(v=vs.85).aspx" class="external-link" rel="nofollow">https://msdn.microsoft.com/en-us/library/ms724485(v=vs.85).aspx</a> </p><ol><li><p /></li></ol><p><a href="https://weblogs.asp.net/fmarguerie/cannot-create-window-handle-desktop-heap" data-card-appearance="inline" class="external-link" rel="nofollow">https://weblogs.asp.net/fmarguerie/cannot-create-window-handle-desktop-heap</a>  (process level limit)</p><ol><li><p /></li></ol><p><a href="https://support.microsoft.com/en-us/help/126962/out-of-memory-error-message-appears-when-you-have-a-large-number-of-pr" class="external-link" rel="nofollow">https://support.microsoft.com/en-us/help/126962/out-of-memory-error-message-appears-when-you-have-a-large-number-of-pr</a>   <strong>(Solution)</strong><br/><strong><u>Note:</u> </strong>Please go through <em><strong>More Information</strong></em> section from above link (#3).</p><p> </p><p>The solution to increase the limit for kernel level limit is listed in #3 above.</p><p>e.g.</p><p><strong>Registry key:</strong> <strong>HKEY_LOCAL_MACHINE \System\CurrentControlSet\Control\Session Manager\SubSystems</strong></p><p><strong>Registry Value: Windows</strong></p><p><strong>Registry value:</strong></p><p>%SystemRoot%\system32\csrss.exe ObjectDirectory=\Windows SharedSection=1024,20480,<strong>768</strong> Windows=On SubSystemType=Windows ServerDll=basesrv,1 ServerDll=winsrv:UserServerDllInitialization,3 ServerDll=sxssrv,4 ProfileControl=Off MaxRequestThreads=16</p><p><strong> </strong></p><p><strong>Change it to:</strong></p><p>%SystemRoot%\system32\csrss.exe ObjectDirectory=\Windows SharedSection=1024,20480,<strong>1024</strong> Windows=On SubSystemType=Windows ServerDll=basesrv,1 ServerDll=winsrv:UserServerDllInitialization,3 ServerDll=sxssrv,4 ProfileControl=Off MaxRequestThreads=16</p><p> </p><p> </p><p><strong>Note: </strong>Few more links related to the problem area:<br/><a href="https://support.microsoft.com/en-in/help/184802/user32-dll-or-kernel32-dll-does-not-initialize" data-card-appearance="inline" class="external-link" rel="nofollow">https://support.microsoft.com/en-in/help/184802/user32-dll-or-kernel32-dll-does-not-initialize</a> </p><p><a href="https://www.ibm.com/support/knowledgecenter/en/SSZJPZ_11.7.0/com.ibm.swg.im.iis.productization.iisinfsv.install.doc/topics/wsisinst_config_winreg.html" data-card-appearance="inline" class="external-link" rel="nofollow">https://www.ibm.com/support/knowledgecenter/en/SSZJPZ_11.7.0/com.ibm.swg.im.iis.productization.iisinfsv.install.doc/topics/wsisinst_config_winreg.html</a> </p><p> <br/>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\SubSystems\Windows <br/>SharedSection=1024,20480,2048  <br/>SharedSection=1024,20480,2048  </p>
+                    </div>
+
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:21</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : When the RestFul API trigger response body header content-type set to the &#39;Application/Json&#39;,it throws the error in the browser.</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : When the RestFul API trigger response body header content-type set to the &#39;Application/Json&#39;,it throws the error in the browser.
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Shweta Salunkhe</span> on 13,Sep, 2024
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <h2 id="WhentheRestFulAPItriggerresponsebodyheadercontent-typesettothe&#39;Application/Json&#39;,itthrowstheerrorinthebrowser.-Description:">Description:</h2><p>In a flow with a RESTful API Trigger in place,when trying to return json in the response body, it throws the error in the browser.<br/>But when check response header in chrome's development tool,then we can see the content-type is &quot;application/xml&quot;.(Screenshot of chrome attached)<br/>and also response is showing in the JSON format in the chromes development tool.</p><p>In the variable set in the RESTful API Trigger response header, &quot;application/json&quot; is set, but this does not seem to be working.</p><p /><h2 id="WhentheRestFulAPItriggerresponsebodyheadercontent-typesettothe&#39;Application/Json&#39;,itthrowstheerrorinthebrowser.-Solution:"><strong>Solution:</strong></h2><p>The project level configuration resolves the reported issue. Used the sample project recently attached.</p><ol start="1"><li><p>User needs to remove response parameter entry for the Paths defined.  </p></li></ol><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240820-124421.png" width="250" loading="lazy" src="attachments/2869198850/2869985283.png?width=250" data-image-src="attachments/2869198850/2869985283.png" data-height="365" data-width="649" data-unresolved-comment-count="0" data-linked-resource-id="2869985283" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="af224f8e-42ca-4a79-8354-3d91934a43d0#media-blob-url=true&amp;id=bcd170d3-e15e-4e4d-9a08-5e7f3b59711a&amp;collection=&amp;contextId=150382&amp;mimeType=image%2Fpng&amp;name=image-20240820-124421.png&amp;size=172060&amp;width=1707&amp;height=960&amp;alt=image-20240820-124421.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2869198850" data-linked-resource-container-version="1" data-media-id="b06f31b6-2238-43e5-a40d-7ca319159cc6" data-media-type="file"></span><p>2.'content-type = application/json' property user can update in the flow data step for C.UserString variable.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240820-124732.png" width="250" loading="lazy" src="attachments/2869198850/2869035011.png?width=250" data-image-src="attachments/2869198850/2869035011.png" data-height="365" data-width="649" data-unresolved-comment-count="0" data-linked-resource-id="2869035011" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="aea364f3-5e64-40e5-9879-304b076b0782#media-blob-url=true&amp;id=3ad24d72-4734-4821-9c2b-7fa30a753fcd&amp;collection=&amp;contextId=150382&amp;mimeType=image%2Fpng&amp;name=image-20240820-124732.png&amp;size=247059&amp;width=1707&amp;height=960&amp;alt=image-20240820-124732.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2869198850" data-linked-resource-container-version="1" data-media-id="f00bbd92-cd46-443d-b22a-1fea47d310bd" data-media-type="file"></span><p>3.Keep the trigger configuration as is.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240820-124903.png" width="250" loading="lazy" src="attachments/2869198850/2869493764.png?width=250" data-image-src="attachments/2869198850/2869493764.png" data-height="720" data-width="649" data-unresolved-comment-count="0" data-linked-resource-id="2869493764" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="c85fe768-047f-4016-bc7f-0173fd7fc170#media-blob-url=true&amp;id=1d067d8e-69e2-4526-bbc6-d1c69b52f217&amp;collection=&amp;contextId=150382&amp;mimeType=image%2Fpng&amp;name=image-20240820-124903.png&amp;size=62242&amp;width=735&amp;height=815&amp;alt=image-20240820-124903.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2869198850" data-linked-resource-container-version="1" data-media-id="2b26a2a8-2190-432a-8dcc-7b07ea7c47de" data-media-type="file"></span><p>4.When we give call after project execution starts through browser as '<a href="http://10.9.6.71:8085/xpiREST/RESTfulAPIzipProject1/RESTfulAPI1/zip/zipcode/0030838" class="external-link" rel="nofollow">http://10.9.6.71:8085/xpiREST/RESTfulAPIzipProject1/RESTfulAPI1/zip/zipcode/0030838</a>', and inspect the result by checking Headers, the 200 OK and expected Content Type observed as:</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240820-125147.png" width="250" loading="lazy" src="attachments/2869198850/2869690372.png?width=250" data-image-src="attachments/2869198850/2869690372.png" data-height="365" data-width="649" data-unresolved-comment-count="0" data-linked-resource-id="2869690372" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="b6161dae-5d4d-4f58-9881-7a041484d704#media-blob-url=true&amp;id=c1070a32-52cc-4afb-94ac-d71607cfa596&amp;collection=&amp;contextId=150382&amp;mimeType=image%2Fpng&amp;name=image-20240820-125147.png&amp;size=196129&amp;width=1707&amp;height=960&amp;alt=image-20240820-125147.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2869198850" data-linked-resource-container-version="1" data-media-id="df3282e9-768b-4685-8cda-c11c328f1c4c" data-media-type="file"></span><p>5.Similar test confirmed by POSTMAN utility too.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240820-125340.png" width="250" loading="lazy" src="attachments/2869198850/2870018050.png?width=250" data-image-src="attachments/2869198850/2870018050.png" data-height="397" data-width="649" data-unresolved-comment-count="0" data-linked-resource-id="2870018050" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="c5a4e4a1-d379-4f24-b482-fb7c2fe87271#media-blob-url=true&amp;id=62220a5f-6cf6-4abf-8426-97a08aa6007b&amp;collection=&amp;contextId=150382&amp;mimeType=image%2Fpng&amp;name=image-20240820-125340.png&amp;size=92249&amp;width=1302&amp;height=796&amp;alt=image-20240820-125340.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2869198850" data-linked-resource-container-version="1" data-media-id="3cafd7db-251a-4bb5-bff9-693ef06472bb" data-media-type="file"></span>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2869198850/2869985283.png">af224f8e-42ca-4a79-8354-3d91934a43d0#media-blob-url=true&amp;id=bcd170d3-e15e-4e4d-9a08-5e7f3b59711a&amp;collection=&amp;contextId=150382&amp;mimeType=image%2Fpng&amp;name=image-20240820-124421.png&amp;size=172060&amp;width=1707&amp;height=960&amp;alt=image-20240820-124421.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2869198850/2869035011.png">aea364f3-5e64-40e5-9879-304b076b0782#media-blob-url=true&amp;id=3ad24d72-4734-4821-9c2b-7fa30a753fcd&amp;collection=&amp;contextId=150382&amp;mimeType=image%2Fpng&amp;name=image-20240820-124732.png&amp;size=247059&amp;width=1707&amp;height=960&amp;alt=image-20240820-124732.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2869198850/2869493764.png">c85fe768-047f-4016-bc7f-0173fd7fc170#media-blob-url=true&amp;id=1d067d8e-69e2-4526-bbc6-d1c69b52f217&amp;collection=&amp;contextId=150382&amp;mimeType=image%2Fpng&amp;name=image-20240820-124903.png&amp;size=62242&amp;width=735&amp;height=815&amp;alt=image-20240820-124903.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2869198850/2869690372.png">b6161dae-5d4d-4f58-9881-7a041484d704#media-blob-url=true&amp;id=c1070a32-52cc-4afb-94ac-d71607cfa596&amp;collection=&amp;contextId=150382&amp;mimeType=image%2Fpng&amp;name=image-20240820-125147.png&amp;size=196129&amp;width=1707&amp;height=960&amp;alt=image-20240820-125147.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2869198850/2870018050.png">c5a4e4a1-d379-4f24-b482-fb7c2fe87271#media-blob-url=true&amp;id=62220a5f-6cf6-4abf-8426-97a08aa6007b&amp;collection=&amp;contextId=150382&amp;mimeType=image%2Fpng&amp;name=image-20240820-125340.png&amp;size=92249&amp;width=1302&amp;height=796&amp;alt=image-20240820-125340.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

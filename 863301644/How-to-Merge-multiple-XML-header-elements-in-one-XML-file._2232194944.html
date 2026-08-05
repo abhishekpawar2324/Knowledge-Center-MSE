@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : How to Merge multiple XML header elements in one XML file.</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : How to Merge multiple XML header elements in one XML file.
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><strong>Problem: -</strong></p><p>The customer retrieved the data via an OData link from SAP in a Json file and mapped that Json file of that OData with the XML and wants to merge the multiple XML header elements in one XML file if there are multiple elements for the same header and then want to group header elements by element ID.</p><p> </p><p><strong><u>Expected XML Result:</u></strong></p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194944/2232194970.png?width=680" data-image-src="attachments/2232194944/2232194970.png" data-height="394" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232194970" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230417-135701.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194944" data-linked-resource-container-version="1" data-media-id="acebf787-385e-4703-b4bc-f135f8c561e2" data-media-type="file"></span><p /><p><strong><u>Result received after XML merging:</u></strong></p><p><strong> </strong></p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194944/2232194967.png?width=680" data-image-src="attachments/2232194944/2232194967.png" data-height="444" data-width="385" data-unresolved-comment-count="0" data-linked-resource-id="2232194967" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230417-135715.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194944" data-linked-resource-container-version="1" data-media-id="d8626b32-ef9c-41be-ab6e-e28bc1217302" data-media-type="file"></span><p /><p><strong> </strong></p><p>The customer wants to merge the same header element data in one XML header.</p><p><strong>Solution: -</strong></p><p>This can be achieved by using,</p><p>-A call flow mechanism with a flow variable <br/>-UDS to index the headers to merge header content data under one header.</p><p> </p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194944/2232194964.png?width=680" data-image-src="attachments/2232194944/2232194964.png" data-height="147" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232194964" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230417-135730.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194944" data-linked-resource-container-version="1" data-media-id="dbf0141f-83e4-4914-8a4d-eef59638bd59" data-media-type="file"></span><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194944/2232194961.png?width=680" data-image-src="attachments/2232194944/2232194961.png" data-height="108" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232194961" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230417-135739.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194944" data-linked-resource-container-version="1" data-media-id="aea6f367-da6a-4835-877d-f847c1314ec7" data-media-type="file"></span><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194944/2232194958.png?width=680" data-image-src="attachments/2232194944/2232194958.png" data-height="90" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232194958" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230417-135749.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194944" data-linked-resource-container-version="1" data-media-id="c2d86dfa-95dc-443f-8695-dec66f9e040d" data-media-type="file"></span><p /><p> </p><p /><p> </p><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194944/2232194958.png">image-20230417-135749.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194944/2232194961.png">image-20230417-135739.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194944/2232194964.png">image-20230417-135730.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194944/2232194967.png">image-20230417-135715.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194944/2232194970.png">image-20230417-135701.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

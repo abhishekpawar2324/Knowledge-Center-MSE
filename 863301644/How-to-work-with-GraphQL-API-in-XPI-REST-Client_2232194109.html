@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : How to work with GraphQL API in XPI-REST Client</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : How to work with GraphQL API in XPI-REST Client
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p>GraphQL is an alternate option to build APIs in REST. It is designed to make APIs fast, flexible, and developer friendly. It can even be deployed within an integrated development environment (IDE) known as GraphiQL. As an alternative to REST, GraphQL lets developers construct requests that pull data from multiple data sources in a single API call.</p><p>-So to call the GraphQL API inside the REST Client Component of XPI we need to define the respective configuration.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194109/2232194143.png?width=680" data-image-src="attachments/2232194109/2232194143.png" data-height="229" data-width="519" data-unresolved-comment-count="0" data-linked-resource-id="2232194143" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20220919-124934.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194109" data-linked-resource-container-version="1" data-media-id="28aa7a16-2018-4e5a-85c6-d7d303589fd4" data-media-type="file"></span><p /><p>In the postman you can see “Transaction Sale” API is being set with URL – {{endpoint}}/graphql.</p><p>Endpoint value is defined inside variable which is -<a href="https://payments.sandbox.braintree-api.com" class="external-link" rel="nofollow">https://payments.sandbox.braintree-api.com</a></p><p>We can observe here we have a request body under GraphQL in parts, one is QUERY and the other is GRAPHQL VARIABLES.</p><p>Here we need to write queries that return data, we need to pass in variables to apply sorting and filtering through our data so that we can see relevant data.</p><p> </p><p>-So, to get the whole request body which can pass inside the XPI REST Client Component, we used Fiddler with proxy to capture the graphQL API request.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194109/2232194140.png?width=680" data-image-src="attachments/2232194109/2232194140.png" data-height="286" data-width="535" data-unresolved-comment-count="0" data-linked-resource-id="2232194140" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20220919-125001.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194109" data-linked-resource-container-version="1" data-media-id="e4a1ea70-dc14-46a1-9716-0d8a5e1a12ca" data-media-type="file"></span><p>We can see from the above image that we captured the POST Request with URL, Header content, and Body.</p><p /><p>-Under XPI we must pass the Request body we got from Fiddler inside the REST Client component with Following Configuration as per Header content.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194109/2232194137.png?width=680" data-image-src="attachments/2232194109/2232194137.png" data-height="235" data-width="521" data-unresolved-comment-count="0" data-linked-resource-id="2232194137" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20220919-125032.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194109" data-linked-resource-container-version="1" data-media-id="87d83f61-9beb-4323-af1e-88a4979866d5" data-media-type="file"></span><p>Here inside Header Parameter, we mentioned Header Parameter as the current date of API calling because all the header information was already captured in Fiddler except “Braintree-Version”.</p><p /><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194109/2232194134.png?width=680" data-image-src="attachments/2232194109/2232194134.png" data-height="251" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232194134" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20220919-125047.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194109" data-linked-resource-container-version="1" data-media-id="385ceb9f-435d-4d96-8e53-115a42688a82" data-media-type="file"></span><p>In Data.txt we stored the request body which is captured in Fiddler.</p><p /><p>In this way, we can access the GraphQL API through XPI.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194109/2232194131.png?width=680" data-image-src="attachments/2232194109/2232194131.png" data-height="260" data-width="513" data-unresolved-comment-count="0" data-linked-resource-id="2232194131" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20220919-125116.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194109" data-linked-resource-container-version="1" data-media-id="1bd4ef94-b8d1-4f65-95d3-11173a1af65a" data-media-type="file"></span><p>Attached are Sample XPI and Postman projects.</p><p class="media-group"><span class="confluence-embedded-file-wrapper"><a class="confluence-embedded-file" href="attachments/2232194109/2232194125.zip" data-nice-type="Zip Archive" data-file-src="/wiki/download/attachments/2232194109/TestGraphQL.zip?version=1&amp;modificationDate=1685537241921&amp;cacheVersion=1&amp;api=v2" data-linked-resource-id="2232194125" data-linked-resource-type="attachment" data-linked-resource-container-id="2232194109" data-linked-resource-default-alias="TestGraphQL.zip" data-mime-type="application/zip" data-has-thumbnail="true" data-linked-resource-version="1" data-media-id="eb83814d-44fe-48f0-9d16-24ef06ecadef" data-media-type="file"><img src="attachments/thumbnails/2232194109/2232194125" height="250"/></a></span><span class="confluence-embedded-file-wrapper"><a class="confluence-embedded-file" href="attachments/2232194109/2232194128.json" data-nice-type="null" data-file-src="/wiki/download/attachments/2232194109/Braintree%20GraphQL.postman_collection.json?version=1&amp;modificationDate=1685537242155&amp;cacheVersion=1&amp;api=v2" data-linked-resource-id="2232194128" data-linked-resource-type="attachment" data-linked-resource-container-id="2232194109" data-linked-resource-default-alias="Braintree GraphQL.postman_collection.json" data-mime-type="application/json" data-has-thumbnail="true" data-linked-resource-version="1" data-media-id="eafc39d4-0924-4cfe-8056-f8063664d867" data-media-type="file"><img src="attachments/thumbnails/2232194109/2232194128" height="250"/></a></span></p><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194109/2232194125.zip">TestGraphQL.zip</a> (application/zip)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194109/2232194128.json">Braintree GraphQL.postman_collection.json</a> (application/json)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194109/2232194131.png">image-20220919-125116.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194109/2232194134.png">image-20220919-125047.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194109/2232194137.png">image-20220919-125032.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194109/2232194140.png">image-20220919-125001.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194109/2232194143.png">image-20220919-124934.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:21</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : How to upload a file on Google drive using Rest Client</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : How to upload a file on Google drive using Rest Client
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><strong>Product Line:</strong></p><p>Integration Platform</p><p><br/><strong>Objective:</strong></p><p>How to upload a file on Google drive using Rest Client.</p><p> </p><p><strong>Solution:</strong></p><p>On this page, you will find the attachment of a sample example of the rest client in which we can upload an image to google drive.<br/>Please go through the example.</p><p>In the google drive resource, when you click the 'Access token' button, you will need to select your email account.<br/>Once you select your email account you will get a warning 'Google hasn’t verified this app'</p><p>Click on the Advanced button and proceed to Go to API project(unsafe).</p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232192854/2232192889.png" data-image-src="attachments/2232192854/2232192889.png" data-height="417" data-width="515" data-unresolved-comment-count="0" data-linked-resource-id="2232192889" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20210425-175227.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192854" data-linked-resource-container-version="1" data-media-id="84928b32-d458-4f60-aa09-fb2900645617" data-media-type="file"></span><p /><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232192854/2232192886.png" data-image-src="attachments/2232192854/2232192886.png" data-height="485" data-width="515" data-unresolved-comment-count="0" data-linked-resource-id="2232192886" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20210425-175252.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192854" data-linked-resource-container-version="1" data-media-id="a785c98b-7c65-4d72-ba99-65a271b8cd7c" data-media-type="file"></span><p /><p /><p><br/>After that click on the 'Allow' button so that the API project could access your email account.</p><p>In case that the ‘Allow' button which allows the API project to access the Google Account is disabled,</p><p>you will need to make the following changes to bypass this issue.</p><p> </p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232192854/2232192883.png" data-image-src="attachments/2232192854/2232192883.png" data-height="286" data-width="547" data-unresolved-comment-count="0" data-linked-resource-id="2232192883" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20210425-175329.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192854" data-linked-resource-container-version="1" data-media-id="f76e8b36-39f3-4ec1-a3e5-214dd9505a55" data-media-type="file"></span><p /><p>-Open the Registry Editor and go to the registry (regedit) and go to</p><p> Computer\HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Internet Explorer\Main\FeatureControl\FEATURE_BROWSER_EMULATION</p><p> add a DWORD 32 bits, enter: &quot;MgxpiStudio.exe&quot; and the value 11000 as a decimal value.</p><p> </p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232192854/2232192880.png" data-image-src="attachments/2232192854/2232192880.png" data-height="305" data-width="547" data-unresolved-comment-count="0" data-linked-resource-id="2232192880" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20210425-175357.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192854" data-linked-resource-container-version="1" data-media-id="6b157bf4-cacb-4662-b291-827cc25b643c" data-media-type="file"></span><p> </p><p> </p><p> </p><p> </p><p>Restart the magic xpi studio, the button in the Rest Client resource should be visible.</p><p>This suggestion works because the Internet Explorer version is changed to 11 and we can bypass the disabled 'Allow' button issue.</p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232192854/2232192877.png" data-image-src="attachments/2232192854/2232192877.png" data-height="464" data-width="515" data-unresolved-comment-count="0" data-linked-resource-id="2232192877" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20210425-175449.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192854" data-linked-resource-container-version="1" data-media-id="25b5c8d8-6987-44a2-962b-f2b22349fd41" data-media-type="file"></span><p><br/></p><p>After that, the access token will be generated successfully.</p><p> </p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232192854/2232192874.png" data-image-src="attachments/2232192854/2232192874.png" data-height="271" data-width="508" data-unresolved-comment-count="0" data-linked-resource-id="2232192874" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20210425-175512.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192854" data-linked-resource-container-version="1" data-media-id="47689274-294b-4b1a-b79a-23591630aea3" data-media-type="file"></span><p> </p><p> </p><p>Following this, run the project and you will see the image uploaded on google drive.</p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232192854/2232192871.png" data-image-src="attachments/2232192854/2232192871.png" data-height="283" data-width="528" data-unresolved-comment-count="0" data-linked-resource-id="2232192871" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20210425-175531.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192854" data-linked-resource-container-version="1" data-media-id="80f45edd-b110-4442-a33b-b08d615128c1" data-media-type="file"></span><p class="media-group"><span class="confluence-embedded-file-wrapper"><a class="confluence-embedded-file" href="attachments/2232192854/2232192868.zip" data-nice-type="Zip Archive" data-file-src="/wiki/download/attachments/2232192854/Google%20(1).zip?version=1&amp;modificationDate=1685537204730&amp;cacheVersion=1&amp;api=v2" data-linked-resource-id="2232192868" data-linked-resource-type="attachment" data-linked-resource-container-id="2232192854" data-linked-resource-default-alias="Google (1).zip" data-mime-type="application/zip" data-has-thumbnail="true" data-linked-resource-version="1" data-media-id="6dc8b1e5-dcb4-4fcf-8c03-00acb66e97e9" data-media-type="file"><img src="attachments/thumbnails/2232192854/2232192868" height="250"/></a></span></p><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192854/2232192868.zip">Google (1).zip</a> (application/zip)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192854/2232192871.png">image-20210425-175531.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192854/2232192874.png">image-20210425-175512.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192854/2232192877.png">image-20210425-175449.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192854/2232192880.png">image-20210425-175357.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192854/2232192883.png">image-20210425-175329.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192854/2232192886.png">image-20210425-175252.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192854/2232192889.png">image-20210425-175227.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:21</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

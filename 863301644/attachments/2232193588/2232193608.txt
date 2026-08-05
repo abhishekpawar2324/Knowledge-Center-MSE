@@ -1,0 +1,217 @@
+CREATE TABLE [dbo].[userdetails](
+	[Id] [int] NOT NULL,
+	[Name] [nvarchar](50) NULL,
+	[DOB] [date] NULL,
+	[City] [nvarchar](50) NULL,
+	[DOJ] [date] NULL,
+	[Gender] [nchar](10) NULL,
+ CONSTRAINT [PK_userdetails] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (1, N'Demo1', CAST(N'2001-03-15' AS Date), N'Pune', CAST(N'2020-03-15' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (2, N'Demo2', CAST(N'2001-04-16' AS Date), N'Pune', CAST(N'2020-03-16' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (3, N'Demo3', CAST(N'2002-05-17' AS Date), N'Pune', CAST(N'2020-03-17' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (4, N'Demo4', CAST(N'2004-06-18' AS Date), N'Pune', CAST(N'2020-03-18' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (5, N'Demo5', CAST(N'2005-03-19' AS Date), N'Pune', CAST(N'2020-03-19' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (6, N'Demo6', CAST(N'2007-03-20' AS Date), N'Pune', CAST(N'2020-03-20' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (7, N'Demo7', CAST(N'2000-03-21' AS Date), N'Pune', CAST(N'2020-03-21' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (8, N'Demo8', CAST(N'2000-03-22' AS Date), N'Pune', CAST(N'2020-03-22' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (9, N'Demo9', CAST(N'2000-03-23' AS Date), N'Pune', CAST(N'2020-03-23' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (10, N'Demo10', CAST(N'2000-03-24' AS Date), N'Pune', CAST(N'2020-03-24' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (11, N'Demo11', CAST(N'2000-03-25' AS Date), N'Pune', CAST(N'2020-03-25' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (12, N'Demo12', CAST(N'2000-03-26' AS Date), N'Pune', CAST(N'2020-03-26' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (13, N'Demo13', CAST(N'2001-03-15' AS Date), N'Pune', CAST(N'2020-03-15' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (14, N'Demo14', CAST(N'2001-04-16' AS Date), N'Pune', CAST(N'2020-03-16' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (15, N'Demo15', CAST(N'2002-05-17' AS Date), N'Pune', CAST(N'2020-03-17' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (16, N'Demo16', CAST(N'2004-06-18' AS Date), N'Pune', CAST(N'2020-03-18' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (17, N'Demo17', CAST(N'2005-03-19' AS Date), N'Pune', CAST(N'2020-03-19' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (18, N'Demo18', CAST(N'2007-03-20' AS Date), N'Pune', CAST(N'2020-03-20' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (19, N'Demo19', CAST(N'2000-03-21' AS Date), N'Pune', CAST(N'2020-03-21' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (20, N'Demo20', CAST(N'2000-03-22' AS Date), N'Pune', CAST(N'2020-03-22' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (21, N'Demo21', CAST(N'2000-03-23' AS Date), N'Pune', CAST(N'2020-03-23' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (22, N'Demo22', CAST(N'2000-03-24' AS Date), N'Pune', CAST(N'2020-03-24' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (23, N'Demo23', CAST(N'2000-03-25' AS Date), N'Pune', CAST(N'2020-03-25' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (24, N'Demo24', CAST(N'2000-03-26' AS Date), N'Pune', CAST(N'2020-03-26' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (25, N'Demo25', CAST(N'2001-03-15' AS Date), N'Pune', CAST(N'2020-03-15' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (26, N'Demo26', CAST(N'2001-04-16' AS Date), N'Pune', CAST(N'2020-03-16' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (27, N'Demo27', CAST(N'2002-05-17' AS Date), N'Pune', CAST(N'2020-03-17' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (28, N'Demo28', CAST(N'2004-06-18' AS Date), N'Pune', CAST(N'2020-03-18' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (29, N'Demo29', CAST(N'2005-03-19' AS Date), N'Pune', CAST(N'2020-03-19' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (30, N'Demo30', CAST(N'2007-03-20' AS Date), N'Pune', CAST(N'2020-03-20' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (31, N'Demo31', CAST(N'2000-03-21' AS Date), N'Pune', CAST(N'2020-03-21' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (32, N'Demo32', CAST(N'2000-03-22' AS Date), N'Pune', CAST(N'2020-03-22' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (33, N'Demo33', CAST(N'2000-03-23' AS Date), N'Pune', CAST(N'2020-03-23' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (34, N'Demo34', CAST(N'2000-03-24' AS Date), N'Pune', CAST(N'2020-03-24' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (35, N'Demo35', CAST(N'2000-03-25' AS Date), N'Pune', CAST(N'2020-03-25' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (36, N'Demo36', CAST(N'2000-03-26' AS Date), N'Pune', CAST(N'2020-03-26' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (37, N'Demo37', CAST(N'2001-03-15' AS Date), N'Pune', CAST(N'2020-03-15' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (38, N'Demo38', CAST(N'2001-04-16' AS Date), N'Pune', CAST(N'2020-03-16' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (39, N'Demo39', CAST(N'2002-05-17' AS Date), N'Pune', CAST(N'2020-03-17' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (40, N'Demo40', CAST(N'2004-06-18' AS Date), N'Pune', CAST(N'2020-03-18' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (41, N'Demo41', CAST(N'2005-03-19' AS Date), N'Pune', CAST(N'2020-03-19' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (42, N'Demo42', CAST(N'2007-03-20' AS Date), N'Pune', CAST(N'2020-03-20' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (43, N'Demo43', CAST(N'2000-03-21' AS Date), N'Pune', CAST(N'2020-03-21' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (44, N'Demo44', CAST(N'2000-03-22' AS Date), N'Pune', CAST(N'2020-03-22' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (45, N'Demo45', CAST(N'2000-03-23' AS Date), N'Pune', CAST(N'2020-03-23' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (46, N'Demo46', CAST(N'2000-03-24' AS Date), N'Pune', CAST(N'2020-03-24' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (47, N'Demo47', CAST(N'2000-03-25' AS Date), N'Pune', CAST(N'2020-03-25' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (48, N'Demo48', CAST(N'2000-03-26' AS Date), N'Pune', CAST(N'2020-03-26' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (49, N'Demo49', CAST(N'2001-03-15' AS Date), N'Pune', CAST(N'2020-03-15' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (50, N'Demo50', CAST(N'2001-04-16' AS Date), N'Pune', CAST(N'2020-03-16' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (51, N'Demo51', CAST(N'2002-05-17' AS Date), N'Pune', CAST(N'2020-03-17' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (52, N'Demo52', CAST(N'2004-06-18' AS Date), N'Pune', CAST(N'2020-03-18' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (53, N'Demo53', CAST(N'2005-03-19' AS Date), N'Pune', CAST(N'2020-03-19' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (54, N'Demo54', CAST(N'2007-03-20' AS Date), N'Pune', CAST(N'2020-03-20' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (55, N'Demo55', CAST(N'2000-03-21' AS Date), N'Pune', CAST(N'2020-03-21' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (56, N'Demo56', CAST(N'2000-03-22' AS Date), N'Pune', CAST(N'2020-03-22' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (57, N'Demo57', CAST(N'2000-03-23' AS Date), N'Pune', CAST(N'2020-03-23' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (58, N'Demo58', CAST(N'2000-03-24' AS Date), N'Pune', CAST(N'2020-03-24' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (59, N'Demo59', CAST(N'2000-03-25' AS Date), N'Pune', CAST(N'2020-03-25' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (60, N'Demo60', CAST(N'2000-03-26' AS Date), N'Pune', CAST(N'2020-03-26' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (61, N'Demo61', CAST(N'2001-03-15' AS Date), N'Pune', CAST(N'2020-03-15' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (62, N'Demo62', CAST(N'2001-04-16' AS Date), N'Pune', CAST(N'2020-03-16' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (63, N'Demo63', CAST(N'2002-05-17' AS Date), N'Pune', CAST(N'2020-03-17' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (64, N'Demo64', CAST(N'2004-06-18' AS Date), N'Pune', CAST(N'2020-03-18' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (65, N'Demo65', CAST(N'2005-03-19' AS Date), N'Pune', CAST(N'2020-03-19' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (66, N'Demo66', CAST(N'2007-03-20' AS Date), N'Pune', CAST(N'2020-03-20' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (67, N'Demo67', CAST(N'2000-03-21' AS Date), N'Pune', CAST(N'2020-03-21' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (68, N'Demo68', CAST(N'2000-03-22' AS Date), N'Pune', CAST(N'2020-03-22' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (69, N'Demo69', CAST(N'2000-03-23' AS Date), N'Pune', CAST(N'2020-03-23' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (70, N'Demo70', CAST(N'2000-03-24' AS Date), N'Pune', CAST(N'2020-03-24' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (71, N'Demo71', CAST(N'2000-03-25' AS Date), N'Pune', CAST(N'2020-03-25' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (72, N'Demo72', CAST(N'2000-03-26' AS Date), N'Pune', CAST(N'2020-03-26' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (73, N'Demo73', CAST(N'2001-03-15' AS Date), N'Pune', CAST(N'2020-03-15' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (74, N'Demo74', CAST(N'2001-04-16' AS Date), N'Pune', CAST(N'2020-03-16' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (75, N'Demo75', CAST(N'2002-05-17' AS Date), N'Pune', CAST(N'2020-03-17' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (76, N'Demo76', CAST(N'2004-06-18' AS Date), N'Pune', CAST(N'2020-03-18' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (77, N'Demo77', CAST(N'2005-03-19' AS Date), N'Pune', CAST(N'2020-03-19' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (78, N'Demo78', CAST(N'2007-03-20' AS Date), N'Pune', CAST(N'2020-03-20' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (79, N'Demo79', CAST(N'2000-03-21' AS Date), N'Pune', CAST(N'2020-03-21' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (80, N'Demo80', CAST(N'2000-03-22' AS Date), N'Pune', CAST(N'2020-03-22' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (81, N'Demo81', CAST(N'2000-03-23' AS Date), N'Pune', CAST(N'2020-03-23' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (82, N'Demo82', CAST(N'2000-03-24' AS Date), N'Pune', CAST(N'2020-03-24' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (83, N'Demo83', CAST(N'2000-03-25' AS Date), N'Pune', CAST(N'2020-03-25' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (84, N'Demo84', CAST(N'2000-03-26' AS Date), N'Pune', CAST(N'2020-03-26' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (85, N'Demo85', CAST(N'2001-03-15' AS Date), N'Pune', CAST(N'2020-03-15' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (86, N'Demo86', CAST(N'2001-04-16' AS Date), N'Pune', CAST(N'2020-03-16' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (87, N'Demo87', CAST(N'2002-05-17' AS Date), N'Pune', CAST(N'2020-03-17' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (88, N'Demo88', CAST(N'2004-06-18' AS Date), N'Pune', CAST(N'2020-03-18' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (89, N'Demo89', CAST(N'2005-03-19' AS Date), N'Pune', CAST(N'2020-03-19' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (90, N'Demo90', CAST(N'2007-03-20' AS Date), N'Pune', CAST(N'2020-03-20' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (91, N'Demo91', CAST(N'2000-03-21' AS Date), N'Pune', CAST(N'2020-03-21' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (92, N'Demo92', CAST(N'2000-03-22' AS Date), N'Pune', CAST(N'2020-03-22' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (93, N'Demo93', CAST(N'2000-03-23' AS Date), N'Pune', CAST(N'2020-03-23' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (94, N'Demo94', CAST(N'2000-03-24' AS Date), N'Pune', CAST(N'2020-03-24' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (95, N'Demo95', CAST(N'2000-03-25' AS Date), N'Pune', CAST(N'2020-03-25' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (96, N'Demo96', CAST(N'2000-03-26' AS Date), N'Pune', CAST(N'2020-03-26' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (97, N'Demo97', CAST(N'2001-03-15' AS Date), N'Pune', CAST(N'2020-03-15' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (98, N'Demo98', CAST(N'2001-04-16' AS Date), N'Pune', CAST(N'2020-03-16' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (99, N'Demo99', CAST(N'2002-05-17' AS Date), N'Pune', CAST(N'2020-03-17' AS Date), N'F         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (100, N'Demo100', CAST(N'2004-06-18' AS Date), N'Pune', CAST(N'2020-03-18' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (101, N'Demo101', CAST(N'2005-03-19' AS Date), N'Pune', CAST(N'2020-03-19' AS Date), N'M         ')
+GO
+INSERT [dbo].[userdetails] ([Id], [Name], [DOB], [City], [DOJ], [Gender]) VALUES (102, N'Demo102', CAST(N'2007-03-20' AS Date), N'Pune', CAST(N'2020-03-20' AS Date), N'M         ')
+GO

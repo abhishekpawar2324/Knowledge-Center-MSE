@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Google Drive Methods</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Google Drive Methods
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Monali Kadam</span> on 22,Apr, 2024
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><strong>Explanation:</strong></p><p>The Google Drive component provides connectivity between Magic xpi and Google Drive.</p><p>When you place the Google Drive component in a flow, Magic xpi automatically opens the Properties pane for the component. You should enter the requested information in the Properties pane. Then, double-click or right-click on the component and select Configuration from the context menu to open the component's Configuration dialog box.</p><p>Before you use the Google Drive component, you should first define a Google Resource in the Settings dialog box's Resources section.</p><p>To use the Google Drive component, you must complete the OAuth 2.0 authorization flow.</p><p><strong>you can create a sample project on G-Cloud with a Google Drive resource using the following links.</strong></p><p><strong>For Google Drive - Configuration refer below link:</strong></p><p><a href="https://magic.secure.force.com/PublicKnowledge/articles/bl_Reference/Google-Resource-xpi-413" class="external-link" rel="nofollow">https://magic.secure.force.com/PublicKnowledge/articles/bl_Reference/Google-Resource-xpi-413</a></p><p><strong>For OAuth 2.0 Authorization refer below link:</strong></p><p><a href="https://magic.secure.force.com/PublicKnowledge/articles/bl_Reference/OAuth-20-Authorization-xpi-413" class="external-link" rel="nofollow">https://magic.secure.force.com/PublicKnowledge/articles/bl_Reference/OAuth-20-Authorization-xpi-413</a></p><p><strong>Google Drive – Methods:</strong></p><p>Use the following methods to configure the Google Drive component:</p><p>·        Create Folder</p><p>·        Delete</p><p>·        Download Item</p><p>·        Move</p><p>·        Query Item List</p><p>·        Retrieve Item List</p><p>·        Set Item Access Control</p><p>·        Update Item</p><p>·        Upload Item</p><p><strong>Please refer below help link for details information:</strong></p><p>Home &gt; Component Series &gt; Google Drive &gt; Google Drive - Configuration &gt; Google Drive – Method</p><p>I have attached ZIP of sample project for reference “<strong>GoogleDrive_BP1_Flow1</strong>”.<span class="confluence-embedded-file-wrapper"><a class="confluence-embedded-file" href="attachments/2561802247/2561572885.zip" data-nice-type="Zip Archive" data-file-src="/wiki/download/attachments/2561802247/GoogleDrive_BP1_Flow1.zip?version=1&amp;modificationDate=1713788745851&amp;cacheVersion=1&amp;api=v2" data-linked-resource-id="2561572885" data-linked-resource-type="attachment" data-linked-resource-container-id="2561802247" data-linked-resource-default-alias="GoogleDrive_BP1_Flow1.zip" data-mime-type="application/zip" data-has-thumbnail="true" data-linked-resource-version="1" data-media-id="51aa1cea-be1a-4945-8394-4af96822b8bc" data-media-type="file"><img src="attachments/thumbnails/2561802247/2561572885" height="250"/></a></span> </p><p>sample project to grant permission to files in the Google Drive connector in Magic xpi, there are two steps:</p><ol start="1"><li><p><strong>Retrieve Item List:</strong> retrieves a list of all the currently authenticated user's items.</p></li></ol><p>Returns an XML containing a list of items and their details.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240422-121756.png" width="561" loading="lazy" src="attachments/2561802247/2562588675.png?width=561" data-image-src="attachments/2561802247/2562588675.png" data-height="280" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="2562588675" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20240422-121756.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2561802247" data-linked-resource-container-version="1" data-media-id="695a234f-13e7-4068-91cd-1733febe58bc" data-media-type="file"></span><p /><ol start="2"><li><p><strong>Set Item Access Control</strong>: It determines the user permission for the item.</p></li></ol><ul><li><p>KEY: The key to the item whose access control permissions you want to set.</p></li><li><p>                Use key from previously generated XML file.</p></li><li><p> USER: The user for whom you are granting access control permission.</p></li><li><p> RIGHTS: Determines the type of access rights that you want to give to a specific user. Select one of the following from the drop-down list: (Owner, collaborator, viewer, and No access)</p></li></ul><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240422-121835.png" width="593" loading="lazy" src="attachments/2561802247/2561245203.png?width=593" data-image-src="attachments/2561802247/2561245203.png" data-height="282" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="2561245203" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20240422-121835.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2561802247" data-linked-resource-container-version="1" data-media-id="4670e13d-f697-4e4c-b6fc-af67f93cff0d" data-media-type="file"></span><p>You can verify in google Drive, if the rights are changes or not.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240422-121909.png" width="663" loading="lazy" src="attachments/2561802247/2561867785.png?width=663" data-image-src="attachments/2561802247/2561867785.png" data-height="226" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="2561867785" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20240422-121909.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2561802247" data-linked-resource-container-version="1" data-media-id="581412ae-1a88-4dcf-8899-e07a798eef56" data-media-type="file"></span><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2561802247/2562588675.png">image-20240422-121756.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2561802247/2561245203.png">image-20240422-121835.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2561802247/2561867785.png">image-20240422-121909.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2561802247/2561572885.zip">GoogleDrive_BP1_Flow1.zip</a> (application/zip)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Production & Build outputs
+dist/
+build/
+*.egg-info/
+
+# Environment & Secrets
+.env
+.env.local
+.env.development.local
+.env.production.local
+
+# Python / Virtual Environment
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+.pytest_cache/
+
+# Databases & Runtime Storage
+kb_system.db
+uploads/*
+!uploads/.gitkeep
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Misc logs & temporary files
+copy_log.txt
+*.log

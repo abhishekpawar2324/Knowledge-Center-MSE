@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Manual setup oracle and set internal database of Magic xpi</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Manual setup oracle and set internal database of Magic xpi
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><strong>Manual setup oracle and set internal database of Magic xpi</strong></p><p>·         Install oracle server and client (SQL Developer)</p><p>·         Configure the “tnsnames.ora” file under the Installation folder\network\admin</p><p>·         Additional details only for instant client :</p><p><u>The reasons are :</u></p><p> 1.The path to the Oracle instance client is in the machine’s PATH environment variable (cmd &gt; set path), preferably at the beginning of the path.</p><p> 2.The user running the service has authorization to the Oracle instance client and to the Magic xpi server.</p><p> 3.The problem might be because the tnsnames file cannot be reached if it is not under the same root as the running executable.</p><ol><li><p>Copy tnsnames.ora file in Installation folder\Runtime</p></li><li><p>Copy tnsnames.ora file in Installation folder\studio</p></li></ol><p><strong>Database : </strong></p><p>◾ Run below mentioned database scripts.</p><p>Note: Provided database scripts are related to XPI 4.7</p><ul><li><p>If you use higher version of XPI 4.7, please execute ‘BackUpAndCreateTable.sql’ script after executing XPI 4.7 scripts.</p></li><li><p>‘BackUpAndCreateTable.sql’ scrip located at ‘%XPI_installation% \DB\ORACLE\Standard\’</p></li></ul><p> </p><p><strong>--------------------------------------- Changes in xpi installation directory ---------------------------------</strong></p><ol><li><p>Database Drivers: </p></li></ol><p>◾ Copy the database driver from Installation folder\jdbc\lib.</p><p>◾ Paste in installation folder\Runtime\Java\DatabaseDrivers.</p><p> </p><ol><li><p>Magic.ini  (installation folder\Runtime\Magic xpa\Magic.ini)</p></li></ol><p>◾ Change: DB_USER=C##mgxpi4_1</p><p>◾ Change: [Magic_Gateways] tag</p><p>MGDB13=Installation folder\Runtime\Magic xpa\Gateways\mgOracle.dll</p><p> </p><p> </p><ol><li><p>datasource.xml (installation folder\Runtime\Config\datasource.xml)</p></li></ol><p>◾ Change:</p><p>&lt;datasources&gt; </p><p>&lt;datasource id=“2” hibernate.default_schema=“” </p><p>hibernate.dialect=“org.hibernate.dialect.OracleDialect” </p><p>hibernate.default_catalog = “mgxpi4_1” </p><p>driverClassName=“oracle.jdbc.driver.OracleDriver” </p><p>url=“jdbc:oracle:thin:@[IP_Address_Of_Oracle_Server]” </p><p>username=“C##mgxpi4_1” password=“MagicPass#3”/&gt; </p><p>&lt;/datasources&gt;</p><p> </p><ol><li><p>OPTIONS.ini  (installation folder\Runtime\RTView\magicmonitor\OPTIONS.ini)</p></li></ol><p>◾ Change:</p><p>sqldb mgxpi4_1 C##mgxpi4_1 MagicPass#3 jdbc:oracle:thin:@[IP_Address_Of_Oracle_Server] oracle.jdbc.driver.OracleDriver - false false</p><p> </p><ol><li><p>magicxpi-setenv.bat  (installation folder\Runtime\Gigaspaces\bin)</p></li></ol><p>◾ Change:</p><p>set ADDITIONAL_OPTIONS=%ADDITIONAL_OPTIONS% -Dcom.magicsoftware.ibolt.home=%MAGIC_XPI_HOME%\runtime -Doracle.net.tns_admin=<strong>[Set folder path of tnsnames.ora file without any spaces]</strong></p><p><strong> </strong></p><p><strong>Database script : </strong></p><p>Open sql developer run create database and create table script as below.</p><p> </p><ol><li><p>Create Database:</p></li></ol><p>CREATE TABLESPACE MGXPI4_1</p><p>LOGGING</p><p>DATAFILE 'MGXPI4_1.ora' SIZE 100M AUTOEXTEND</p><p>ON NEXT 50M MAXSIZE UNLIMITED DEFAULT</p><p>STORAGE ( INITIAL 80K NEXT 1024K MAXEXTENTS 80 PCTINCREASE 0 );</p><p>CREATE TEMPORARY TABLESPACE MGXPI4_1_TMP</p><p>TEMPFILE 'MGXPI4_1_TMP.ora' SIZE 10M AUTOEXTEND</p><p>ON NEXT 10M MAXSIZE 50M;</p><p>CREATE USER C##MGXPI4_1 PROFILE DEFAULT IDENTIFIED BY MagicPass#3</p><p>DEFAULT TABLESPACE MGXPI4_1</p><p>TEMPORARY TABLESPACE MGXPI4_1_TMP;</p><p>GRANT CONNECT TO C##MGXPI4_1;</p><p>GRANT RESOURCE TO C##MGXPI4_1;</p><p>– Grant/Revoke system privileges</p><p>GRANT unlimited tablespace TO C##MGXPI4_1;</p><p> </p><p><strong>2.Create Table: </strong></p><p> </p><p>BEGIN</p><p>EXECUTE IMMEDIATE 'DROP TABLE C##MGXPI4_1.IFS_ACTLOG';</p><p>EXCEPTION</p><p>WHEN OTHERS THEN</p><p>IF SQLCODE != -942 THEN</p><p>RAISE;</p><p>END IF;</p><p>END;</p><p>/</p><p>BEGIN</p><p>EXECUTE IMMEDIATE 'DROP TABLE C##MGXPI4_1.IFS_ODS';</p><p>EXCEPTION</p><p>WHEN OTHERS THEN</p><p>IF SQLCODE != -942 THEN</p><p>RAISE;</p><p>END IF;</p><p>END;</p><p>/</p><p>BEGIN</p><p>EXECUTE IMMEDIATE 'DROP TABLE C##MGXPI4_1.MAPPER_LOCKING';</p><p>EXCEPTION</p><p>WHEN OTHERS THEN</p><p>IF SQLCODE != -942 THEN</p><p>RAISE;</p><p>END IF;</p><p>END;</p><p>/</p><p>CREATE TABLE C##MGXPI4_1.IFS_ACTLOG</p><p>(</p><p>SERVERID NUMBER(12) DEFAULT 0 NOT NULL,</p><p>MSGID NUMBER(12) DEFAULT 0 NOT NULL PRIMARY KEY,</p><p>BPID NUMBER(12) DEFAULT 0 NOT NULL,</p><p>FLOWID NUMBER(12) DEFAULT 0 NOT NULL,</p><p>FSID NUMBER(12) DEFAULT 0 NOT NULL,</p><p>FSSTEP NUMBER(12) DEFAULT 0 NOT NULL,</p><p>MESSAGETYPEID NUMBER(12) DEFAULT 0 NOT NULL,</p><p>MESSAGESTRING NVARCHAR2(1000) DEFAULT ' ' NOT NULL,</p><p>USERBLOB BLOB,</p><p>USERCODE NUMBER(12) DEFAULT 0 NOT NULL,</p><p>CREATEDATE DATE DEFAULT SYSDATE NOT NULL,</p><p>CREATETIME VARCHAR2(9) DEFAULT ' ' NOT NULL,</p><p>OBJECTLEVEL NUMBER(12) DEFAULT 0 NOT NULL,</p><p>CATEGORY NVARCHAR2(30) DEFAULT ' ' NOT NULL,</p><p>USERKEY1 NVARCHAR2(30) DEFAULT ' ' NOT NULL,</p><p>USERKEY2 NVARCHAR2(30) DEFAULT ' ' NOT NULL,</p><p>VERSIONKEY VARCHAR2(30) DEFAULT ' ' NOT NULL,</p><p>STATUSCODE NUMBER(12) DEFAULT 0 NOT NULL,</p><p>SEVERITY NUMBER(12) DEFAULT 0 NOT NULL,</p><p>EXTENSION VARCHAR2(10) DEFAULT ' ' NOT NULL,</p><p>PROJECTKEY VARCHAR2(30) DEFAULT ' ' NOT NULL,</p><p>BLOBEXISTS NUMBER(1) DEFAULT 0 NOT NULL,</p><p>ROOTFSID NUMBER(12) DEFAULT 0 NOT NULL ,</p><p>FLOWREQUESTID NUMBER(12) DEFAULT 0 NOT NULL ,</p><p>FILELOCATION VARCHAR2(3000) DEFAULT ' ' NOT NULL,</p><p>RUNID VARCHAR(36)</p><p>)</p><p>NOCACHE</p><p>NOPARALLEL;</p><p>CREATE TABLE C##MGXPI4_1.IFS_ODS</p><p>(</p><p>SERVERID NUMBER(12) NULL,</p><p>FSID NUMBER(12) NULL,</p><p>USERKEY NVARCHAR2(30) NULL,</p><p>USERSTRING NVARCHAR2(1000) NULL,</p><p>USERNUMBER NUMBER(16,4) NULL,</p><p>USERLOGICAL NUMBER(1) NULL,</p><p>USERDATE DATE NULL,</p><p>USERTIME VARCHAR2(6) NULL,</p><p>USERBLOB BLOB,</p><p>GLOBAL NUMBER(1) NULL,</p><p>CREATEDATE DATE NULL,</p><p>CREATETIME VARCHAR2(6) NULL,</p><p>MODIFYDATE DATE NULL,</p><p>MODIFYTIME VARCHAR2(6) NULL,</p><p>ODSSERVERID NUMBER(12) NULL,</p><p>VERSIONKEY VARCHAR2(30) NULL,</p><p>ODSINDEX NUMBER(12) NULL,</p><p>PROJECTKEY VARCHAR2(30) DEFAULT ' ' NOT NULL,</p><p>ODSIDX NVARCHAR2(200) NULL</p><p>)</p><p>NOCACHE</p><p>NOPARALLEL;</p><p>CREATE TABLE C##MGXPI4_1.MAPPER_LOCKING (</p><p>ID NUMBER(12) DEFAULT(0) NOT NULL</p><p>)</p><p>NOCACHE</p><p>NOPARALLEL;</p><p>CREATE UNIQUE INDEX C##MGXPI4_1.IFS_ACTLOGKEY01 ON C##MGXPI4_1.IFS_ACTLOG</p><p>(PROJECTKEY, SERVERID, MSGID)</p><p>NOPARALLEL;</p><p>CREATE UNIQUE INDEX C##MGXPI4_1.IFS_ODSKEY01 ON C##MGXPI4_1.IFS_ODS</p><p>(ODSIDX)</p><p>NOPARALLEL;</p><p>CREATE UNIQUE INDEX C##MGXPI4_1.MAPPER_LOCKING01 ON C##MGXPI4_1.MAPPER_LOCKING</p><p>(ID)</p><p>NOPARALLEL;</p><p> </p><p><strong>Reference :</strong></p><p>◾ <a href="http://kb.magicsoftware.com/articles/bl_Reference/Database-Issues---Troubleshooting-xpi-47**" class="external-link" rel="nofollow">http://kb.magicsoftware.com/articles/bl_Reference/Database-Issues---Troubleshooting-xpi-47**</a></p><p>◾ <a href="http://kb.magicsoftware.com/articles/bl_Reference/How-Do-I-Change-the-Magic-xpi-Internal-Database-xpi-47**" class="external-link" rel="nofollow">http://kb.magicsoftware.com/articles/bl_Reference/How-Do-I-Change-the-Magic-xpi-Internal-Database-xpi-47**</a></p><p>◾ <a href="http://kb.magicsoftware.com/articles/bl_Reference/How-Do-I-Manually-Create-a-Magic-xpi-Internal-Database--xpi-47**" class="external-link" rel="nofollow">http://kb.magicsoftware.com/articles/bl_Reference/How-Do-I-Manually-Create-a-Magic-xpi-Internal-Database--xpi-47**</a></p>
+                    </div>
+
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:21</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

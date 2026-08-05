@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : How to Dynamically Enable/Disable Flows in Magic XPI</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : How to Dynamically Enable/Disable Flows in Magic XPI
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Balaji Karagir</span> on 06,May, 2025
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><strong>Problem:</strong><br/>You want to dynamically enable or disable flows in Magic XPI during runtime. The use case involves receiving a flow ID (which needs to be disabled) through an HTTP trigger. Based on the incoming request, you need to either enable or disable the corresponding flow using Magic XPI utilities.</p><p>You would like to automate this behavior so the flows can be turned ON or OFF without requiring manual intervention through Magic Monitor.</p><hr/><p><strong>Cause:</strong><br/>In Magic XPI, flows are usually turned ON or OFF manually using the Magic Monitor or during development.<br/>But in some cases, you may want to control flows based on runtime inputs—like values received from an HTTP request.<br/>This is useful when you want to manage flows using external systems, change settings without manual work, or handle different environments automatically.</p><hr/><p><strong>Solution:</strong><br/>To dynamically enable or disable a flow at runtime, follow the steps below:</p><ol start="1"><li><p><strong>Receive Flow ID from HTTP Trigger</strong></p></li></ol><p>Set up an HTTP Trigger in your Magic XPI flow to receive the business process ID (bpid) and flow ID (flowid) from an external request. These values will be used to identify which flow needs to be enabled or disabled.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250506-113532.png" width="765" loading="lazy" src="attachments/3413213207/3413442613.png?width=765" data-image-src="attachments/3413213207/3413442613.png" data-height="237" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="3413442613" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250506-113532.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3413213207" data-linked-resource-container-version="1" data-media-id="9c3f54aa-8feb-4d67-9edd-5989e775f69d" data-media-type="file"></span><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250506-113635.png" width="771" loading="lazy" src="attachments/3413213207/3413442620.png?width=771" data-image-src="attachments/3413213207/3413442620.png" data-height="139" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="3413442620" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250506-113635.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3413213207" data-linked-resource-container-version="1" data-media-id="46356873-5bcc-46b9-8a47-4698af6cf2f1" data-media-type="file"></span><p /><p /><ol start="2"><li><p><strong>Check Flow Status Using IsFlowEnabled Function</strong></p></li></ol><p>Use the built-in IsFlowEnabled(bpid, flowid) function to check the current status of the flow.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250506-113704.png" width="747" loading="lazy" src="attachments/3413213207/3413573646.png?width=747" data-image-src="attachments/3413213207/3413573646.png" data-height="220" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="3413573646" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250506-113704.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3413213207" data-linked-resource-container-version="1" data-media-id="a7cd2a61-efc4-4c56-bdea-d808af95f8e0" data-media-type="file"></span><p /><ol start="3"><li><p><strong>Enable or Disable Flow Using the “Enable Flow” Utility</strong></p></li></ol><p>Depending on the result from IsFlowEnabled, use the <strong>Enable Flow</strong> utility to enable or disable the specified flow.</p><ul><li><p>In the utility configuration:</p><ul><li><p>Set Business Process ID to the value received (e.g., 1)</p></li><li><p>Set Flow ID to the value received (e.g., 2)</p></li><li><p>Set the <strong>Action</strong> to:</p><ul><li><p><strong>Disable</strong> – if flow is currently enabled</p></li><li><p><strong>Enable</strong> – if flow is currently disabled</p></li></ul></li></ul></li></ul><p>This will dynamically change the flow’s status at runtime.</p><p><strong>Disable</strong> – If flow is currently enabled</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250506-113727.png" width="755" loading="lazy" src="attachments/3413213207/3413147683.png?width=755" data-image-src="attachments/3413213207/3413147683.png" data-height="202" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="3413147683" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250506-113727.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3413213207" data-linked-resource-container-version="1" data-media-id="8f7dc27a-9ead-48ee-8e2d-a198ef56ba69" data-media-type="file"></span><p /><p><strong> Enable</strong> – If flow is currently disabled</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250506-113743.png" width="755" loading="lazy" src="attachments/3413213207/3413180469.png?width=755" data-image-src="attachments/3413213207/3413180469.png" data-height="171" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="3413180469" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250506-113743.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3413213207" data-linked-resource-container-version="1" data-media-id="988fbf5b-d119-40e9-b2bb-7137ab8adffd" data-media-type="file"></span><p /><hr/><p><strong>Example Workflow:</strong></p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250506-113841.png" width="755" loading="lazy" src="attachments/3413213207/3413377063.png?width=755" data-image-src="attachments/3413213207/3413377063.png" data-height="168" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="3413377063" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250506-113841.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3413213207" data-linked-resource-container-version="1" data-media-id="bd1e6710-618c-4705-810b-2e48faa4706f" data-media-type="file"></span><p /><ol start="1"><li><p><strong>HTTP Trigger Step</strong><br/>Receives a request containing:</p><ul><li><p>bpid = 2</p></li><li><p>flowid = 5</p></li></ul></li></ol><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250506-113906.png" width="755" loading="lazy" src="attachments/3413213207/3413540870.png?width=755" data-image-src="attachments/3413213207/3413540870.png" data-height="292" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="3413540870" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250506-113906.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3413213207" data-linked-resource-container-version="1" data-media-id="3dc7661c-7d7f-4225-9daa-cbb843b1587b" data-media-type="file"></span><p /><ol start="2"><li><p><strong>Condition Step:</strong><br/>Checks if the flow is currently enabled using:</p></li></ol><p>IsFlowEnabled(2, 5)</p><p> </p><p><strong>Enable Flow Utility Step:</strong></p><ul><li><p>If condition is <strong>True</strong> → flow is enabled → <strong>Disable</strong> it.</p></li><li><p>If condition is <strong>False</strong> → flow is disabled → <strong>Enable</strong> it.</p></li></ul><p><strong>Magic moniter:</strong></p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250506-114025.png" width="765" loading="lazy" src="attachments/3413213207/3413344269.png?width=765" data-image-src="attachments/3413213207/3413344269.png" data-height="158" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="3413344269" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250506-114025.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3413213207" data-linked-resource-container-version="1" data-media-id="6f961052-a2d2-4ac0-8bbd-64124722551d" data-media-type="file"></span><p /><p><strong>After Disable 2<sup>nd</sup> Flow of First Business Process.</strong></p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250506-114049.png" width="751" loading="lazy" src="attachments/3413213207/3413016592.png?width=751" data-image-src="attachments/3413213207/3413016592.png" data-height="192" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="3413016592" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250506-114049.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3413213207" data-linked-resource-container-version="1" data-media-id="74130299-fb93-4a8d-af85-0fe3f3ed4c81" data-media-type="file"></span><p /><hr/><p><strong>Additional Considerations:</strong></p><ul><li><p>Ensure the flow is not actively running when disabling it.</p></li><li><p>You can add logging steps before and after the action to track changes made.</p></li><li><p>Use data mapping to dynamically pass values to the Enable Flow utility.</p></li></ul><hr/><p><strong>Conclusion:</strong><br/>By using the <strong>IsFlowEnabled function</strong> and the <strong>Enable Flow</strong> utility, you can dynamically control the status of flows in Magic XPI. This allows greater flexibility in handling runtime decisions based on incoming data, enabling you to build smarter and more adaptive integration flows.</p><p> </p>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3413213207/3413442613.png">image-20250506-113532.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3413213207/3413377057.png">image-20250506-113613.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3413213207/3413442620.png">image-20250506-113635.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3413213207/3413573646.png">image-20250506-113704.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3413213207/3413147683.png">image-20250506-113727.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3413213207/3413180469.png">image-20250506-113743.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3413213207/3413377063.png">image-20250506-113841.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3413213207/3413540870.png">image-20250506-113906.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3413213207/3413344269.png">image-20250506-114025.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3413213207/3413016592.png">image-20250506-114049.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:23</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : When multiple XPI versions are installed, the connector builder does not create Connector (.NET) in the specified directory.</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="2232192204.html">Configuration of Magic Monitor and XPI server on different machines:</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : When multiple XPI versions are installed, the connector builder does not create Connector (.NET) in the specified directory.
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Vibha Khanke</span> on 18,Oct, 2024
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p /><p><strong>Description:</strong></p><p>If both Magic XPI 4.13.6 and XPI 4.14 are installed on same machine, the following issue occurs:</p><p>In XPI 4.13.6, when a .NET process is created using the .NET connector and a .NET sample project is built in Visual Studio.</p><p>However, when attempting to create a connector in the Connector Builder (XPI 4.13.6) to use the .NET class, the connector is saved in the Magic XPI 4.14 addon connectors folder instead of the intended XPI 4.13.6 addon connectors folder.</p><p> As a result, it does not appear as a connector in the studio, even after restarting it.</p><p> </p><p><strong>Solution:</strong></p><p>After updating the InstallPath in the Registry Editor, the .NET connector was successfully created in the correct XPI folder location.</p><p> </p><p>Here are the steps we followed:</p><ol start="1"><li><p>Open the Registry Editor.</p></li><li><p>Navigate to the following path: Computer\HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\MSE\Magic xpi</p></li><li><p>Modify the InstallPath to match your current studio location.</p></li></ol><p /><p /><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20241018-131758.png" width="607" loading="lazy" src="attachments/2948235265/2948202507.png?width=607" data-image-src="attachments/2948235265/2948202507.png" data-height="249" data-width="447" data-unresolved-comment-count="0" data-linked-resource-id="2948202507" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20241018-131758.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2948235265" data-linked-resource-container-version="1" data-media-id="a250f96c-bfd8-4629-9f36-d8381739a2d8" data-media-type="file"></span><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2948235265/2948202507.png">image-20241018-131758.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:21</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : SharePoint: Not able to connect using NTLM authentication in Magic XPI</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : SharePoint: Not able to connect using NTLM authentication in Magic XPI
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Balaji Karagir</span> on 17,Apr, 2024
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p /><p>There was a scenario where customer was not able to connect to SharePoint Server in Magic XPI when they have used NTLM to connect to the SharePoint Server.</p><p>In Postman, they were able to connect SharePoint server using NTLM authentication.</p><p> </p><p><strong>Affected Version</strong>: Issue observed in XPI 4.7</p><p><strong>Fix version:</strong> <a href="https://magicsoftware2.atlassian.net/projects/MXPI/versions/10402/tab/release-report-all-issues" class="external-link" rel="nofollow">Magic XPI 4.14.1 Windows</a></p><p> </p><p><strong>Fix Description:</strong></p><p>Initially in the code we are supporting to NTLM authentication and now with respective changes we are also supporting to NTLMv2 authentication.</p><p> </p><p><strong>Solution:</strong></p><p>Initially in the XPI we are supporting NTLM authentication and now with respective changes we are also supporting to NTLMv2 authentication from XPI version 4.14.1.</p><p><strong>The following 2 possible solutions can be applied here,</strong></p><ol start="1"><li><p>Please give the table instead of that view to check the grade of the login employee.</p></li><li><p>If possible, we can add one extra field in the User master table for &quot;grade&quot; this will help to lesser requests to Postgres db at the login window.</p></li></ol><p><strong>We have workaround for lower versions from XPI 4.7 to XPI 4.14.</strong></p><p><strong>Change the group policy setting to minimum</strong>.</p><ol start="1"><li><p>Network security: Minimum session security for NTLM SSP based (including secure RPC) servers 2. Network security: Minimum session security for NTLM SSP based (including secure RPC) Client from 'Require 128-bit encryption' to 'Require NTLMv2 session security.</p></li></ol><p>some more information on this topic: <a href="https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-security-minimum-session-security-for-ntlm-ssp-based-including-secure-rpc-servers" data-card-appearance="inline" class="external-link" rel="nofollow">https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-security-minimum-session-security-for-ntlm-ssp-based-including-secure-rpc-servers</a> </p><p><strong>Error Image:</strong></p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240417-142941.png" width="765" loading="lazy" src="attachments/2554888193/2554626050.png?width=765" data-image-src="attachments/2554888193/2554626050.png" data-height="229" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="2554626050" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20240417-142941.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2554888193" data-linked-resource-container-version="1" data-media-id="600dea81-cdc8-477d-ab46-2fbe3d8ff927" data-media-type="file"></span><p>Here are the steps to change the group policy settings for both servers and clients:</p><ol start="1"><li><p><strong>Open Local Group Policy Editor</strong>:</p></li></ol><ol start="1"><li><p>Press Win + R to open the Run dialog.</p></li><li><p>Type &quot;gpedit.msc&quot; and press Enter.</p></li><li><p>This will open the Local Group Policy Editor.</p></li></ol><ol start="2"><li><p><strong>Navigate to the Policy Setting</strong>:</p></li></ol><ol start="2"><li><p>In the Local Group Policy Editor, navigate to the following path:</p></li></ol><p> </p><p>Computer Configuration -&gt; Windows Settings -&gt; Security Settings -&gt; Local Policies -&gt; Security Options</p><ol start="3"><li><p><strong>Change Minimum Session Security for NTLM SSP based Servers</strong>:</p></li></ol><ol start="3"><li><p>Look for the policy setting titled &quot;Network security: Minimum session security for NTLM SSP based (including secure RPC) servers&quot;.</p></li><li><p>Double-click on it to open its properties.</p></li><li><p>Select the radio button &quot;Define this policy setting&quot;.</p></li><li><p>Under &quot;Options&quot;, uncheck &quot;Require 128-bit encryption&quot;.</p></li><li><p>Check &quot;Require NTLMv2 session security&quot;.</p></li><li><p>Click Apply and then OK to save the changes.</p></li></ol><ol start="4"><li><p><strong>Change Minimum Session Security for NTLM SSP based Clients</strong>:</p></li></ol><ol start="4"><li><p>Similarly, look for the policy setting titled &quot;Network security: Minimum session security for NTLM SSP based (including secure RPC) clients&quot;.</p></li><li><p>Double-click on it to open its properties.</p></li><li><p>Select the radio button &quot;Define this policy setting&quot;.</p></li><li><p>Under &quot;Options&quot;, uncheck &quot;Require 128-bit encryption&quot;.</p></li><li><p>Check &quot;Require NTLMv2 session security&quot;.</p></li><li><p>Click Apply and then OK to save the changes.</p></li></ol><ol start="5"><li><p><strong>Close Group Policy Editor</strong>:</p></li></ol><ol start="5"><li><p>Once you have made the changes for both server and client policies, you can close the Local Group Policy Editor.</p></li></ol><ol start="6"><li><p><strong>Restart the System (Optional)</strong>:</p></li></ol><ol start="6"><li><p>Sometimes, changes made through Group Policy may require a system restart to take effect. It's a good idea to restart your system to ensure the changes are applied properly.</p></li></ol><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240417-143117.png" width="737" loading="lazy" src="attachments/2554888193/2554462212.png?width=737" data-image-src="attachments/2554888193/2554462212.png" data-height="232" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="2554462212" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20240417-143117.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2554888193" data-linked-resource-container-version="1" data-media-id="e685ad53-d86a-4f9e-9c65-dd2d37a4da13" data-media-type="file"></span><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2554888193/2554626050.png">image-20240417-142941.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2554888193/2554986497.png">image-20240417-143037.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2554888193/2554331139.png">image-20240417-143045.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2554888193/2554560516.png">image-20240417-143100.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2554888193/2554462212.png">image-20240417-143117.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

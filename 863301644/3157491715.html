@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Troubleshooting Image Pull (ImagePullBackOff) Failures in IMM Deployments</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Troubleshooting Image Pull (ImagePullBackOff) Failures in IMM Deployments
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Balaji Karagir</span> on 22,Jan, 2025
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><strong>Problem:</strong></p><p>When deploying IMM (In-Memory Middleware), you see the error “failed to pull and unpack image” during the Kubernetes pod deployment. Although IMM only needs an internet connection during the initial setup, you're still getting the “i/o timeout” error, which usually means a network problem. Kubernetes is unable to connect to your Azure Container Registry (ACR) to pull the image.</p><p><strong>Cause:</strong></p><p>Initially, when deploying IMM, an internet connection is required. However, once IMM is successfully deployed, it no longer needs an internet connection. The &quot;i/o timeout&quot; error typically points to network-related issues such as firewalls, DNS issues, or problems with the node’s internet access.</p><p>In this case, Kubernetes is failing to connect to the Azure Container Registry (ACR) to pull the image.</p><p>This can happen due to:</p><ul><li><p>Network firewalls blocking access to the registry.</p></li></ul><p>You can use tools like curl or wget from within your Kubernetes nodes to test connectivity to ACR. For example:</p><div class="code panel pdl" style="border-width: 1px;"><div class="codeContent panelContent pdl">
+<pre class="syntaxhighlighter-pre" data-syntaxhighlighter-params="brush: java; gutter: false; theme: Confluence" data-theme="Confluence">curl -v https://devmcsworkspaceacr.azurecr.io</pre>
+</div></div><p /><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250122-002819.png" width="763" loading="lazy" src="attachments/3157491715/3157360646.png?width=763" data-image-src="attachments/3157491715/3157360646.png" data-height="271" data-width="285" data-unresolved-comment-count="0" data-linked-resource-id="3157360646" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250122-002819.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3157491715" data-linked-resource-container-version="1" data-media-id="2db83c4a-abdd-45d3-a02b-1d1e7b3e265e" data-media-type="file"></span><p>This will help confirm whether the nodes can reach the registry. If the connection is blocked, you'll see a timeout or connection error.</p><ul><li><p>DNS issues preventing Kubernetes from resolving the ACR hostname.</p></li><li><p>Loss of internet connection after the deployment script finishes, or the image pull was still trying while the internet was disconnected or slow.</p></li></ul><p><strong>This is more about Kubernetes tools and internet issues.</strong></p><p><strong>Solution:</strong></p><p>To resolve this issue, follow these steps:</p><ol start="1"><li><p><strong>Verify Network Connectivity:</strong></p><ul><li><p>Ensure that there are no firewall or DNS issues blocking access to the ACR (<a href="http://devmcsworkspaceacr.azurecr.io" data-card-appearance="inline" class="external-link" rel="nofollow">http://devmcsworkspaceacr.azurecr.io</a> ).</p></li><li><p>Test network access from the Kubernetes node to the registry, ensuring no packet loss or interruptions.</p></li></ul></li></ol><p>You can use the ping command to check if your Kubernetes node can reach the Azure Container Registry (ACR) endpoint.</p><p> </p><div class="code panel pdl" style="border-width: 1px;"><div class="codeContent panelContent pdl">
+<pre class="syntaxhighlighter-pre" data-syntaxhighlighter-params="brush: java; gutter: false; theme: Confluence" data-theme="Confluence">ping devmcsworkspaceacr.azurecr.io</pre>
+</div></div><p><strong> </strong></p><p><strong>Expected Result:</strong> If the network is working, you should see responses like:</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250122-003405.png" width="760" loading="lazy" src="attachments/3157491715/3157557254.png?width=760" data-image-src="attachments/3157491715/3157557254.png" data-height="445" data-width="1859" data-unresolved-comment-count="0" data-linked-resource-id="3157557254" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250122-003405.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3157491715" data-linked-resource-container-version="1" data-media-id="15c587bd-6c58-431f-b94b-7b9257b0be01" data-media-type="file"></span><p>If there's a network issue, you might see errors like &quot;Destination Host Unreachable&quot; or timeouts.</p><p /><ol start="2"><li><p><strong>Check Pod Logs:</strong></p><ul><li><p>Run <strong>kubectl describe pod &lt;pod_name&gt;</strong> to get detailed information about the pod. This command will show events, states, and error messages related to the pod’s image pull attempt.</p></li><li><p>Look specifically for any network-related errors or timeouts.</p></li></ul></li><li><p><strong>Check for Network Problems:</strong></p><ul><li><p>If the problem is a slow or unstable network connection, check the node’s internet access.</p></li><li><p>Try redeploying when the network is stable.</p></li></ul></li><li><p><strong>IMM Installer (Air-Gapped) Solution:</strong></p><ul><li><p>To resolve this kind of scenario, we have introduced the <strong>IMM installer (air-gapped) in 4.14.1.</strong></p></li></ul></li></ol><p><strong>Version:</strong></p><ul><li><p><strong>Affecting Version:</strong> XPI 4.14</p></li><li><p><strong>Fix Version:</strong> Magic XPI 4.14.1 Windows</p></li></ul><p> </p><p><strong>Conclusion:</strong></p><p>By <strong>ensuring stable network access</strong> and <strong>using the air-gapped IMM installer (in version 4.14.1)</strong>, you can resolve issues related to the &quot;ImagePullBackOff&quot; error. This solution is more network-related, and addressing firewall, DNS, or internet access issues should mitigate the problem.</p><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3157491715/3157360646.png">image-20250122-002819.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3157491715/3157557254.png">image-20250122-003405.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:23</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

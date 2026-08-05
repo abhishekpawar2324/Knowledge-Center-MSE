@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : XPI engine terminated abnormally happen for specific Data mapper step.</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : XPI engine terminated abnormally happen for specific Data mapper step.
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Prachi Palande</span> on 01,Apr, 2024
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><strong>Problem Description:</strong></p><p>On execution of specific datamapper step, the XPI engine terminates abnormally.</p><p>The datamapper has database in source and destination side. Database used Oracle.</p><p><strong>Cause of the issue:</strong></p><p>Invalid column name definition on the source DB schema of the specified step.</p><p>The Wong definition is likely to have happened due to UI's wrong behaviour that finalized the definition of the column to be invalid.</p><p>The following mapper screenshot presents the wrong column definition and as a result, the Generated code suffers from the wrong XPA variable definition.</p><p><strong> </strong></p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240401-185157.png" width="795" loading="lazy" src="attachments/2523889704/2523889714.png?width=795" data-image-src="attachments/2523889704/2523889714.png" data-height="288" data-width="617" data-unresolved-comment-count="0" data-linked-resource-id="2523889714" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20240401-185157.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2523889704" data-linked-resource-container-version="1" data-media-id="c91aeca6-5fdc-42ef-833d-aa173b262156" data-media-type="file"></span><p> </p><p><strong> </strong></p><p><strong> </strong></p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240401-185208.png" width="791" loading="lazy" src="attachments/2523889704/2523562019.png?width=791" data-image-src="attachments/2523889704/2523562019.png" data-height="143" data-width="555" data-unresolved-comment-count="0" data-linked-resource-id="2523562019" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20240401-185208.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2523889704" data-linked-resource-container-version="1" data-media-id="763a5f4d-f8ae-4375-a41b-e5cc8d9c1dac" data-media-type="file"></span><p> </p><p /><p><strong> </strong></p><p>It is true that the column is not connected but once it is selected xpa DSQL will try to insert a value into that column and the XPA program will crash.</p><p>The XPI properties for a non-connected column cannot be changed from their default which are StringDate=No and AlwaysUseCustomerPicture=No.</p><p>There were cases in previous versions that due to manipulations of connection removal these properties remained in an invalid state like here.</p><p>The UI affects the generated code and since Alpha cannot receive values except digits the XPA size is zero.</p><p><strong> </strong></p><p><strong>Solution:</strong></p><p>In the recreated step the above column has the valid XPA picture, and the data type is Date and not Alpha - check the next similar images for the recreated step.</p><p> </p><p /><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240401-185235.png" width="801" loading="lazy" src="attachments/2523889704/2523922506.png?width=801" data-image-src="attachments/2523889704/2523922506.png" data-height="217" data-width="583" data-unresolved-comment-count="0" data-linked-resource-id="2523922506" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20240401-185235.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2523889704" data-linked-resource-container-version="1" data-media-id="4ce0839e-bbc0-4ff9-876c-53097b263525" data-media-type="file"></span><p /><p> </p><p /><p> </p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240401-185247.png" width="808" loading="lazy" src="attachments/2523889704/2523857011.png?width=808" data-image-src="attachments/2523889704/2523857011.png" data-height="161" data-width="572" data-unresolved-comment-count="0" data-linked-resource-id="2523857011" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20240401-185247.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2523889704" data-linked-resource-container-version="1" data-media-id="eb40a0d9-0906-4bd5-aee9-b6fa729f2eb5" data-media-type="file"></span><p> </p><p> </p><p>The old step can also be corrected by simply connecting this column and setting the string date and</p><p>AlwaysUseCustomPicture to false - and then removing the connection.</p><p>OR remove that column from the SQL statement so that it will no longer be part of the XPA generated code data view.</p>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2523889704/2523889714.png">image-20240401-185157.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2523889704/2523562019.png">image-20240401-185208.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2523889704/2523922506.png">image-20240401-185235.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2523889704/2523857011.png">image-20240401-185247.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

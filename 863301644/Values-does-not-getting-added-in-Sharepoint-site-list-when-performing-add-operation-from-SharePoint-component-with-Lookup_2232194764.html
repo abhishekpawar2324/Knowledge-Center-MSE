@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Values does not getting added in Sharepoint site list when performing add operation from SharePoint component with Lookup</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Values does not getting added in Sharepoint site list when performing add operation from SharePoint component with Lookup
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <h3 id="ValuesdoesnotgettingaddedinSharepointsitelistwhenperformingaddoperationfromSharePointcomponentwithLookup-ProblemDescription:"><strong>Problem Description:</strong></h3><p>We have created the List and inside that, we have created a lookup field in SharePoint through the browser and were able to get the values in XPI through the Sharepoint component.</p><p>But when trying to perform Add operation with inserting values in lookup, the lookup values do not get updated inside the SharePoint site list.</p><p>The following issue got reproduced in XPI 4.13.5</p><p /><h3 id="ValuesdoesnotgettingaddedinSharepointsitelistwhenperformingaddoperationfromSharePointcomponentwithLookup-Solution:"><strong>Solution:</strong></h3><p>The value for lookup cannot be just a string - it is in the format</p><p>199;#name</p><p>where 99 is the id of the lookup and name is the name of the lookup. It cannot be a random string. Note the # is required.</p><p> A lookup stores its value in an encoded format of ID in Source List;#Value in Source List. We need to pass a value in this format when calling UpdateListItems.</p><p>Please see attached screenshots.</p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232194764/2232194781.png" data-image-src="attachments/2232194764/2232194781.png" data-height="283" data-width="234" data-unresolved-comment-count="0" data-linked-resource-id="2232194781" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="LookUpVal.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194764" data-linked-resource-container-version="1" data-media-id="9649805d-c6f0-40e0-be67-3cb4b46efe4c" data-media-type="file"></span><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232194764/2232194778.png" data-image-src="attachments/2232194764/2232194778.png" data-height="293" data-width="909" data-unresolved-comment-count="0" data-linked-resource-id="2232194778" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="WorkAround.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194764" data-linked-resource-container-version="1" data-media-id="1dc67f94-1a48-45e7-8f01-4843a791543d" data-media-type="file"></span><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194764/2232194778.png">WorkAround.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194764/2232194781.png">LookUpVal.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

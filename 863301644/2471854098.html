@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : XPI 4.14: How to know project status using the command line</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : XPI 4.14: How to know project status using the command line
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Vaishnavi Marathe</span> on 04,Mar, 2024
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p>We had requirement from customer that he wanted to know the project status using command line in XPI 4.14.</p><p>After consulting with our Product Management, we got the following workaround:</p><p>We can check the project status using Redis - cli tool and executing the command  below:</p><p> </p><p>&quot;redis-cli -h <strong>&lt;HOSTNAME&gt;</strong> JSON.GET ProjectData:<strong>&lt;ProjectName&gt;</strong> ..projectState&quot;</p><p> </p><p>Please find the screenshot for reference:</p><p /><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240304-140008.png" width="731" loading="lazy" src="attachments/2471854098/2472509450.png?width=731" data-image-src="attachments/2471854098/2472509450.png" data-height="169" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="2472509450" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20240304-140008.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2471854098" data-linked-resource-container-version="1" data-media-id="1a902f6f-1540-4aa6-bcd5-fc76c5dd3fa4" data-media-type="file"></span><p>Firstly we need to install the Redis cli tool:</p><p>To download the Redis cli tool refer the following link:<br/><a href="https://redis.io/docs/install/install-redis/install-redis-on-windows/" data-card-appearance="inline" class="external-link" rel="nofollow">https://redis.io/docs/install/install-redis/install-redis-on-windows/</a> </p><p> </p><p>Once the redis cli tool is downloaded and installed on windows machine:</p><p>We need to install the redis cli tool on the Linux(Ubuntu) machine by below command:</p><p><strong>sudo apt install redis-tools</strong></p><p>(to install the Redis tools package on a Debian-based system using the Advanced Package Tool (APT). This package typically includes command-line utilities for working with Redis, such as redis-cli (the Redis command-line interface) and other tools for managing and interacting with a Redis server)</p><p> </p><p /><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240304-140026.png" width="695" loading="lazy" src="attachments/2471854098/2471788548.png?width=695" data-image-src="attachments/2471854098/2471788548.png" data-height="118" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="2471788548" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20240304-140026.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2471854098" data-linked-resource-container-version="1" data-media-id="da87f415-957f-4510-88e2-b7fbfddc9c29" data-media-type="file"></span><p>After installing the redis tool we need to start the redis server by below command or it will throw the below error:</p><p /><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240304-140043.png" width="695" loading="lazy" src="attachments/2471854098/2471952394.png?width=695" data-image-src="attachments/2471854098/2471952394.png" data-height="62" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="2471952394" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20240304-140043.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2471854098" data-linked-resource-container-version="1" data-media-id="124cbedc-aa01-4691-a859-05852438abb5" data-media-type="file"></span><p><strong>-sudo service redis-server start</strong></p><p>(To start the Redis server on a system that uses a service manager like systemd or init.d. This assumes that Redis is installed on your system and that the service is configured.)</p><p> </p><p>Once the server is started you can check the server is reached or not by below command:</p><p><strong>redis-cli ping</strong></p><p /><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240304-140100.png" width="723" loading="lazy" src="attachments/2471854098/2471297058.png?width=723" data-image-src="attachments/2471854098/2471297058.png" data-height="119" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="2471297058" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20240304-140100.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2471854098" data-linked-resource-container-version="1" data-media-id="7b191e1c-2d93-41e5-8c89-e57078f46c4c" data-media-type="file"></span><p>If the server is reachable and operation it will return “PONG”</p><p><strong> </strong></p><p><strong>Extra:</strong></p><p>Powershell commands to be executed -&gt;</p><p>ssh <a href="mailto:magicvm@172.26.4.102" class="external-link" rel="nofollow">magicvm@172.26.4.102</a></p><p>(to initiate an SSH (Secure Shell) connection to a remote host with the IP address)</p><p>curl -fsSL <a href="https://packages.redis.io/gpg" class="external-link" rel="nofollow">https://packages.redis.io/gpg</a> | sudo gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg</p><p>echo &quot;deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] <a href="https://packages.redis.io/deb" class="external-link" rel="nofollow">https://packages.redis.io/deb</a> $(lsb_release -cs) main&quot; | sudo tee /etc/apt/sources.list.d/redis.list</p><p>If you're running a very minimal distribution (such as a Docker container) you may need to install lsb-release, curl and gpg first:</p><p>sudo apt-get update</p><p>sudo apt-get install redis</p>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2471854098/2472509450.png">image-20240304-140008.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2471854098/2471788548.png">image-20240304-140026.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2471854098/2471952394.png">image-20240304-140043.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2471854098/2471297058.png">image-20240304-140100.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

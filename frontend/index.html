@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Magic Software Enterprise Knowledge Centre</title>
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Link to Custom Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Radial background glow decorations -->
+  <div class="radial-glow glow-1"></div>
+  <div class="radial-glow glow-2"></div>
+
+
+
+  <!-- ================= APP CONTAINER VIEW ================= -->
+  <div id="app-view" class="view-container">
+    <!-- Header -->
+    <header class="glass-panel main-header">
+      <div class="header-branding">
+        <!-- Inline SVG Magic Software logo — no file dependency, always renders correctly -->
+        <div style="flex-shrink:0; display:flex; align-items:center;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 265" height="60" style="width:auto; display:block;">
+            <defs>
+              <linearGradient id="ml" x1="0" y1="1" x2="1" y2="0" gradientUnits="objectBoundingBox">
+                <stop offset="0%" stop-color="#00568C"/>
+                <stop offset="50%" stop-color="#008DC7"/>
+                <stop offset="100%" stop-color="#2DBCEE"/>
+              </linearGradient>
+            </defs>
+            <path fill="url(#ml)" d="M112 10 C162 6 213 50 213 108 C213 168 180 226 126 250 C90 264 46 246 22 211 C-2 176 2 114 28 72 C54 30 76 14 112 10Z"/>
+            <text x="111" y="152" font-family="'Helvetica Neue',Arial,sans-serif" font-size="52" font-weight="800" fill="white" text-anchor="middle" letter-spacing="-2">magic</text>
+            <circle cx="180" cy="108" r="7" fill="none" stroke="white" stroke-width="1.8"/>
+            <text x="180" y="113" font-family="Arial,sans-serif" font-size="9" fill="white" text-anchor="middle" font-weight="700">R</text>
+            <text x="111" y="198" font-family="Arial,sans-serif" font-size="15.5" fill="rgba(255,255,255,0.92)" text-anchor="middle">a <tspan font-weight="700" font-style="italic">matrix</tspan> company</text>
+          </svg>
+        </div>
+        <!-- Vertical divider -->
+        <div style="width:1px; height:40px; background:rgba(255,255,255,0.14); margin:0 16px; flex-shrink:0;"></div>
+        <!-- Product name & company -->
+        <div style="display:flex; flex-direction:column; gap:3px;">
+          <h1 style="font-size:1.35rem; font-weight:800; letter-spacing:-0.02em; color:#ffffff; line-height:1; margin:0; font-family:'Outfit','Inter',sans-serif;">Knowledge Centre</h1>
+          <span class="header-sub" style="font-size:0.72rem; letter-spacing:0.13em; font-weight:500; text-transform:uppercase; color:rgba(255,255,255,0.42); font-family:'Inter',sans-serif;">Magic Software Enterprise</span>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="nav-tabs">
+        <button id="tab-search-btn" class="btn btn-primary nav-btn active">
+          <i data-lucide="search"></i> Search
+        </button>
+        <button id="tab-copilot-btn" class="btn btn-secondary nav-btn">
+          <i data-lucide="bot"></i> Ask Copilot
+        </button>
+        <button id="tab-upload-btn" class="btn btn-secondary nav-btn hide">
+          <i data-lucide="upload"></i> Upload & Write
+        </button>
+        <button id="tab-admin-btn" class="btn btn-secondary nav-btn hide">
+          <i data-lucide="settings"></i> Admin Panel
+        </button>
+      </nav>
+
+      <!-- User Metadata & Logout -->
+      <div class="header-user-section">
+        <div id="user-profile-wrapper" class="user-profile hide">
+          <div class="avatar">
+            <i data-lucide="user" class="icon-indigo"></i>
+          </div>
+          <div class="user-text">
+            <p id="user-display-name">Username</p>
+            <span id="user-display-role">Viewer</span>
+          </div>
+        </div>
+        <button id="logout-btn" class="btn btn-secondary btn-icon hide" title="Log Out">
+          <i data-lucide="log-out"></i>
+        </button>
+        <button id="signin-btn" class="btn btn-primary">
+          <i data-lucide="log-in"></i> Sign In
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Tab Frames -->
+    <main class="main-content">
+      <div class="workspace-layout" id="workspace-layout">
+        
+        <!-- 1. LEFT PANE - Enterprise Space Explorer -->
+        <aside class="pane-panel left-sidebar-pane">
+
+          <!-- Section: Space Header -->
+          <div class="explorer-space-badge">
+            <div class="explorer-space-icon">
+              <i data-lucide="globe" style="width:12px; height:12px; color:#fff;"></i>
+            </div>
+            <span class="explorer-space-name">Magic Global Support KB</span>
+          </div>
+
+          <!-- Section: Filter + Space Tree -->
+          <div class="explorer-section">
+            <h3 class="explorer-section-title">
+              <i data-lucide="folder-tree" style="width:13px; height:13px; color:var(--primary);"></i>
+              Space Explorer
+            </h3>
+            <input type="text" id="left-tree-filter" class="input-field explorer-filter" placeholder="Filter pages..." />
+            <div id="left-tree-container" class="tree-container">
+              <!-- Dynamic tree injected by JS -->
+            </div>
+          </div>
+
+          <!-- Section: Pinned Pages -->
+          <div class="explorer-section" style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px;">
+            <h3 class="explorer-section-title">
+              <i data-lucide="pin" style="width:13px; height:13px; color:#f59e0b;"></i>
+              Pinned
+            </h3>
+            <div id="left-pinned-list" class="explorer-item-list">
+              <!-- Pinned docs injected by JS -->
+            </div>
+          </div>
+
+          <!-- Section: Recently Viewed -->
+          <div class="explorer-section" style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px;">
+            <h3 class="explorer-section-title">
+              <i data-lucide="clock" style="width:13px; height:13px; color:#22d3ee;"></i>
+              Recently Viewed
+            </h3>
+            <div id="left-recent-list" class="explorer-item-list">
+              <span class="explorer-empty">Open any article to track it here.</span>
+            </div>
+          </div>
+
+          <!-- Section: Browse by Tag -->
+          <div class="explorer-section" style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px;">
+            <h3 class="explorer-section-title">
+              <i data-lucide="tag" style="width:13px; height:13px; color:#34d399;"></i>
+              Browse by Tag
+            </h3>
+            <div id="left-tags-cloud" class="explorer-tags-cloud">
+              <!-- Tag pills injected by JS -->
+            </div>
+          </div>
+
+          <!-- Section: Favorites -->
+          <div class="explorer-section" style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px;">
+            <h3 class="explorer-section-title">
+              <i data-lucide="star" style="width:13px; height:13px; color:#fbbf24;"></i>
+              Favorites
+            </h3>
+            <div id="left-favorites-list" class="explorer-item-list">
+              <!-- Favorited pages injected by JS -->
+            </div>
+          </div>
+
+        </aside>
+
+        <!-- 2. CENTER PANE -->
+        <div class="center-content-pane">
+          
+          <!-- Welcome Dashboard metrics -->
+          <div id="dashboard-metrics-hub" style="margin-bottom: 24px;">
+            <h3 style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="layout-dashboard" style="width: 14px; height: 14px; color: var(--primary);"></i> Global Metrics Hub
+            </h3>
+            <div class="stats-cards-grid">
+              <div class="stat-dashboard-card">
+                <span class="stat-card-label">Total SOP Pages</span>
+                <span id="stat-total-pages" class="stat-card-value">0</span>
+              </div>
+              <div class="stat-dashboard-card">
+                <span class="stat-card-label">Document Reads</span>
+                <span id="stat-total-views" class="stat-card-value">0</span>
+              </div>
+              <div class="stat-dashboard-card">
+                <span class="stat-card-label">Knowledge Likes</span>
+                <span id="stat-total-likes" class="stat-card-value">0</span>
+              </div>
+              <div class="stat-dashboard-card">
+                <span class="stat-card-label">Comments Posted</span>
+                <span id="stat-total-comments" class="stat-card-value">0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 1: SEARCH PORTAL -->
+          <section id="pane-search" class="tab-pane active-pane">
+            <div class="search-portal-container">
+              <!-- Welcome Message -->
+              <div id="search-welcome" class="search-welcome-section">
+                <h2>What can we help you find?</h2>
+                <p>Search through Magic Software's global Confluence database and uploads.</p>
+              </div>
+
+              <!-- Glowing Search Panel -->
+              <div class="glass-panel search-control-box">
+                <div class="search-input-wrapper">
+                  <i data-lucide="search" class="search-icon"></i>
+                  <input type="text" id="search-input" class="input-field" placeholder="Type keywords or phrase... (Press '/' to focus)">
+                  <div class="exact-phrase-hint">"phrase" for exact</div>
+                </div>
+
+                <!-- Filters Row -->
+                <div class="search-filters-row">
+                  <div class="filters-left">
+                    <span class="filters-label"><i data-lucide="filter"></i> Filters:</span>
+                    <select id="filter-type" class="input-field select-small">
+                      <option value="">All Formats</option>
+                      <option value="html">HTML</option>
+                      <option value="pdf">PDF</option>
+                      <option value="docx">Word</option>
+                      <option value="txt">Plain Text</option>
+                      <option value="md">Markdown</option>
+                    </select>
+                    <input type="text" id="filter-category" class="input-field input-small" placeholder="Filter Category">
+                    <input type="text" id="filter-author" class="input-field input-small" placeholder="Filter Author">
+                  </div>
+                  <div class="filters-right">
+                    <label class="checkbox-label">
+                      <input type="checkbox" id="match-all-checkbox" checked>
+                      Match all query words
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Search Results Area or Trending Dashboard -->
+              <div class="search-results-section">
+                <div id="trending-section" style="margin-top: 12px; margin-bottom: 24px;">
+                  <h3 style="font-size: 1rem; color: #fff; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="trending-up" style="color: var(--accent-cyan); width: 18px; height: 18px;"></i> Trending Documentation
+                  </h3>
+                  <div id="trending-list" class="results-list-container">
+                    <!-- Loaded dynamically via js -->
+                  </div>
+                </div>
+
+                <div id="search-stats" class="results-stats hide">
+                  <span id="search-stats-text">Found 0 accurate result(s)</span>
+                  <span>Sorted by relevance</span>
+                </div>
+
+                <!-- Loading Spinner Skeleton -->
+                <div id="search-loading" class="skeleton-container hide">
+                  <div class="skeleton-card glass-panel"></div>
+                  <div class="skeleton-card glass-panel"></div>
+                  <div class="skeleton-card glass-panel"></div>
+                </div>
+
+                <!-- Error Box -->
+                <div id="search-error" class="error-box hide">
+                  <i data-lucide="alert-circle"></i>
+                  <span>Error executing search. Please try again.</span>
+                </div>
+
+                <!-- Results List -->
+                <div id="results-list" class="results-list-container"></div>
+
+                <!-- Empty Results State -->
+                <div id="empty-state" class="glass-panel empty-state-box hide">
+                  <i data-lucide="help-circle" class="large-icon"></i>
+                  <h3>No exact matches found</h3>
+                  <p>We couldn't find any documents containing your search terms. Double check spelling or try disabling "Match all query words" for broader results.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- TAB 2: UPLOAD & WRITE PORTAL -->
+          <section id="pane-upload" class="tab-pane hide">
+            <div class="upload-portal-container">
+              <!-- Inner toggle tabs -->
+              <div class="sub-tabs-bar">
+                <button id="subtab-upload-btn" class="btn subtab-btn active">
+                  <i data-lucide="upload"></i> Batch Upload Documents
+                </button>
+                <button id="subtab-write-btn" class="btn subtab-btn">
+                  <i data-lucide="plus-circle"></i> Compose New Article
+                </button>
+              </div>
+
+              <!-- Pane 2A: Upload files -->
+              <div id="upload-frame-files" class="upload-subframe active-subframe">
+                <div class="glass-panel upload-zone-card">
+                  <div id="dropzone" class="dropzone-box">
+                    <i data-lucide="cloud-upload" class="upload-big-icon"></i>
+                    <h3>Drag & drop document files here</h3>
+                    <p>Supports HTML, PDF, Word (DOCX), Text (TXT), and Markdown (MD)</p>
+                    <div class="or-separator">OR</div>
+                    <button type="button" id="browse-btn" class="btn btn-secondary">Browse Local Files</button>
+                    <input type="file" id="file-input" multiple style="display: none;">
+                  </div>
+                </div>
+
+                <!-- Upload Queue List -->
+                <div class="queue-section">
+                  <div class="queue-header">
+                    <h3>Upload Queue (<span id="queue-count">0</span> files)</h3>
+                    <button id="clear-queue-btn" class="btn btn-secondary btn-small hide">Clear Queue</button>
+                  </div>
+                  <div id="queue-list" class="queue-list-container">
+                    <!-- Dynamically populated queue rows -->
+                  </div>
+                  <div class="queue-actions">
+                    <div id="upload-overall-alert" class="alert-box hide"></div>
+                    <button id="start-upload-btn" class="btn btn-primary w-100 disabled" disabled>
+                      <i data-lucide="send"></i> Upload and Index All Files
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Pane 2B: Compose Article -->
+              <div id="upload-frame-write" class="upload-subframe hide">
+                <form id="write-article-form" class="glass-panel compose-card">
+                  <h2>Compose Reference Article</h2>
+                  
+                  <div class="form-grid">
+                    <div class="form-group">
+                      <label for="article-title">ARTICLE TITLE</label>
+                      <input type="text" id="article-title" class="input-field" placeholder="e.g. Setting fixed Host ID on VM" required>
+                    </div>
+                    <div class="form-group">
+                      <label for="article-category">CATEGORY / SPACE</label>
+                      <input type="text" id="article-category" class="input-field" placeholder="e.g. Windows-XPI" value="Windows XPI" required>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="article-body">BODY CONTENT (Use double newlines to separate paragraphs)</label>
+                    <textarea id="article-body" class="input-field textarea-large" placeholder="Write your document content here. Explain setup instructions, errors, and workarounds clearly." required></textarea>
+                  </div>
+
+                  <div id="write-result-alert" class="alert-box hide"></div>
+
+                  <button type="submit" id="publish-btn" class="btn btn-primary">Publish Article</button>
+                </form>
+              </div>
+            </div>
+          </section>
+
+          <!-- TAB 3: ADMIN PANEL -->
+          <section id="pane-admin" class="tab-pane hide">
+            <div class="admin-panel-container">
+              <!-- Sidebar tabs -->
+              <div class="admin-sidebar glass-panel">
+                <h3 class="sidebar-title">SYSTEM SETTINGS</h3>
+                <button id="admin-subtab-users-btn" class="btn btn-secondary admin-nav-btn active">
+                  <i data-lucide="users"></i> User Management
+                </button>
+                <button id="admin-subtab-files-btn" class="btn btn-secondary admin-nav-btn">
+                  <i data-lucide="hard-drive"></i> File Directory
+                </button>
+                <button id="admin-subtab-indexer-btn" class="btn btn-secondary admin-nav-btn">
+                  <i data-lucide="database"></i> Re-index Engine
+                </button>
+              </div>
+
+              <!-- Frame areas -->
+              <div class="admin-content-frame">
+                
+                <!-- Users frame -->
+                <div id="admin-frame-users" class="admin-frame active-frame">
+                  <!-- Create user -->
+                  <div class="glass-panel admin-card">
+                    <h2><i data-lucide="user-plus"></i> Add New System User</h2>
+                    <form id="create-user-form" class="inline-form">
+                      <div class="form-group">
+                        <label for="new-username">USERNAME</label>
+                        <input type="text" id="new-username" class="input-field" placeholder="Enter username" required>
+                      </div>
+                      <div class="form-group">
+                        <label for="new-password">PASSWORD</label>
+                        <input type="password" id="new-password" class="input-field" placeholder="Password" required>
+                      </div>
+                      <div class="form-group">
+                        <label for="new-user-role">USER RIGHTS / ROLE</label>
+                        <select id="new-user-role" class="input-field select-small" style="height: 38px;">
+                          <option value="Viewer">Viewer (Read Only)</option>
+                          <option value="Editor">Editor (Read, Upload & Edit)</option>
+                          <option value="Admin">Admin (Full Control)</option>
+                        </select>
+                      </div>
+                      <button type="submit" class="btn btn-primary" style="margin-top: 24px;">Create User</button>
+                    </form>
+                    <div id="create-user-alert" class="alert-box hide" style="margin-top: 16px;"></div>
+                  </div>
+
+                  <!-- List users -->
+                  <div class="glass-panel admin-card">
+                    <h2>System Accounts (<span id="user-count">0</span>)</h2>
+                    <div id="users-list" class="admin-table-container">
+                      <!-- Users list table injected -->
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Files frame -->
+                <div id="admin-frame-files" class="admin-frame hide">
+                  <div class="glass-panel admin-card">
+                    <h2>Registered Index Files (<span id="file-count">0</span>)</h2>
+                    <div id="files-list-table" class="admin-table-container">
+                      <!-- Files list table injected -->
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Indexer frame -->
+                <div id="admin-frame-indexer" class="admin-frame hide">
+                  <div class="glass-panel admin-card">
+                    <h2>Re-index Database</h2>
+                    <p style="color: var(--text-muted); margin-bottom: 20px;">
+                      This triggers the indexing background pipeline. It crawls the document storage directory, registers new uploads, parses file metadata, extracts textual contents, and rebuilds the relevance search index.
+                    </p>
+                    <button id="trigger-reindex-btn" class="btn btn-primary">
+                      <i data-lucide="refresh-cw"></i> Run Indexer Now
+                    </button>
+                    <div id="indexer-alert" class="alert-box hide" style="margin-top: 16px;"></div>
+                  </div>
+
+                  <div class="glass-panel admin-card">
+                    <h2>Indexing Run Logs</h2>
+                    <div id="indexer-logs-container" class="run-logs-list">
+                      <!-- Logs list injected -->
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </section>
+
+          <!-- TAB 4: AI COPILOT PORTAL -->
+          <section id="pane-copilot" class="tab-pane hide">
+            <div class="copilot-container" style="display:flex; flex-direction:column; gap:16px;">
+              <div class="glass-panel" style="padding: 24px; border-radius: 12px; display:flex; flex-direction:column; gap:16px; background: rgba(255,255,255,0.015); border:1px solid rgba(255,255,255,0.06); box-shadow: 0 8px 32px rgba(0,0,0,0.25);">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div style="width:32px; height:32px; border-radius:8px; background:linear-gradient(135deg, var(--primary), var(--accent-purple)); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <i data-lucide="bot" style="width:18px; height:18px; color:#fff;"></i>
+                  </div>
+                  <div>
+                    <h2 style="font-family:var(--font-display); font-size:1.2rem; font-weight:700; color:#fff; margin:0;">AI Support Copilot</h2>
+                    <p style="font-size:0.75rem; color:var(--text-muted); margin:0;">Instant answers synthesized directly from Magic Software's global knowledge hub</p>
+                  </div>
+                </div>
+                
+                <!-- Chat Message Box -->
+                <div id="copilot-chat-history" style="height: 380px; overflow-y: auto; display:flex; flex-direction:column; gap:12px; padding:12px; border-radius:8px; background: rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.04); scroll-behavior: smooth;">
+                  <div style="display:flex; gap:10px; align-items:flex-start;">
+                    <div style="width:24px; height:24px; border-radius:6px; background:linear-gradient(135deg, var(--primary), var(--accent-purple)); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                      <i data-lucide="bot" style="width:12px; height:12px; color:#fff;"></i>
+                    </div>
+                    <div class="glass-panel" style="padding:10px 14px; border-radius:0 12px 12px 12px; background: rgba(255,255,255,0.03); max-width:85%;">
+                      <p style="font-size:0.8rem; color:#e5e7eb; margin:0; line-height:1.6;">Hello! I am your Support Copilot. Ask me anything about installation guides, servers, support tickets, or configuration SOPs!</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Chat Input Form -->
+                <form id="copilot-ask-form" style="display:flex; gap:10px; align-items:center; border-top:1px solid rgba(255,255,255,0.04); padding-top:14px; margin:0;">
+                  <input type="text" id="copilot-query-input" class="input-field" placeholder="Ask a question... (e.g. How to install IMM VHDX virtual machine?)" style="flex:1; height:40px; font-size:0.85rem;" required>
+                  <button type="submit" id="copilot-submit-btn" class="btn btn-primary" style="height:40px; padding:0 20px; font-size:0.85rem; font-weight:600; display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                    <i data-lucide="send" style="width:14px; height:14px;"></i> Ask
+                  </button>
+                </form>
+              </div>
+            </div>
+          </section>
+
+          <!-- TAB 5: INTEGRATED WIKI DOCUMENT VIEW -->
+          <section id="pane-document" class="tab-pane hide glass-panel" style="padding: 32px;">
+            <div id="document-reader-loading" class="text-center py-20">
+              <div class="skeleton-line w-40" style="margin: 0 auto 12px;"></div>
+              <div class="skeleton-box h-200" style="margin-bottom: 12px;"></div>
+              <span>Fetching document contents...</span>
+            </div>
+            
+            <div id="document-reader-content" class="hide">
+              <!-- Header -->
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 12px;">
+                <div>
+                  <div id="doc-view-breadcrumbs" style="display: flex; align-items: center; gap: 4px; margin-bottom: 8px; font-size: 0.75rem; color: var(--text-muted);"></div>
+                  <h2 id="doc-view-title" style="font-size: 1.8rem; color: #fff; font-weight: 700; font-family: var(--font-display); line-height: 1.3;">SOP Title</h2>
+                </div>
+                <div style="display: flex; gap: 8px; flex-shrink: 0; align-items: center;">
+                  <button id="doc-run-btn" class="btn btn-primary" style="padding: 8px 12px; border-radius: 8px; font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; gap: 6px;" title="Run SOP Interactive Checklist">
+                    <i data-lucide="play-circle" style="width: 15px; height: 15px;"></i> Run SOP
+                  </button>
+                  <button id="doc-export-btn" class="btn btn-secondary" style="padding: 8px 12px; border-radius: 8px; font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; gap: 6px;" title="Export SOP Document">
+                    <i data-lucide="download" style="width: 15px; height: 15px;"></i> Export
+                  </button>
+                  <button id="doc-fav-btn" class="btn btn-secondary" style="padding: 8px; border-radius: 8px; min-width: 38px; height: 35px;" title="Favorite this page">
+                    <i data-lucide="star" style="width: 16px; height: 16px;"></i>
+                  </button>
+                  <button id="doc-pin-btn" class="btn btn-secondary hide" style="padding: 8px; border-radius: 8px; min-width: 38px; height: 35px;" title="Pin page to sidebar (Admin/Editor)">
+                    <i data-lucide="pin" style="width: 16px; height: 16px;"></i>
+                  </button>
+                  <button id="doc-edit-btn" class="btn btn-secondary hide" style="padding: 8px; border-radius: 8px; min-width: 38px; height: 35px;" title="Edit SOP Content">
+                    <i data-lucide="edit" style="width: 16px; height: 16px;"></i>
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Metadata bar -->
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 18px; padding-bottom: 14px; margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.78rem; color: var(--text-muted);">
+                <span><i data-lucide="user" style="width: 12px; height: 12px; display: inline; vertical-align: middle; margin-top: -2px; margin-right: 4px;"></i> Creator: <strong id="doc-view-author" style="color: var(--text-main);">System</strong></span>
+                <span><i data-lucide="calendar" style="width: 12px; height: 12px; display: inline; vertical-align: middle; margin-top: -2px; margin-right: 4px;"></i> Date: <strong id="doc-view-date" style="color: var(--text-main);">Date</strong></span>
+                <span><i data-lucide="file-text" style="width: 12px; height: 12px; display: inline; vertical-align: middle; margin-top: -2px; margin-right: 4px;"></i> Format: <strong id="doc-view-format" style="color: var(--primary);">HTML</strong></span>
+                <span style="margin-left: auto;"><i data-lucide="eye" style="width: 12px; height: 12px; display: inline; vertical-align: middle; margin-top: -2px; margin-right: 4px;"></i> <span id="doc-view-views">0</span> views</span>
+                <button id="doc-like-btn" class="btn btn-secondary" style="border: none; background: rgba(255,255,255,0.04); color: var(--text-main); display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">
+                  <i data-lucide="thumbs-up" style="width: 12px; height: 12px;"></i> <span id="doc-view-likes">0</span> Likes
+                </button>
+              </div>
+              
+              <!-- Tags list -->
+              <div id="doc-view-tags-wrapper" style="display: flex; gap: 8px; align-items: center; margin-bottom: 24px;" class="hide">
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Tags:</span>
+                <div id="doc-view-tags" class="tags-wrapper"></div>
+              </div>
+              
+              <!-- Content -->
+              <div id="doc-view-body" class="wiki-content-rendered" style="min-height: 200px; margin-bottom: 40px;"></div>
+              
+              <!-- Comments Feed -->
+              <div class="comment-section-container">
+                <h3 style="font-size: 1.1rem; color: #fff; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                  <i data-lucide="message-square" style="width: 16px; height: 16px; color: var(--primary);"></i> Comments (<span id="doc-comments-count">0</span>)
+                </h3>
+                
+                <form id="comment-post-form" class="comment-input-area">
+                  <textarea id="comment-textarea" class="input-field" placeholder="Add a comment to this wiki page..." style="min-height: 80px; resize: vertical; font-size: 0.85rem;" required></textarea>
+                  <button type="submit" class="btn btn-primary" style="align-self: flex-start; padding: 6px 14px; font-size: 0.8rem;">Post Comment</button>
+                </form>
+                
+                <div id="doc-comments-feed" class="comment-list"></div>
+              </div>
+            </div>
+          </section>
+
+        </div>
+
+        <!-- 3. RIGHT PANE - Floating Table of Contents -->
+        <aside class="pane-panel right-toc-pane" id="right-toc-pane">
+          <div class="toc-container">
+            <span class="toc-title">Table of Contents</span>
+            <div id="doc-view-toc-list" style="display: flex; flex-direction: column; gap: 8px;">
+              <!-- Toc anchors injected here -->
+            </div>
+          </div>
+        </aside>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ================= IN-PLACE SOP EDITOR MODAL ================= -->
+  <div id="editor-modal" class="editor-backdrop hide">
+    <div class="editor-dialog">
+      <div class="editor-header">
+        <h2 style="font-size: 1.25rem; font-family: var(--font-display); color: #fff; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="edit-3" style="color: var(--primary); width: 20px; height: 20px;"></i> Edit Knowledge Document
+        </h2>
+        <button id="close-editor-btn" class="btn btn-secondary btn-icon circle" style="padding: 6px; min-width: 32px;">
+          <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+        </button>
+      </div>
+      <div class="editor-body">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="edit-doc-title" style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:6px; font-weight:500;">DOCUMENT TITLE</label>
+          <input type="text" id="edit-doc-title" class="input-field" style="font-size: 1.1rem; padding: 10px 14px;" required />
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="edit-doc-tags" style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:6px; font-weight:500;">TAGS (Comma separated)</label>
+          <input type="text" id="edit-doc-tags" class="input-field" placeholder="e.g. windows, configuration, host-id" />
+        </div>
+        
+        <div class="form-group" style="flex: 1; display: flex; flex-direction: column;">
+          <label for="edit-doc-content" style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:6px; font-weight:500;">DOCUMENT CONTENT</label>
+          <textarea id="edit-doc-content" class="input-field" style="flex: 1; min-height: 250px; font-family: monospace; font-size: 0.9rem; line-height: 1.5; resize: none; padding: 12px;" required></textarea>
+        </div>
+        
+        <div id="edit-result-alert" class="alert-box hide" style="margin-top: 12px;"></div>
+      </div>
+      <div class="editor-footer">
+        <button id="cancel-edit-btn" class="btn btn-secondary">Discard</button>
+        <button id="save-edit-btn" class="btn btn-primary">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= INTERACTIVE SOP RUNNER DRAWER ================= -->
+  <div id="sop-runner-modal" class="drawer-overlay hide" style="justify-content: flex-end; align-items: stretch;">
+    <div class="glass-panel animate-slide-in" style="width: 420px; background: rgba(18,22,35,0.98); backdrop-filter: blur(25px); border-left: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; padding: 24px; box-shadow: -10px 0 40px rgba(0,0,0,0.5);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 12px; flex-shrink: 0;">
+        <h2 style="font-size:1.2rem; font-family:var(--font-display); color:#fff; display:flex; align-items:center; gap:8px; margin:0;">
+          <i data-lucide="play-circle" class="icon-indigo"></i> SOP Step Checklist
+        </h2>
+        <button type="button" id="close-sop-runner-btn" class="btn btn-secondary btn-icon circle" style="padding: 6px; min-width: 32px;">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      
+      <!-- Interactive steps scrollable block -->
+      <div id="sop-runner-steps-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding-right: 4px;">
+        <!-- Checklist items populated dynamically in JS -->
+      </div>
+      
+      <!-- Progress Bar -->
+      <div style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px; flex-shrink: 0;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px;">
+          <span>SOP Execution Progress</span>
+          <span id="sop-runner-progress-text">0% Done</span>
+        </div>
+        <div style="height: 6px; width: 100%; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden;">
+          <div id="sop-runner-progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, var(--primary), var(--accent-emerald)); transition: width 0.3s ease;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= LOGIN MODAL ================= -->
+  <div id="login-modal" class="drawer-overlay hide">
+    <div class="login-card glass-panel animate-fade-in" style="margin: auto; max-width: 400px; width: 90%;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="font-size:1.3rem; font-family:var(--font-display); color:#fff; display:flex; align-items:center; gap:8px;">
+          <i data-lucide="lock" class="icon-indigo"></i> Sign In
+        </h2>
+        <button type="button" id="close-login-btn" class="btn btn-secondary btn-icon circle">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      
+      <form id="login-form">
+        <div class="form-group" style="margin-bottom:16px;">
+          <label for="login-username" style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:6px; font-weight:500;">USERNAME</label>
+          <input type="text" id="login-username" class="input-field" placeholder="Enter username" required>
+        </div>
+        <div class="form-group" style="margin-bottom:20px;">
+          <label for="login-password" style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:6px; font-weight:500;">PASSWORD</label>
+          <input type="password" id="login-password" class="input-field" placeholder="Enter password" required>
+        </div>
+
+        <div id="login-error-box" class="error-box hide" style="margin-bottom:16px;">
+          <i data-lucide="alert-circle"></i>
+          <span id="login-error-text">Incorrect credentials</span>
+        </div>
+
+        <button type="submit" id="login-btn" class="btn btn-primary w-100">
+          <span>Access System</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Link to JS Logic -->
+  <script src="app.js"></script>
+</body>
+</html>

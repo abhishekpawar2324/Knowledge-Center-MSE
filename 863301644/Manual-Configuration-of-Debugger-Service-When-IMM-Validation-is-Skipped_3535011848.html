@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Manual Configuration of Debugger Service When IMM Validation is Skipped</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Manual Configuration of Debugger Service When IMM Validation is Skipped
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Abhishek Pawar</span> on 25,Jul, 2025
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <h1 id="ManualConfigurationofDebuggerServiceWhenIMMValidationisSkipped-Overview">Overview</h1><p>In Magic xpi 4.14.1, if IMM validation is skipped during installation, the Debugger service is not automatically registered. Even after manually configuring the IMM host using the IMM_Updater.ps1 script, the debugger service will remain missing. This article explains how to manually register the Debugger service in such cases.</p><h2 id="ManualConfigurationofDebuggerServiceWhenIMMValidationisSkipped-Scenario">Scenario</h2><ul><li><p>IMM was not configured during installation (validation skipped).</p></li></ul><ul><li><p>The IMM host was configured later using: XPI4141\InMemoryMiddleware\imm-updator\IMM_Updater.ps1</p></li></ul><ul><li><p>Communication with IMM is successful, and the .env and magic.ini files are correctly updated.</p></li></ul><ul><li><p>However, the Magic XPI Debugger service is not created.</p></li></ul><h2 id="ManualConfigurationofDebuggerServiceWhenIMMValidationisSkipped-RootCause">Root Cause</h2><p>When IMM configuration is skipped during installation, the installer does not trigger automatic Debugger service registration. Running the IMM_Updater script only sets the IMM configuration — it does not register the Debugger service.</p><h2 id="ManualConfigurationofDebuggerServiceWhenIMMValidationisSkipped-Resolution">Resolution</h2><p>You can manually register the Debugger service using the following steps:</p><h3 id="ManualConfigurationofDebuggerServiceWhenIMMValidationisSkipped-Step-by-Step:ManuallyCreateDebuggerService">Step-by-Step: Manually Create Debugger Service</h3><ol start="1"><li><p>Open Command Prompt as Administrator.</p></li></ol><ol start="2"><li><p>Navigate to the Debugger directory:</p></li></ol><p>   cd C:\xpi\xpi141\Studio\Debugger</p><ol start="3"><li><p>Run the following command:</p></li></ol><p>   Install_Debug_services.bat 4.14</p><ol start="4"><li><p>You should see confirmation that the 'Magic XPI Debugger 4.14' service was created.</p></li></ol><h2 id="ManualConfigurationofDebuggerServiceWhenIMMValidationisSkipped-AdditionalInformation">Additional Information</h2><p>The Debugger service will also be registered automatically the first time a project is run in debug mode — but only if IMM is already configured properly.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250725-095139.png" width="812" loading="lazy" src="attachments/3535011848/3534684204.png?width=812" data-image-src="attachments/3535011848/3534684204.png" data-height="221" data-width="432" data-unresolved-comment-count="0" data-linked-resource-id="3534684204" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250725-095139.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3535011848" data-linked-resource-container-version="1" data-media-id="d2f51e62-ba87-488c-946b-e0bb3d5dc87a" data-media-type="file"></span><p /><p /><p>Use the manual method above when the IMM configuration was done after installation.</p><h2 id="ManualConfigurationofDebuggerServiceWhenIMMValidationisSkipped-BestPractice">Best Practice</h2><p>If possible, always configure IMM during installation to avoid service registration issues. If skipped, ensure both:</p><ul><li><p>IMM is configured using the IMM_Updater.ps1</p></li><li><p>Debugger service is created manually as shown above.</p></li></ul>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3535011848/3534684204.png">image-20250725-095139.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:23</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

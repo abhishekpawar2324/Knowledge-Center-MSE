@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : RESTful API Services: Request and Response parameters are not visible in Open API paths when using the content type &quot;application/json&amp;#8221;.</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : RESTful API Services: Request and Response parameters are not visible in Open API paths when using the content type &quot;application/json&amp;#8221;.
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Vaishnavi Marathe</span> on 01,Sep, 2024
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p>There was a request from a customer where he wanted to Load the  OpenAPI file that includes all parameters like Query, header, cookie, request, and response.</p><p>The customer would like to use content-type as application/JSON as it is not visible in the path window.</p><p>But while creating RESTful API service and selecting API Definition Method as &quot;Open API&quot; and loading an OpenAPI document into Magic XPI, it retrieves all details, including all paths and parameters defined in the YAML/JSON file.</p><p>Yaml File:</p><p /><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240901-233802.png" width="689" loading="lazy" src="attachments/2839511187/2839511199.png?width=689" data-image-src="attachments/2839511187/2839511199.png" data-height="184" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="2839511199" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20240901-233802.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2839511187" data-linked-resource-container-version="1" data-media-id="0663f3f2-971e-4f9c-bfa4-f92521e96035" data-media-type="file"></span><p>The Request and Response tabs in the paths window are used to specify multipart/form-data parameters only and not normal Request/Response parameters.</p><p /><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240901-233816.png" width="705" loading="lazy" src="attachments/2839511187/2840035331.png?width=705" data-image-src="attachments/2839511187/2840035331.png" data-height="190" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="2840035331" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20240901-233816.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2839511187" data-linked-resource-container-version="1" data-media-id="f23546b0-d353-4135-a70b-334d1fd9b49b" data-media-type="file"></span><p>According to our QA team, the current implementation does not support specifying the application/json content type in the response parameter, as it only accommodates parameters of type multipart/form-data. In the provided YAML file, a parameter with a content type of application/json is treated as a standard parameter rather than one of the multipart/form-data type.</p><p>This will be implemented in a future version of the product.</p>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2839511187/2839511199.png">image-20240901-233802.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2839511187/2840035331.png">image-20240901-233816.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

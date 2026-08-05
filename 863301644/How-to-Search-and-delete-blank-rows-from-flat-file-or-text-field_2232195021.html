@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : How to Search and delete blank rows from flat file or text field</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : How to Search and delete blank rows from flat file or text field
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p>If we want to delete a blank row form any text file for Ex.-</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232195021/2232195047.png?width=680" data-image-src="attachments/2232195021/2232195047.png" data-height="90" data-width="425" data-unresolved-comment-count="0" data-linked-resource-id="2232195047" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230419-114210.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232195021" data-linked-resource-container-version="1" data-media-id="0575974c-b4f8-465f-b3df-57fc46530eb3" data-media-type="file"></span><p>Here we can see there is a blank row between “CC” and “EE”.</p><p>In that case we can achieve this using Flat file mapping in Data mapper using specific functions.</p><p /><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232195021/2232195044.png?width=680" data-image-src="attachments/2232195021/2232195044.png" data-height="184" data-width="519" data-unresolved-comment-count="0" data-linked-resource-id="2232195044" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230419-114228.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232195021" data-linked-resource-container-version="1" data-media-id="90ad664a-be52-4a22-a840-69b208844ddb" data-media-type="file"></span><p /><p>Here we took a flat and mapped it with another flat file.</p><p> </p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232195021/2232195041.png?width=680" data-image-src="attachments/2232195021/2232195041.png" data-height="235" data-width="528" data-unresolved-comment-count="0" data-linked-resource-id="2232195041" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230419-114541.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232195021" data-linked-resource-container-version="1" data-media-id="feaac328-4707-467f-b68c-6f8a7d77f9cd" data-media-type="file"></span><p /><p>After mapping the flat files we tried to achieve the scenario(Search and delete blank rows) by defining the function “IF (Len (Trim (Src.S3/Record/bb))=0,'FALSE'LOG,'TRUE'LOG)” This way.</p><p> </p><p>We can see from the above screenshot we have used two mappings of flat files because we have tried with another function in the same way.</p><p>The function- Trim (Src.S5/Record/bb )&lt;&gt; ''</p><p> </p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232195021/2232195038.png?width=680" data-image-src="attachments/2232195021/2232195038.png" data-height="204" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="2232195038" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230419-114604.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232195021" data-linked-resource-container-version="1" data-media-id="fa8f4548-3029-4eee-b1ea-3a446c719b02" data-media-type="file"></span><p /><p>We can see from above screenshot, from context view if we Zoom the F.Blob2 or F.Blob3 , we can see that the blank row has been deleted.</p><p> </p><p>Attached is the project for reference.</p><p class="media-group"><span class="confluence-embedded-file-wrapper"><a class="confluence-embedded-file" href="attachments/2232195021/2232195035.zip" data-nice-type="Zip Archive" data-file-src="/wiki/download/attachments/2232195021/FlatFileDeleteRows.zip?version=1&amp;modificationDate=1685537272958&amp;cacheVersion=1&amp;api=v2" data-linked-resource-id="2232195035" data-linked-resource-type="attachment" data-linked-resource-container-id="2232195021" data-linked-resource-default-alias="FlatFileDeleteRows.zip" data-mime-type="application/zip" data-has-thumbnail="true" data-linked-resource-version="1" data-media-id="f1830071-65a6-43e1-a65b-680e6f8c5abb" data-media-type="file"><img src="attachments/thumbnails/2232195021/2232195035" height="250"/></a></span></p><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232195021/2232195035.zip">FlatFileDeleteRows.zip</a> (application/zip)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232195021/2232195038.png">image-20230419-114604.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232195021/2232195041.png">image-20230419-114541.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232195021/2232195044.png">image-20230419-114228.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232195021/2232195047.png">image-20230419-114210.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Configuration of Magic Monitor and XPI server on different machines:</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Configuration of Magic Monitor and XPI server on different machines:
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><style>[data-colorid=tiyjqv3qt8]{color:#222222} html[data-color-mode=dark] [data-colorid=tiyjqv3qt8]{color:#dddddd}[data-colorid=wom21e9bus]{color:#222222} html[data-color-mode=dark] [data-colorid=wom21e9bus]{color:#dddddd}[data-colorid=m0fsfje7k7]{color:#222222} html[data-color-mode=dark] [data-colorid=m0fsfje7k7]{color:#dddddd}[data-colorid=qic2vm88pl]{color:#222222} html[data-color-mode=dark] [data-colorid=qic2vm88pl]{color:#dddddd}</style><br />
+<span data-colorid="m0fsfje7k7">The document explains, how to configure the magic monitor and XPI server on the different machines only by running the magic monitor service.</span><br />
+<span data-colorid="qic2vm88pl">The magic monitor and the XPI servers both are installed on the two different machines.</span><br />
+<span data-colorid="wom21e9bus">We can see the running projects on the Magic Monitor server only by running the Magic monitor service.</span>
+<br />
+<br />
+<strong><span data-colorid="tiyjqv3qt8">Steps to Configure the two servers:</span></strong>
+<br />
+1-Install the Magic Monitor on the server1<br />
+<span class="confluence-embedded-file-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image" height="369" width="493" loading="lazy" src="attachments/2232192204/2232192231.png?width=493" data-image-src="attachments/2232192204/2232192231.png" data-unresolved-comment-count="0" data-linked-resource-id="2232192231" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="worddav1aed7f866d43dd3079f15422f39b6f17.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192204" data-linked-resource-container-version="1" data-media-id="6cdc3dd7-c339-4112-9128-26470cb74c52" data-media-type="file" /></span>
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+2- Change the value of the Lookup locator name and  lookup Group name by the value of the server(Magic GSA server lookup locator)<br />
+<span class="confluence-embedded-file-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image" height="457" width="602" loading="lazy" src="attachments/2232192204/2232192228.png?width=602" data-image-src="attachments/2232192204/2232192228.png" data-unresolved-comment-count="0" data-linked-resource-id="2232192228" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="worddavbafde76253842ea2bb1e7c17ba589111.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192204" data-linked-resource-container-version="1" data-media-id="6f065d94-e819-4ec4-928d-8a80fcbaf1cb" data-media-type="file" /></span>
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+3-Untick the Run script option and go forward with the installation.<br />
+<span class="confluence-embedded-file-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image" height="474" width="602" loading="lazy" src="attachments/2232192204/2232192225.png?width=602" data-image-src="attachments/2232192204/2232192225.png" data-unresolved-comment-count="0" data-linked-resource-id="2232192225" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="worddav97828bc5edc4a090edb74503d7df6831.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192204" data-linked-resource-container-version="1" data-media-id="0a102c99-a64a-403f-be19-9b87f56cadfe" data-media-type="file" /></span><br />
+4-Copy the datasource.xml file of the Magic GSA server on to the Monitor server(where the magic monitor is installed).<br />
+%InstalltionDir4.9%\Runtime\Config\datasource.xml<br />
+5-Copy the Options.ini file of the Magic GSA server on to the Monitor server.<br />
+%InstalltionDir4.9%\Runtime\RTView\magicmonitor\OPTIONS.ini<br />
+6-Confirm the runwebmonitor.bat of the Monitor server<br />
+(C:\Magic xpi4.9\Runtime\RTView\magicmonitor\runwebmonitor.bat)<br />
+-if not then Change the set LookupGroupName=Server2(Magic_xpi_4.9_ITSWIN7)<br />
+set LookupLocators=Server2(ITSWIN7)<br />
+7-Start the only the magicmonitor service through the task manager of the Monitor server<br />
+8-Start the GSA service of the Magic GSA server.<br />
+9-For the projects, the path of the projects must be same on the both the servers.- You can keep the same copy of the projects on both servers.Change the Folderpath Accordingly on the both servers(Monitor server and Magic GSA server). <span class="confluence-embedded-file-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image" height="329" width="602" loading="lazy" src="attachments/2232192204/2232192222.png?width=602" data-image-src="attachments/2232192204/2232192222.png" data-unresolved-comment-count="0" data-linked-resource-id="2232192222" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="worddav41262d240c10700dbed033de0ff18167.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192204" data-linked-resource-container-version="1" data-media-id="cdeb948d-79d5-4117-a3c3-74c4f6978be4" data-media-type="file" /></span>  Result: you can use this    <span class="confluence-embedded-file-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image" height="366" width="602" loading="lazy" src="attachments/2232192204/2232192219.png?width=602" data-image-src="attachments/2232192204/2232192219.png" data-unresolved-comment-count="0" data-linked-resource-id="2232192219" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="worddav2e4167cb5ef53d8447ae90d859e1906b.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192204" data-linked-resource-container-version="1" data-media-id="4018c620-ffb3-4e2b-90ef-e1c7d5a936e2" data-media-type="file" /></span>  **(This is not tested by QA this findings are from Support)Please test this configuration on UAT/DEV env. before using in the production.
+</p><p /><p /><p><strong>Created By</strong>-Shweta Salunkhe<br />
+<br />
+<br />
+<br /></p>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192204/2232192219.png">worddav2e4167cb5ef53d8447ae90d859e1906b.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192204/2232192222.png">worddav41262d240c10700dbed033de0ff18167.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192204/2232192225.png">worddav97828bc5edc4a090edb74503d7df6831.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192204/2232192228.png">worddavbafde76253842ea2bb1e7c17ba589111.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192204/2232192231.png">worddav1aed7f866d43dd3079f15422f39b6f17.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:21</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

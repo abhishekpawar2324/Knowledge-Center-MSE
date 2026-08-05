@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : When the project didn&#39;t start due to the GSC memory shortage</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : When the project didn&#39;t start due to the GSC memory shortage
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Vaishnavi Marathe</span> on 07,Jan, 2025
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <h5 id="Whentheprojectdidn&#39;tstartduetotheGSCmemoryshortage-ThecustomerencounteredanissuewheretheprojectfailedtostartduetoinsufficientmemoryintheGigaSpacescontainer.DespiteincreasingtheGSCmemorysizefrom1024MBto2048MB,thefollowingerrorspersistedinthelogs:">The customer encountered an issue where the project failed to start due to insufficient memory in the GigaSpaces container. Despite increasing the GSC memory size from 1024 MB to 2048 MB, the following errors persisted in the logs:</h5><h5 id="Whentheprojectdidn&#39;tstartduetotheGSCmemoryshortage-mgxpi-gs.1[1]SEVERE[org.openspaces.events.polling.SimplePollingEventListenerContainer]-[startRequestedWatcher]Executionofeventlistenerfailed;Causedby:org.openspaces.core.SpaceMemoryShortageException:Memor">mgxpi-gs.1 [1] SEVERE [org.openspaces.events.polling.SimplePollingEventListenerContainer] - [startRequestedWatcher] Execution of event listener failed; Caused by: org.openspaces.core.SpaceMemoryShortageException: Memory shortage at: host: EC2AMAZ-SFLVTG7, container: MAGIC_SPACE_container1, space MAGIC_SPACE, total memory: 2014 mb, used memory: 1580 mb; nested exception is Memory shortage at: host: EC2AMAZ-SFLVTG7, container: MAGIC_SPACE_container1, space MAGIC_SPACE, total memory: 2014 mb, used memory: 1580 mb<br/><br/></h5><h5 id="Whentheprojectdidn&#39;tstartduetotheGSCmemoryshortage-ThisissueisnotsolelyrelatedtotheGSCconfiguration.Otherfactorssuchasmachinespecifications(RAM,processor,andCPU),aswellasthenumberofprojects,mustalsobetakenintoaccount.">This issue is not solely related to the GSC configuration. Other factors such as machine specifications (RAM, processor, and CPU), as well as the number of projects, must also be taken into account.</h5><h5 id="Whentheprojectdidn&#39;tstartduetotheGSCmemoryshortage-ThememoryshortagemightstemfromprojectdatabeingstoredinMagicSpace.Tomitigatethis,thefollowingstepscanbeimplementedtodistributeprojectsacrossmultiplespaces:">The memory shortage might stem from project data being stored in Magic Space. To mitigate this, the following steps can be implemented to distribute projects across multiple spaces:</h5><h5 id="Whentheprojectdidn&#39;tstartduetotheGSCmemoryshortage-Keynotes:1.followinginthemagicxpi_sla.xmlfilei,eMagicSpace:&lt;os-sla:slacluster-schema=&quot;partitioned-sync2backup&quot;number-of-instances=&quot;2&quot;number-of-backups=&quot;1&quot;&gt;**WecanincreasetheMagicSpacecountaccordingtothePr"><br/>Keynotes:<br/><br/>1. following in the magicxpi_sla.xml file i,e Magic Space:<br/><br/>&lt;os-sla:sla cluster-schema=&quot;partitioned-sync2backup&quot; number-of-instances=&quot;2&quot;<br/><br/>number-of-backups=&quot;1&quot;&gt;<br/><br/>**We can increase the Magic Space count according to the Project count.<br/><br/>2. GSC Memory Configuration, You can increase to 2 GB or more.<br/><br/>-Increase the memory of GSC in 'magicxpi-gs-agent.bat' to 'set GSC_JAVA_OPTIONS=-Xmx4096m' on the server.</h5><h5 id="Whentheprojectdidn&#39;tstartduetotheGSCmemoryshortage-"> </h5><h5 id="Whentheprojectdidn&#39;tstartduetotheGSCmemoryshortage-Byfollowingthesesuggestions,thememoryshortageissuecanbeeffectivelyresolved.">By following these suggestions, the memory shortage issue can be effectively resolved.</h5>
+                    </div>
+
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:23</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : How To Insert records into SQL tables from XML with Nested one-to-many Relationships in XPI</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : How To Insert records into SQL tables from XML with Nested one-to-many Relationships in XPI
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p>The customer had a query about inserting a record from an XML where we have one-to-many at 4 levels in the XML file.</p><p> For Example- a shipment XML file that has orders as children. and 1 order can have multiple containers and 1 container can have multiple items. When reading such an xml file, we need first to insert the shipment in shipments table, grab the id of the shipment and then drop it down to orders. For each one of the orders attached to the parent shipment, we need to insert the order, grab the id of the order and drop it down to the packages, and so on.</p><p>So to get this thing done we have first created tables (e.g. Shipment, Order Container, items). As per the customer’s concern.</p><p>Here we have mentioned ShipmentNo from “Shipment” table as a foreign key in all the other tables and also  containerId from “container” table as a foreign key with “Item” table to provide a Nested relationship between the Data tables in the respective format.</p><p /><p>So in XPI we can first read the xml file using File Management component and store the data in a blob variable.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194884/2232194913.png?width=680" data-image-src="attachments/2232194884/2232194913.png" data-height="253" data-width="457" data-unresolved-comment-count="0" data-linked-resource-id="2232194913" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230315-151439.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194884" data-linked-resource-container-version="1" data-media-id="c67d3199-d1b1-4950-876d-2ae31c05c377" data-media-type="file"></span><p /><p>And then inside Datamapper, We have mapped the XML Schema with call flow schema where we created a flow for each table respectively(Shipment, Order, Container, Item)</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194884/2232194910.png?width=680" data-image-src="attachments/2232194884/2232194910.png" data-height="204" data-width="523" data-unresolved-comment-count="0" data-linked-resource-id="2232194910" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230315-151518.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194884" data-linked-resource-container-version="1" data-media-id="47e7e6f7-d2b7-4c1b-9c0c-45ad41616cff" data-media-type="file"></span><p>We have created a flow variable in each of the following flows according to the data fields which are being mapped from XML to call flow.</p><p> </p><p>So, in each of the flows using a data mapper we have mapped the variable schema with the database in the destination to store the values in a Nested One-To-Many relationship.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194884/2232194907.png?width=680" data-image-src="attachments/2232194884/2232194907.png" data-height="168" data-width="523" data-unresolved-comment-count="0" data-linked-resource-id="2232194907" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230315-151602.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194884" data-linked-resource-container-version="1" data-media-id="4e2c19dd-b6a9-43a3-bdcd-a5cbc1fe5c5b" data-media-type="file"></span><p /><p>Here in database, you can see under one LoadNo which is a ShipmentNo in item table is multiple item is getting stored.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194884/2232194904.png?width=680" data-image-src="attachments/2232194884/2232194904.png" data-height="167" data-width="523" data-unresolved-comment-count="0" data-linked-resource-id="2232194904" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230315-151629.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194884" data-linked-resource-container-version="1" data-media-id="0bd5dca9-76d7-4c0b-82b6-ca301d599493" data-media-type="file"></span><p>So in this way, we can store the Data inside SQL with one-to-many relationships from the XML file.</p><p> </p><p>Attached Sample project and SQL script.</p><p class="media-group"><span class="confluence-embedded-file-wrapper"><a class="confluence-embedded-file" href="attachments/2232194884/2232194898.sql" data-nice-type="null" data-file-src="/wiki/download/attachments/2232194884/SQLScript.sql?version=1&amp;modificationDate=1685537268424&amp;cacheVersion=1&amp;api=v2" data-linked-resource-id="2232194898" data-linked-resource-type="attachment" data-linked-resource-container-id="2232194884" data-linked-resource-default-alias="SQLScript.sql" data-mime-type="application/octet-stream" data-has-thumbnail="true" data-linked-resource-version="1" data-media-id="5174ac1c-4b39-4ebf-807d-fc19217c925f" data-media-type="file"><img src="attachments/thumbnails/2232194884/2232194898" height="250"/></a></span><span class="confluence-embedded-file-wrapper"><a class="confluence-embedded-file" href="attachments/2232194884/2232194901.zip" data-nice-type="Zip Archive" data-file-src="/wiki/download/attachments/2232194884/NestedOnetoManyXMLtoSQL.zip?version=1&amp;modificationDate=1685537268658&amp;cacheVersion=1&amp;api=v2" data-linked-resource-id="2232194901" data-linked-resource-type="attachment" data-linked-resource-container-id="2232194884" data-linked-resource-default-alias="NestedOnetoManyXMLtoSQL.zip" data-mime-type="application/zip" data-has-thumbnail="true" data-linked-resource-version="1" data-media-id="5e63ec93-a3a3-40e4-8af6-91feb3a7f6a7" data-media-type="file"><img src="attachments/thumbnails/2232194884/2232194901" height="250"/></a></span></p><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194884/2232194898.sql">SQLScript.sql</a> (application/octet-stream)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194884/2232194901.zip">NestedOnetoManyXMLtoSQL.zip</a> (application/zip)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194884/2232194904.png">image-20230315-151629.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194884/2232194907.png">image-20230315-151602.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194884/2232194910.png">image-20230315-151518.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194884/2232194913.png">image-20230315-151439.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

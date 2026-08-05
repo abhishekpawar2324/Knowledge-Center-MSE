@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Troubleshooting: Unable to Start IMM Agent (Error 503)</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Troubleshooting: Unable to Start IMM Agent (Error 503)
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Balaji Karagir</span> on 29,Jan, 2025
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><strong>Problem:</strong> When starting the IMM Agent, the following error messages are displayed in the IMM_agent.log:</p><div class="confluence-information-macro confluence-information-macro-information"><span class="aui-icon aui-icon-small aui-iconfont-info confluence-information-macro-icon"></span><div class="confluence-information-macro-body"><p>2025-01-15 17:01:22:122 error AxiosAdapter: interceptor(): status:Request failed with status code 503</p><p>2025-01-15 17:01:22:122 info Failed to connect using HTTPS, falling back to HTTP...</p><p>2025-01-15 17:01:22:122 error AxiosAdapter: interceptor(): status:Request failed with status code 503</p><p>2025-01-15 17:01:22:122 error Failed to retrieve connection details.</p><p>2025-01-15 17:01:22:122 error Error to start agent:Failed to configure connection</p></div></div><p>The error <strong>&quot;status: Request failed with status code 503&quot;</strong> typically indicates that the server is temporarily unavailable.</p><p /><p><strong>Affected Versions:</strong> Magic XPI 4.14.1</p><p><strong>Cause:</strong> The root cause of this error was traced to incorrect proxy settings on the Windows server hosting the IMM Agent. Proxy configurations were preventing the agent from establishing a proper connection.</p><p><strong>Solution: </strong>To resolve this issue, follow the steps below:</p><p><strong>1 Review Proxy Settings:</strong></p><p>o   Check and update the proxy settings on the Windows server to ensure they are correctly configured.</p><p>o   If a proxy is not needed, remove any unnecessary proxy settings.</p><p> </p><ol start="2"><li><p><strong>Verify Network Stability:</strong></p><ul><li><p>Ensure the server running the IMM Agent has a stable and active network connection.</p></li><li><p>Use commands such as <strong>ping</strong> or <strong>traceroute</strong> to confirm connectivity to the required endpoints.</p></li></ul></li><li><p><strong>Check Kubernetes Pod Status:</strong></p><ul><li><p>Run the following command to check the status of the pods:</p></li><li><div class="code panel pdl" style="border-width: 1px;"><div class="codeContent panelContent pdl">
+<pre class="syntaxhighlighter-pre" data-syntaxhighlighter-params="brush: java; gutter: false; theme: Confluence" data-theme="Confluence">microk8s kubectl get pods -A</pre>
+</div></div></li></ul></li></ol><ol start="4"><li><p><strong>View IMM Cluster Details:</strong></p></li></ol><p>o   Execute the following command to verify cluster information:</p><div class="code panel pdl" style="border-width: 1px;"><div class="codeContent panelContent pdl">
+<pre class="syntaxhighlighter-pre" data-syntaxhighlighter-params="brush: java; gutter: false; theme: Confluence" data-theme="Confluence">   kubectl cluster-info</pre>
+</div></div><p> </p><p><strong>Verification:</strong> After making the above changes, restart the IMM Agent and monitor the IMM_agent.log to ensure no further errors are logged. The agent should now start successfully.</p><p><strong>Conclusion:</strong> The &quot;503&quot; error was caused by improper proxy settings that disrupted the agent’s connectivity. By verifying and correcting the network configuration, you can resolve this issue and ensure smooth operation of the IMM Agent.</p><p />
+                    </div>
+
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:23</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

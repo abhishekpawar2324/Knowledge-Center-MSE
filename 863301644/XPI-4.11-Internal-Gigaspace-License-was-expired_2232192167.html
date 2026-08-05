@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : XPI 4.11 Internal Gigaspace License was expired</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : XPI 4.11 Internal Gigaspace License was expired
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><style>[data-colorid=o915f1lh80]{color:#222222} html[data-color-mode=dark] [data-colorid=o915f1lh80]{color:#dddddd}</style><span data-colorid="o915f1lh80"><strong>-XPI 4.11 Internal Gigaspaces License&nbsp;was expired -</strong></span><br />Symptoms: Gigaspaces components have stopped working as of April 1<sup>st</sup>, 2020 in your Magic XPI 4.11 environment. (e.g. you see your monitor screen look like this:<br /><span class="confluence-embedded-file-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image" height="109" width="307" loading="lazy" src="attachments/2232192167/2232192193.png?width=307" data-image-src="attachments/2232192167/2232192193.png" data-unresolved-comment-count="0" data-linked-resource-id="2232192193" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="worddav50f2975483b62640595465aef966aa0b.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192167" data-linked-resource-container-version="1" data-media-id="46424aa1-2b08-4950-a062-4fd74830f9f8" data-media-type="file" /></span> <br class="atl-forced-newline" /><strong><em>The problem observed is confined to XPI 4.11, which was removed from general availability in favour of 4.12</em></strong>.<br />Magic Xpi 4.11 Gigaspaces license was valid through 31 March 2020. Magic Xpi 4.11 uses the 12.3 version of Gigaspaces (GS), which is common to the 4.12 release, which has an updated GS license. We suggest that you either migrate to Magic xpi 4.12, or use the license file, as provided below. <br class="atl-forced-newline" /><strong><span style="text-decoration: line-through;">Upgrading the license file in 4.11</span></strong> <br class="atl-forced-newline" />*<strong>Note</strong>{*}: <em>Please do this in a Non-Production environment and test, then proceed with the change in production. The Gigaspaces service should be stopped first, so it will require a brief window of downtime</em>.<br />The license file goes by the name <strong>&quot;xap-license.txt&quot;</strong> under the<br /><strong>%InstallationDir%/Runtime/Gigaspaces</strong> folder.<br />Edit the file in a text editor and replace the text, starting with the word &quot;Product&hellip;&quot; with one of the two options below (both are valid) <br class="atl-forced-newline" />Product=XAP;Version=12.3;Type=PREMIUM;Customer=Magic_Software_Magic_xpi_PROD;Expiration=2021-Aug-31;Hash=OPNQSPNYwOkAajW3X1PI <br class="atl-forced-newline" /><strong>OR</strong> <br class="atl-forced-newline" />Product=XAP;Version=12.3;Type=PREMIUM;Customer=Magic_Software_PROD;Expiration=2020-Dec-31;Hash=PIAOIKQNwNxNbVqDNTFI <br class="atl-forced-newline" />See the screenshot below.<br /><span class="confluence-embedded-file-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image" height="147" width="602" loading="lazy" src="attachments/2232192167/2232192190.png?width=602" data-image-src="attachments/2232192167/2232192190.png" data-unresolved-comment-count="0" data-linked-resource-id="2232192190" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="worddav8b65422349a29a13c7380685adb6f94e.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192167" data-linked-resource-container-version="1" data-media-id="36c3cc0b-e652-44eb-9cfa-1c5c157e94db" data-media-type="file" /></span><br />**<strong>You need to restart the services after the changes so that Gigaspaces will read the new license file and proceed to deploy the Gigaspaces</strong> <strong>components. Once the services are restarted, you should once again see the three green status bars indicating that everything is running correctly.</strong><br /><span class="confluence-embedded-file-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image" height="121" width="353" loading="lazy" src="attachments/2232192167/2232192187.png?width=353" data-image-src="attachments/2232192167/2232192187.png" data-unresolved-comment-count="0" data-linked-resource-id="2232192187" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="worddav2b5321083d8a11933376fb926684efa5.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192167" data-linked-resource-container-version="1" data-media-id="4eb815ae-47bf-48b0-8231-aba883e8cef0" data-media-type="file" /></span></p><p>For reference:-<br /><a href="https://docs.gigaspaces.com/xap/12.3/started/license-key.html" class="external-link" rel="nofollow">https://docs.gigaspaces.com/xap/12.3/started/license-key.html</a> <br class="atl-forced-newline" /><strong>Error for Reference: -</strong> <br class="atl-forced-newline" />&quot;2020-04-16 10:08:38,446 GSA SEVERE [com.gigaspaces.license] - Invalid License [Product=XAP;Version=12.3;Type=PREMIUM;Customer=Magic_Software_Magic_xpi_PROD;Expiration=2020-Mar-31;Hash=NQPPPOmOXQqWPMNOjV7N] - License has expired <br class="atl-forced-newline" />2020-04-16 10:08:38,446 GSA SEVERE [com.gigaspaces.grid.gsa] - Register to LifeCycleManager; Caused by: com.gigaspaces.license.LicenseException: Invalid License [Product=XAP;Version=12.3;Type=PREMIUM;Customer=Magic_Software_Magic_xpi_PROD;Expiration=2020-Mar-31;Hash=NQPPPOmOXQqWPMNOjV7N] - License has expired&quot;</p>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192167/2232192187.png">worddav2b5321083d8a11933376fb926684efa5.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192167/2232192190.png">worddav8b65422349a29a13c7380685adb6f94e.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192167/2232192193.png">worddav50f2975483b62640595465aef966aa0b.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:21</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Running XPI Server from 64-bit to 32-bit</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Running XPI Server from 64-bit to 32-bit
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><strong><span style="text-decoration: underline;">Running XPI server from 64-bit to 32-bit vice-versa</span></strong>
+<br class="atl-forced-newline"/>
+The Magic XPI server now natively run as a 64-bit process providing better performance and larger memory capacity.<br/>
+Apart the studio is still running under 32-bit version.
+<br class="atl-forced-newline"/>
+Under &lt;Installation directory&gt;\Runtime it contains two sub folders called 'Magic xpa' (32-bit) &amp; 'Magic xpa x64' (64-bit) contain the relevant dlls.
+<br class="atl-forced-newline"/>
+So to debug your engine under 32-bit version you need to apply following changes:</p>
+<ul class="alternate">
+	<li>Under ...\Runtime\Gigaspaces-xpi\config\gsa\mgxpi.xml location<br/>
+<span class="confluence-embedded-file-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image" height="80" width="661" loading="lazy" src="attachments/2232192440/2232192458.png?width=661" data-image-src="attachments/2232192440/2232192458.png" data-unresolved-comment-count="0" data-linked-resource-id="2232192458" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="worddav5c9c2da3b01e62d872c2d50febff682c.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192440" data-linked-resource-container-version="1" data-media-id="a3579618-fc56-4a6d-87a6-1749cd80134a" data-media-type="file"></span><br/>
+Remove the <span style="text-decoration: underline;">x64</span> so that it reads as follows:</li>
+</ul>
+<ul>
+	<li>windows=&quot;${com.gs.home}..\Magic xpa\MgxpiServer.EXE&quot; unix=&quot;MAGIC_XPI_HOME_DIR/bin/mgxpiserver&quot;&gt;</li>
+</ul>
+
+
+<p><br class="atl-forced-newline"/>
+<span class="confluence-embedded-file-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image" height="73" width="661" loading="lazy" src="attachments/2232192440/2232192455.png?width=661" data-image-src="attachments/2232192440/2232192455.png" data-unresolved-comment-count="0" data-linked-resource-id="2232192455" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="worddav92a29a8844cc7b30160846e13c97ce02.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192440" data-linked-resource-container-version="1" data-media-id="01d44768-d0b2-4b2d-91ed-4fcf94dc082e" data-media-type="file"></span>
+<br class="atl-forced-newline"/>
+After applying the changes restart the server.
+<br class="atl-forced-newline"/>
+<br class="atl-forced-newline"/>
+<br class="atl-forced-newline"/>
+<br class="atl-forced-newline"/>
+<br class="atl-forced-newline"/>
+<br class="atl-forced-newline"/>
+-Support<br/>
+Anand</p>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192440/2232192455.png">worddav92a29a8844cc7b30160846e13c97ce02.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192440/2232192458.png">worddav5c9c2da3b01e62d872c2d50febff682c.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:21</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Use of Multiple Statements in Single Datamapper Step</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="2232195169.html">Creation Of Symmetric/Assymetric Keys in MSSQL</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="2232195183.html">Working with SYm/Asym Keys in XPI using Stored Procedure XPA / XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Use of Multiple Statements in Single Datamapper Step
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p>Customer would like to Execute three individual Statements in a single mapper step.</p><p>To Execute below are the following ways:<br/></p><div class="code panel pdl" style="border-width: 1px;"><div class="codeContent panelContent pdl">
+<pre class="syntaxhighlighter-pre" data-syntaxhighlighter-params="brush: java; gutter: false; theme: Confluence" data-theme="Confluence">==Way 1
+
+CREATE PROCEDURE dbo.DecryptContacts
+    @skey NVARCHAR(100)
+AS
+BEGIN
+    DECLARE @sql NVARCHAR(MAX);
+
+    SET @sql = &#39;OPEN SYMMETRIC KEY &#39; + QUOTENAME(@skey) + &#39; DECRYPTION BY CERTIFICATE MagicDBBusinessAlfaCertif&#39;
+    SET @sql = @sql + &#39; SELECT ID, First_Name, CONVERT(VARCHAR(100), DECRYPTBYKEY(Encrypted_Last_Name)) AS Last_Name, Date_Created FROM Contacts1;&#39;
+    SET @sql = @sql + &#39; CLOSE SYMMETRIC KEY &#39; + QUOTENAME(@skey) + &#39;;&#39;
+
+    EXEC sp_executesql @sql;
+END
+
+-- drop procedure DecryptContacts
+--To execute--
+EXEC dbo.DecryptContacts @skey = &#39;Sym_Key_Conns&#39;;</pre>
+</div></div><div class="code panel pdl" style="border-width: 1px;"><div class="codeContent panelContent pdl">
+<pre class="syntaxhighlighter-pre" data-syntaxhighlighter-params="brush: java; gutter: false; theme: Confluence" data-theme="Confluence">Way 2
+==
+
+CREATE PROCEDURE RunQuery
+    @query NVARCHAR(MAX)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    EXEC sp_executesql @query;
+END
+===
+
+EXEC RunQuery &#39;OPEN SYMMETRIC KEY Sym_Key_Conns DECRYPTION BY CERTIFICATE MagicDBBusinessAlfaCertif;
+SELECT ID, First_Name, CONVERT(VARCHAR(100), DECRYPTBYKEY(Encrypted_Last_Name)) AS Last_Name, Date_Created FROM Contacts1;
+CLOSE SYMMETRIC KEY Sym_Key_Conns;&#39;;
+
+===</pre>
+</div></div><div class="code panel pdl" style="border-width: 1px;"><div class="codeContent panelContent pdl">
+<pre class="syntaxhighlighter-pre" data-syntaxhighlighter-params="brush: java; gutter: false; theme: Confluence" data-theme="Confluence">Way 3 -EXEC sp_executesql N&#39;OPEN SYMMETRIC KEY Sym_Key_Conns DECRYPTION BY CERTIFICATE MagicDBBusinessAlfaCertif;
+SELECT ID, First_Name, CONVERT(VARCHAR(100), DECRYPTBYKEY(Encrypted_Last_Name)) AS Last_Name, Date_Created FROM Contacts1;
+CLOSE SYMMETRIC KEY Sym_Key_Conns;&#39;</pre>
+</div></div><p class="media-group"><span class="confluence-embedded-file-wrapper"><a class="confluence-embedded-file" href="attachments/2232195214/2232195228" data-nice-type="null" data-file-src="/wiki/download/attachments/2232195214/Invalid%20file%20id%20-%20dd934a62-2d4a-4dd4-98a9-43d5f86d78c8?version=1&amp;modificationDate=1685537279389&amp;cacheVersion=1&amp;api=v2" data-linked-resource-id="2232195228" data-linked-resource-type="attachment" data-linked-resource-container-id="2232195214" data-linked-resource-default-alias="Invalid file id - dd934a62-2d4a-4dd4-98a9-43d5f86d78c8" data-mime-type="application/octet-stream" data-has-thumbnail="true" data-linked-resource-version="1" data-media-type="file"><img src="attachments/thumbnails/2232195214/2232195228" height="250"/></a></span><span class="confluence-embedded-file-wrapper"><a class="confluence-embedded-file" href="attachments/2232195214/2232195231.txt" data-nice-type="Text File" data-file-src="/wiki/download/attachments/2232195214/script.txt?version=1&amp;modificationDate=1685537279562&amp;cacheVersion=1&amp;api=v2" data-linked-resource-id="2232195231" data-linked-resource-type="attachment" data-linked-resource-container-id="2232195214" data-linked-resource-default-alias="script.txt" data-mime-type="text/plain" data-has-thumbnail="true" data-linked-resource-version="1" data-media-id="44e7e3f5-dbd1-4fe0-a06a-58659399b47a" data-media-type="file"><img src="attachments/thumbnails/2232195214/2232195231" height="250"/></a></span></p><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232195214/2232195228">Invalid file id - dd934a62-2d4a-4dd4-98a9-43d5f86d78c8</a> (application/octet-stream)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232195214/2232195231.txt">script.txt</a> (text/plain)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

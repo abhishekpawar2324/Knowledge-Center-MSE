@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Scheduler Service: The scheduler service is ignored if more than 231 entries are created in Time(s) to Execute of Scheduler.</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Scheduler Service: The scheduler service is ignored if more than 231 entries are created in Time(s) to Execute of Scheduler.
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p>One of the customers reported the following issue with the Scheduler utility.</p><p>Suppose more than 231 entries are created for the execution time of the Schedular service. In that case, nothing will be displayed on the scheduler tab of Magic Monitor, and the schedular service gets ignored. See the below image,</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194378/2232194404.png?width=680" data-image-src="attachments/2232194378/2232194404.png" data-height="264" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232194404" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20221018-083518.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194378" data-linked-resource-container-version="1" data-media-id="523a8157-af75-45dd-bdbc-db4e9af943fb" data-media-type="file"></span><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194378/2232194401.png?width=680" data-image-src="attachments/2232194378/2232194401.png" data-height="169" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232194401" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20221018-083621.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194378" data-linked-resource-container-version="1" data-media-id="efd0013c-7dea-4f43-840f-f3358f403659" data-media-type="file"></span><p /><p>If the number of entries for execution time is small, then there is no problem. See the below image,</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194378/2232194398.png?width=680" data-image-src="attachments/2232194378/2232194398.png" data-height="261" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232194398" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20221018-083646.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194378" data-linked-resource-container-version="1" data-media-id="44ab0cc3-0231-4292-a118-1dc9916e9cc1" data-media-type="file"></span><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194378/2232194395.png?width=680" data-image-src="attachments/2232194378/2232194395.png" data-height="160" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232194395" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20221018-083659.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194378" data-linked-resource-container-version="1" data-media-id="738fc326-8c85-4bd2-9d98-4487a643c305" data-media-type="file"></span><p /><p>For this issue, we have a bug reported in which an isolated fix is provided on top of XPI 4.13.2, 4.13.3 and 4.13.4</p><p>(
+
+    
+
+            
+
+
+
+
+    <span class="confluence-jim-macro jira-issue resolved" data-jira-key="MXPI-25749" >
+                <a href="https://magicsoftware2.atlassian.net/browse/MXPI-25749" class="jira-issue-key"><img class="icon" src="https://magicsoftware2.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/10303?size=medium" />MXPI-25749</a>
+                    -
+            <span class="summary">Isolated fix - Scheduler Service: The scheduler service is ignored if more than 231 entries are created in Time(s) to Execute of Scheduler.</span>
+                                                            <span class="aui-lozenge aui-lozenge-subtle aui-lozenge-success jira-macro-single-issue-export-pdf">Closed</span>
+            </span>
+ )</p><p /><p>After applying the isolated fix, we can see both the schedulers (Scheduler_1 from flow1 and Scheduler_2 from flow2) are listed inside the scheduler tab of the magic monitor display.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194378/2232194392.png?width=680" data-image-src="attachments/2232194378/2232194392.png" data-height="161" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232194392" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20221018-083741.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194378" data-linked-resource-container-version="1" data-media-id="69aff2b9-fdc7-4312-984f-8a42a5bdc5e1" data-media-type="file"></span><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194378/2232194392.png">image-20221018-083741.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194378/2232194395.png">image-20221018-083659.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194378/2232194398.png">image-20221018-083646.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194378/2232194401.png">image-20221018-083621.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194378/2232194404.png">image-20221018-083518.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:21</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

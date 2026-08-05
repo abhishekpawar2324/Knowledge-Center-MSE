@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : How to start Giga-spaces when inconsistent</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : How to start Giga-spaces when inconsistent
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p>There could be a scenario where the <strong>mgxpi-gs, mginfo-gs</strong> will start and <strong>mirror-gs</strong> will start up without error.</p><p>If you try to stop and start the GSA again, sometimes the <strong>mgxpi-gs, mginfo-gs</strong> will start up without error, but the <strong>mirror-gs</strong> will not start up. (refer to the below screenshot)</p><p> </p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="566" loading="lazy" src="attachments/2232194445/2232194461.png?width=566" data-image-src="attachments/2232194445/2232194461.png" data-height="218" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232194461" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20221103-141455.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194445" data-linked-resource-container-version="1" data-media-id="f673f0cd-b276-4a5b-bb08-62e7f16b90fc" data-media-type="file"></span><p /><p /><p>If you try to stop and start the GSA again, sometimes the <strong>mgxpi-gs</strong> will start up without error, but the <strong>mginfo-gs</strong> and the <strong>mirror-gs</strong> will not start up.</p><p> </p><p> <strong>And you are getting the following message in log :</strong></p><p /><p>2022-04-26 11:56:04,990 GSM SEVERE [org.jini.rio.tools.webster] - Failed to write file [mgxpi-gs.jar]; Caused by: <a href="https://java.io/" class="external-link" rel="nofollow">java.io</a>.IOException: Renaming C:\MAGICX~1.13\Runtime\Gigaspaces\deploy\mgxpi-gs823891104509795521 to C:\MAGICX~1.13\Runtime\Gigaspaces\deploy\mgxpi-gs failed.</p><p>2022-04-26 12:03:26,762 SEVERE [com.magicsoftware.xpi.server.spacebridge.spaceservices.Admin] - ; Caused by: org.openspaces.admin.AdminException: Failed building deployment of [C:\MAGICX~1.13\Runtime\.\java\lib\mgmirror-gs.jar]</p><p><strong> </strong></p><p>For this we have to check/do the following :</p><p>The error appears to be an access rights issue. The user needs to be able to write to the installation directory.</p><p>Check the following:</p><p /><ol><li><p>Please start the services with command line.</p></li></ol><p>     Therefore open a cmd with the administrator and navigate to                  </p><p>     &lt;InstallationDirectoryxpi&gt;\Runtime\Gigaspaces-xpi\bin and start the &quot;magicxpi-gs-agent.bat&quot; from cmd    </p><p>      then try.</p><p /><ol><li><p>In addition,</p></li></ol><p>    Magic xpi requires 8dot3name support when it is installed in a location that contains spaces. Make sure                                  </p><p>    that 8dot3name is supported. If 8dot3name is not enabled, you should run the following command as an   </p><p>    administrator:</p><p>     fsutil 8dot3name set &lt;required installation drive&gt; 0<br/>     For example, to enable 8dot3name on the C drive:<br/>     fsutil 8dot3name set c: 0</p><p /><p /><p>You may need to restart your machine for the settings to take effect.</p><p>3.1   Also add JRE_HOME path to JAVA_HOME.<br/>        Example:<br/>        set JAVA_HOME=%MAGIC_XPI_HOME%\Runtime\jdk8x64\jre</p><p>3.2   Please test the manual running service by running &quot;runwebmonitor.bat&quot; installed Magic XPI using    </p><p>        Administrator command line.<br/>        %Installation dir%\Runtime\RTView\magicmonitor\runwebmonitor.bat and then try to start a project   </p><p>         from the monitor</p><ol><li><p>Also, make sure the machine has sufficient CPU and RAM as per the minimum requirement for production.</p></li></ol><p> </p><p> </p><p><strong>And still, if it is not working and getting the following  :</strong></p><p>2022-04-28 08:36:42,001 GSM SEVERE [org.jini.rio.tools.webster] - Failed to write file [mginfo-gs.jar]; Caused by: java.io.IOException: Renaming C:\MAGICX~1.13\Runtime\Gigaspaces\deploy\mginfo-gs3495666704000217540 to C:\MAGICX~1.13\Runtime\Gigaspaces\deploy\mginfo-gs failed.</p><p> </p><p>Then you have to remove Antivirus Software from your machine and check if it works.</p><p> </p><p> </p><p>·        Please make sure that the antivirus was not in a place where the XPI server is installed</p><p> </p><p>·        Please check if the Discovery/Webster/LRMI port is not used by any other processes by using the following command:</p><p>[netstat command(&quot;netstat -ano -p tcp&quot;).]</p><p> </p><p>·        Please disable the antivirus so that it will not arise any issues while deploying processing units(for eg. Magic space, Magic info, Magic mirror)</p><p> </p><p>Note: The root cause was the antivirus blocking the deployment and permanently disabling the antivirus will resolve the problem</p><p><strong> </strong></p><p> </p>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194445/2232194461.png">image-20221103-141455.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

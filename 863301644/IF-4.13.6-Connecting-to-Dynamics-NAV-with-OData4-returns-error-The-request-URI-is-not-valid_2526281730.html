@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : IF 4.13.6-Connecting to Dynamics NAV with OData4 returns error The request URI is not valid</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : IF 4.13.6-Connecting to Dynamics NAV with OData4 returns error The request URI is not valid
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Prachi Palande</span> on 02,Apr, 2024
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p /><p><strong>Fixed version: XPI 4.14.1</strong></p><p /><p><strong>Problem Description:</strong></p><p>The problem is that the WSItemColorTransfer Expand object does not appear correctly in the output XML.</p><p>Error observed while connecting to Dynamics NAV with OData connector.<br/>When attempting to connect to Dynamics NAV with OData4 using the URL <a href="http://progress-mt-t01.office.rbc.ch:7048/PROGRESS_DB04_NAS_WS/ODataV4/Company('Intersport')/WSItemColorTransfer" class="external-link" rel="nofollow">http://progress-mt-t01.office.rbc.ch:7048/PROGRESS_DB04_NAS_WS/ODataV4/Company('Intersport')/WSItemColorTransfer</a>, the metadata cannot be loaded inside the resource. <br/>When adjusting the URL to <a href="http://progress-mt-t01.office.rbc.ch:7048/PROGRESS_DB04_NAS_WS/ODataV4/$metadata#Company('Intersport')/WSItemColorTransfer" class="external-link" rel="nofollow">http://progress-mt-t01.office.rbc.ch:7048/PROGRESS_DB04_NAS_WS/ODataV4/$metadata#Company('Intersport')/WSItemColorTransfer</a>, the metadata can be loaded inside the resource, but attempting to get data from the system results in an error indicating that the URL is not well-formed.</p><p>In logs, we can observe errors as follow:</p><p>[2023-04-27 15:30:40,776] [DEBUG] [Thread-7] [STEP: <em>:</em>:1] [FSID: 1:UNKNOWN] [com.magicsoftware.sdk.odataConnector.ODataImpl.setHeaders : -1] attempt to add headers. <br/>[2023-04-27 15:30:41,154] [ERROR] [Thread-7] [STEP: <em>:</em>:1] [FSID: 1:UNKNOWN] [com.magicsoftware.sdk.odataConnector.EDMManager.loadODataResource : -1] failed to loadODataResources. resourceName<a href="http://progress-mt-t01.office.rbc.ch:7048/PROGRESS_DB04_NAS_WS/ODataV4/Company('Intersport')/WSItemColorTransfer" class="external-link" rel="nofollow">http://progress-mt-t01.office.rbc.ch:7048/PROGRESS_DB04_NAS_WS/ODataV4/Company('Intersport')/WSItemColorTransfer</a> headers []<br/>org.apache.olingo.client.api.communication.ODataClientErrorException: (404) The request URI is not valid. Since the segment 'WSItemColorTransfer' refers to a collection, this must be the last segment in the request URI or it must be followed by an function or action that can be bound to it otherwise all intermediate segments must refer to a single resource. [HTTP/1.1 404 The request URI is not valid. Since the segment 'WSItemColorTransfer' refers to a collection, this must be the last segment in the request URI or it must be followed by an function or action that can be bound to it otherwise all intermediate segments must refer to a single resource.]<br/>at org.apache.olingo.client.core.communication.header.ODataErrorResponseChecker.checkResponse(ODataErrorResponseChecker.java:76)<br/>at org.apache.olingo.client.core.communication.request.AbstractRequest.checkResponse(AbstractRequest.java:54)<br/>at org.apache.olingo.client.core.communication.request.AbstractODataRequest.doExecute(AbstractODataRequest.java:310)<br/>at org.apache.olingo.client.core.communication.request.retrieve.XMLMetadataRequestImpl$SingleXMLMetadatRequestImpl.execute(XMLMetadataRequestImpl.java:151)<br/>at org.apache.olingo.client.core.communication.request.retrieve.XMLMetadataRequestImpl.execute(XMLMetadataRequestImpl.java:65)<br/>at org.apache.olingo.client.core.communication.request.retrieve.XMLMetadataRequestImpl.execute(XMLMetadataRequestImpl.java:40)<br/>at org.apache.olingo.client.core.communication.request.retrieve.EdmMetadataRequestImpl.getPrivateResponse(EdmMetadataRequestImpl.java:63)<br/>at org.apache.olingo.client.core.communication.request.retrieve.EdmMetadataRequestImpl.execute(EdmMetadataRequestImpl.java:77)<br/>at org.apache.olingo.client.core.communication.request.retrieve.EdmMetadataRequestImpl.execute(EdmMetadataRequestImpl.java:35)<br/>at com.magicsoftware.sdk.odataConnector.EDMManager.getEdmODataProvider(Unknown Source)<br/>at com.magicsoftware.sdk.odataConnector.EDMManager.loadODataResource(Unknown Source)<br/>at com.magicsoftware.sdk.odataConnector.step.ODATAstepAdaptor.invoke(Unknown Source)</p><p /><p><strong>Instruction to use the fix:</strong></p><p>Place the files from the attached zip at following location:</p><p>·        \Runtime\addon_connectors\OData\ui\lib - <strong>ja-JP folder, en folder, OData.dll</strong>.</p><p>·        \Runtime\addon_connectors\OData\runtime\java\lib- <strong>mgxpi-odataclient.jar</strong>.</p><p>·        \Runtime\addon_connectors\OData\ - <strong>settings.dat, metadata.xml.</strong></p><p>Note: Please stop all the projects and services before applying the fix.<br/>Rename the work, deploy, and logs folder from &lt;installation folder&gt;\Runtime\Gigaspaces folder<br/>then start the services.</p><p class="media-group"><span class="confluence-embedded-file-wrapper"><a class="confluence-embedded-file" href="attachments/2526281730/2526445570.zip" data-nice-type="Zip Archive" data-file-src="/wiki/download/attachments/2526281730/4.13.6.zip?version=1&amp;modificationDate=1712062778402&amp;cacheVersion=1&amp;api=v2" data-linked-resource-id="2526445570" data-linked-resource-type="attachment" data-linked-resource-container-id="2526281730" data-linked-resource-default-alias="4.13.6.zip" data-mime-type="application/zip" data-has-thumbnail="true" data-linked-resource-version="1" data-media-id="046b307f-beaa-458c-81e3-037c183c4b72" data-media-type="file"><img src="attachments/thumbnails/2526281730/2526445570" height="250"/></a></span></p><p> </p>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2526281730/2526445570.zip">4.13.6.zip</a> (application/zip)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

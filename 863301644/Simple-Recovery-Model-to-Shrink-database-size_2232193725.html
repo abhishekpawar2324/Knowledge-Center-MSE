@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Simple Recovery Model to Shrink database size</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Simple Recovery Model to Shrink database size
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p>If we go into the XPI database,</p><p>unnecessary space is used when having the database recovery model is full.<br/>In the background, it generates a database size huge.</p><p>XPI Database in datasource.xml-</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232193725/2232193751.png?width=680" data-image-src="attachments/2232193725/2232193751.png" data-height="206" data-width="513" data-unresolved-comment-count="0" data-linked-resource-id="2232193751" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20220623-040110.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232193725" data-linked-resource-container-version="1" data-media-id="527b857a-9333-4ee0-a3f5-b45e4bc0fb51" data-media-type="file"></span><p>When you go to MS SQL Server Management you can see the size of the XPI Database.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232193725/2232193748.png?width=680" data-image-src="attachments/2232193725/2232193748.png" data-height="246" data-width="452" data-unresolved-comment-count="0" data-linked-resource-id="2232193748" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20220623-040133.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232193725" data-linked-resource-container-version="1" data-media-id="6d5567f7-3e0c-4382-9764-64c5c61afd30" data-media-type="file"></span><p /><p>Now Using the simple recovery model keeps less database size and increases the performance somewhat.</p><p><em><strong>USE MGXPI413</strong></em></p><p><em><strong>EXEC sp_helpdb @dbname= 'MGXPI413'</strong></em></p><p><em><strong>ALTER DATABASE MGXPI413 SET RECOVERY Simple</strong></em></p><p><em><strong>DBCC SHRINKFILE (MGXPI413_log , 1)</strong></em></p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232193725/2232193745.png?width=680" data-image-src="attachments/2232193725/2232193745.png" data-height="285" data-width="539" data-unresolved-comment-count="0" data-linked-resource-id="2232193745" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20220623-040237.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232193725" data-linked-resource-container-version="1" data-media-id="5a309a16-32d8-41e3-b9b3-09b9139b6a31" data-media-type="file"></span><p /><p>After performing the simple recovery model make sure to set the Database FileType - Rows Data and LOG to Unlimited of its Maximum File Size.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232193725/2232193742.png?width=680" data-image-src="attachments/2232193725/2232193742.png" data-height="281" data-width="362" data-unresolved-comment-count="0" data-linked-resource-id="2232193742" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20220623-040400.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232193725" data-linked-resource-container-version="1" data-media-id="753ea984-84b8-4d9a-a665-b3de0103bd72" data-media-type="file"></span><p /><p>After applying the Simple Recovery Model We get the result of Database size as follows-</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232193725/2232193739.png?width=680" data-image-src="attachments/2232193725/2232193739.png" data-height="260" data-width="539" data-unresolved-comment-count="0" data-linked-resource-id="2232193739" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20220623-040527.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232193725" data-linked-resource-container-version="1" data-media-id="9216eb23-4f65-48cf-8dd7-bc5e162ba5cf" data-media-type="file"></span><p /><p>So according to the internal database name, we can write down the query or create a template.</p>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232193725/2232193739.png">image-20220623-040527.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232193725/2232193742.png">image-20220623-040400.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232193725/2232193745.png">image-20220623-040237.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232193725/2232193748.png">image-20220623-040133.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232193725/2232193751.png">image-20220623-040110.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:21</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

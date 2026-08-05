@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Unable to Debug the project having scheduler as a trigger from the studio, if kept the &#39;Scheduler window&#39; open.</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Unable to Debug the project having scheduler as a trigger from the studio, if kept the &#39;Scheduler window&#39; open.
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><strong><u>Problem Description:</u></strong></p><p>In XPI 4.13.1 version</p><p>Unable to debug the project having scheduler as a trigger, if kept the 'Scheduler window' open while debugging it from the studio.</p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232193467/2232193487.png" data-image-src="attachments/2232193467/2232193487.png" data-height="531" data-width="1153" data-unresolved-comment-count="0" data-linked-resource-id="2232193487" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="Capture 1.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232193467" data-linked-resource-container-version="1" data-media-id="586aea48-4ad9-49ec-b814-c5c083bb8750" data-media-type="file"></span><p /><p>As the debugger stops working and throws an error like below:</p><ul><li><p>Retrieving data from the space failed. Check the connectivity to the Space or your environment configuration.</p></li></ul><ul><li><p>An error occurred during the Start process. The Debug session will terminate. Check the logs for more information.</p></li></ul><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232193467/2232193484.png" data-image-src="attachments/2232193467/2232193484.png" data-height="434" data-width="843" data-unresolved-comment-count="0" data-linked-resource-id="2232193484" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="Capture 2.PNG" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232193467" data-linked-resource-container-version="1" data-media-id="323d13a9-b881-4cc2-92e8-ad45345bddf0" data-media-type="file"></span><p><strong><u>Solution:</u></strong></p><p>After this, customer is not able to debug any project from the studio, even if the project does not have a scheduler in it.</p><p>Restarting the debugger service as well as the whole machine did not resolve the issue.</p><p><strong><u>Steps to solve the issue:</u></strong></p><ul><li><p>Debug the project from the studio.</p></li><li><p>Close the 'Scheduler window' which is still open.</p></li></ul><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232193467/2232193481.png" data-image-src="attachments/2232193467/2232193481.png" data-height="434" data-width="843" data-unresolved-comment-count="0" data-linked-resource-id="2232193481" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="Capture 3.PNG" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232193467" data-linked-resource-container-version="1" data-media-id="1884b51a-ea74-4431-966f-79d2873a7b36" data-media-type="file"></span><ul><li><p>Click Ok on all error windows and wait till the project gets stopped.</p></li></ul><ul><li><p>Now debug the project again, no error will be observed and will be executed properly.</p></li></ul>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232193467/2232193481.png">Capture 3.PNG</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232193467/2232193484.png">Capture 2.PNG</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232193467/2232193487.png">Capture 1.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:21</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

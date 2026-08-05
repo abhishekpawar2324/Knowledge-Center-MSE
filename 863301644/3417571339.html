@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Asterisk (*) Omitted When Reading Environment Variables in Magic XPI</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Asterisk (*) Omitted When Reading Environment Variables in Magic XPI
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Abhishek Pawar</span> on 07,May, 2025
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><strong>Issue Description</strong>:<br/>When reading an environment variable that contains an asterisk (&quot;*&quot;) in a &quot;Flow Data&quot; component, the asterisk is omitted from the result. This causes issues when using GLOB patterns as the missing asterisk renders the result unusable.</p><p>For example:</p><ul><li><p>Environment Variable: temp\*.xml</p></li><li><p>After reading into a Flow Variable: temp\.xml</p></li></ul><p> </p><p> </p><p><strong>Case Number: 00113547</strong></p><p><strong> </strong></p><p><strong> </strong></p><hr/><p><strong>Expected Behavior</strong>:<br/>The asterisk (*) character should be properly retained when reading the environment variable, as it is not listed among the unsupported characters in Magic xpi documentation. The variable should remain as temp\*.xml or a valid GLOB pattern.</p><hr/><p><strong>Problem</strong>:<br/>The asterisk is omitted from the environment variable when read into the flow variable. This could impact the use of GLOB patterns, especially in use cases where pattern matching is required.</p><hr/><p><strong> </strong></p><p><strong> </strong></p><p><strong> </strong></p><p><strong> </strong></p><p><strong>Workaround</strong>:<br/>To temporarily address the issue, the following solutions have been suggested:</p><ul><li><p>Use a double asterisk ** at the beginning of the pattern, i.e., *temp\*.xml to ensure that the asterisk is preserved.</p></li><li><p>Alternatively, using temp\**.xml results in temp\*.xml, retaining the asterisk.</p></li></ul><p /><p> </p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250507-142634.png" width="602" loading="lazy" src="attachments/3417571339/3417866259.png?width=602" data-image-src="attachments/3417571339/3417866259.png" data-height="205" data-width="602" data-unresolved-comment-count="0" data-linked-resource-id="3417866259" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250507-142634.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3417571339" data-linked-resource-container-version="1" data-media-id="e28e4c87-e565-476c-b851-a654ade9850e" data-media-type="file"></span><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250507-142646.png" width="602" loading="lazy" src="attachments/3417571339/3417964562.png?width=602" data-image-src="attachments/3417571339/3417964562.png" data-height="305" data-width="602" data-unresolved-comment-count="0" data-linked-resource-id="3417964562" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250507-142646.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3417571339" data-linked-resource-container-version="1" data-media-id="e34a037e-f017-4037-ad20-9735c9e2ba5b" data-media-type="file"></span><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3417571339/3417866259.png">image-20250507-142634.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3417571339/3417538565.png">image-20250507-142637.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3417571339/3417964562.png">image-20250507-142646.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:23</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : How to set SOAP service with load balance webservice URL ?</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : How to set SOAP service with load balance webservice URL ?
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p> </p><p>In order to use the load balance webservice URL we need to configure one file (i.e config.properties)</p><p> </p><p>Path: XPI_installation/xpi_webserver/webservice-config/config.properties.</p><p> </p><p>In the config.properties file, we need to change the hostname in the parameter ‘service.root.url’.</p><p>For example:-</p><p>service.root.url= <a href="http://localhost:6060/services" class="external-link" rel="nofollow">http://localhost:6060/services</a> to <a href="http://10.9.8.73:6060/services" class="external-link" rel="nofollow">http://10.9.8.73:6060/services</a></p><p>Here, 10.9.8.73 is a machine IP.</p><p> </p><p>Note:</p><p>After updating the config.properties file.<br/>Please restart the SOAP service.</p><p>Please find below the screenshots for reference:</p><p> </p><p>i) Before changing the file:</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194672/2232194705.png?width=680" data-image-src="attachments/2232194672/2232194705.png" data-height="155" data-width="466" data-unresolved-comment-count="0" data-linked-resource-id="2232194705" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230111-123835.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194672" data-linked-resource-container-version="1" data-media-id="60e300c0-56f1-4e60-9497-0d63b2cdacb4" data-media-type="file"></span><p>ii)After changes made:</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194672/2232194702.png?width=680" data-image-src="attachments/2232194672/2232194702.png" data-height="124" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232194702" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230111-123903.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194672" data-linked-resource-container-version="1" data-media-id="683bff71-8e52-4845-a1fd-01bc82fd8308" data-media-type="file"></span><p>iii) Defined resource:</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194672/2232194699.png?width=680" data-image-src="attachments/2232194672/2232194699.png" data-height="225" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232194699" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230111-123932.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194672" data-linked-resource-container-version="1" data-media-id="2afac2f7-2b69-4c51-bbaa-9206a88b0a4b" data-media-type="file"></span><p>iv)Defined Services:</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194672/2232194696.png?width=680" data-image-src="attachments/2232194672/2232194696.png" data-height="225" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232194696" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230111-123956.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194672" data-linked-resource-container-version="1" data-media-id="8149d484-5823-4f2f-86ae-76096dc60388" data-media-type="file"></span><p> </p><p>v)Generated:</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194672/2232194693.png?width=680" data-image-src="attachments/2232194672/2232194693.png" data-height="241" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232194693" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230111-124042.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194672" data-linked-resource-container-version="1" data-media-id="0d6817c3-96f3-49ba-aec7-23d85f5ae984" data-media-type="file"></span><p> </p><p>vi)Soap Url:</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232194672/2232194690.png?width=680" data-image-src="attachments/2232194672/2232194690.png" data-height="136" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232194690" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230111-124059.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232194672" data-linked-resource-container-version="1" data-media-id="4fd2d9ab-4de2-4ab5-bc75-baeecc75d82b" data-media-type="file"></span><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194672/2232194690.png">image-20230111-124059.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194672/2232194693.png">image-20230111-124042.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194672/2232194696.png">image-20230111-123956.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194672/2232194699.png">image-20230111-123932.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194672/2232194702.png">image-20230111-123903.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232194672/2232194705.png">image-20230111-123835.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

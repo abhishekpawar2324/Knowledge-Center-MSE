@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : The server terminates abnormally at a specific step</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : The server terminates abnormally at a specific step
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Vaishnavi Marathe</span> on 04,Mar, 2024
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p>We had a scenario where the customer was facing server abnormal termination abnormally on the data mapper step with the Oracle database.</p><p>Reproduction was not possible at the support end.</p><p>We asked for projects,  logs, and procdumps (With Gflag ON &amp; OFF).</p><p> </p><p>We have a RDC: 
+
+    
+
+            
+
+
+
+
+    <span class="confluence-jim-macro jira-issue resolved" data-jira-key="MXPI-30690" >
+                <a href="https://magicsoftware2.atlassian.net/browse/MXPI-30690" class="jira-issue-key"><img class="icon" src="https://magicsoftware2.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/10303?size=medium" />MXPI-30690</a>
+                    -
+            <span class="summary">XPI engine terminated abnormally happen for specific datamapper step.</span>
+                                                            <span class="aui-lozenge aui-lozenge-subtle aui-lozenge-success jira-macro-single-issue-export-pdf">Closed</span>
+            </span>
+ </p><p>The RCA of the issue is as follows:</p><p>RCA for the problem of invalid column name definition on the source DB schema of the specified step (Step 1_22_5).<br/>The Wong definition is likely to have happened due to UI's wrong behavior that finalized the definition of the column to be invalid</p><p>The next images present the wrong column definition and as a result, the Generated code suffers from the wrong XPA variable definition.</p><p /><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240304-140240.png" width="701" loading="lazy" src="attachments/2472083465/2471886859.png?width=701" data-image-src="attachments/2472083465/2471886859.png" data-height="211" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="2471886859" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20240304-140240.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2472083465" data-linked-resource-container-version="1" data-media-id="694d3390-d609-409a-9536-b0f8c6e8e5c8" data-media-type="file"></span><p>·        It is true that the column is not connected but once it is selected xpa DSQL will try to insert a value into that column and the XPA program will crash.</p><p> </p><p>·        The XPI properties for a non-connected column cannot be changed from their default which are StringDate=No and AlwaysUseCustomerPicture=No. There were cases in previous versions that due to manipulations of connection removal these properties remained in an invalid state like here. The UI affects the generated code and since Alpha cannot receive values except digits the XPA size is zero<em>.</em></p><p /><p>In the recreated step the above column has the valid XPA picture and the data type is Date and not Alpha - check the next similar images for the recreated step.</p><p /><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20240304-140313.png" width="725" loading="lazy" src="attachments/2472083465/2471231522.png?width=725" data-image-src="attachments/2472083465/2471231522.png" data-height="241" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="2471231522" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20240304-140313.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2472083465" data-linked-resource-container-version="1" data-media-id="99cda95c-cdcb-4b1b-a7e4-04e1a4dbe01a" data-media-type="file"></span><p><strong>Ansare to the customer’s query whether recreating the step is the correct action - Yes for sure.</strong></p><p> </p><p>·        The old step can also be corrected by simply connecting this column and setting the string date and AlwaysUseCustomPicture to false - and then removing the connection OR remove that column from the SQL statement so that it will no longer be part of the XPA-generated code data view.</p><p> </p><p>This solved the issue at the customer’s end.</p>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2472083465/2471886859.png">image-20240304-140240.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2472083465/2471231522.png">image-20240304-140313.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

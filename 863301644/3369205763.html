@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : How to start the project if it doesn&#39;t auto-start, despite the correct projectStartup.xml configuration in cluster servers?</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : How to start the project if it doesn&#39;t auto-start, despite the correct projectStartup.xml configuration in cluster servers?
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Vibha Khanke</span> on 12,Apr, 2025
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><strong>Description:</strong></p><p>An issue was raised by the customer where they were unable to auto start the project, when described in projectsStartup.xml.</p><p /><p><strong>Solution:</strong></p><p>Please apply these changes on both servers and restart the XPI services:</p><p /><ul><li><p>Navigate to `Magic XPI\Runtime\Gigaspaces-xpi\config\gsa\` and update the following files:<br/>`mgdeploy.xml`, `mginfo.xml`, and `mgmirror.xml`.</p></li></ul><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250412-141647.png" width="756" loading="lazy" src="attachments/3369205763/3369172994.png?width=756" data-image-src="attachments/3369205763/3369172994.png" data-height="182" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="3369172994" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250412-141647.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3369205763" data-linked-resource-container-version="1" data-media-id="20f5c898-e42e-4802-9e5c-411e53e85704" data-media-type="file"></span><ul><li><p>In each of the files, increase the `&lt;argument&gt;-timeout&lt;/argument&gt;` parameter from 120 to 240 (the value is in seconds).</p></li></ul><p>     The default value is 120.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250412-141822.png" width="717" loading="lazy" src="attachments/3369205763/3369402373.png?width=717" data-image-src="attachments/3369205763/3369402373.png" data-height="73" data-width="331" data-unresolved-comment-count="0" data-linked-resource-id="3369402373" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250412-141822.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3369205763" data-linked-resource-container-version="1" data-media-id="db24219b-52d2-42a0-ab12-0e9c3155bb46" data-media-type="file"></span><p /><ul><li><p>Rename the old &quot;Deploy&quot; and &quot;Work&quot; folders located in the `Magic XPI Installation Folder\Runtime\Gigaspaces`.</p></li></ul><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250412-141904.png" width="744" loading="lazy" src="attachments/3369205763/3369271300.png?width=744" data-image-src="attachments/3369205763/3369271300.png" data-height="279" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="3369271300" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250412-141904.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3369205763" data-linked-resource-container-version="1" data-media-id="0c54f51a-d5e5-446f-8bf7-618373136e4c" data-media-type="file"></span><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3369205763/3369172994.png">image-20250412-141647.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3369205763/3369402373.png">image-20250412-141822.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3369205763/3369271300.png">image-20250412-141904.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:23</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

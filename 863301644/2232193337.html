@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Problem:  How to make the text from Magic work in all mail servers (Email Step reading ANSI and not Unicode)</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Problem:  How to make the text from Magic work in all mail servers (Email Step reading ANSI and not Unicode)
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><u>Problem Description:</u></p><p>When sending HTML emails from Magic in other languages that have characters. The issue was that the email sent did not recognize the characters.</p><p>The issue is with the Hotmail and Gmail would also not read the email coming from Magic, so this issue is not just for only Codestone's mail server but general.</p><p>The question is how to make the text from Magic work in all mail servers as this email will be sent to various mail servers.</p><p><u>Solution:</u></p><p>When you receive a new email in Outlook, you may see unreadable characters in the email message body. This issue could be caused by one of the following reasons on the Outlook client-side:</p><p>The email you received is converted to plain text format or a different encoding by a virus scanner. </p><p>This always happens when you are using characters (Such as apostrophes, double quotes, dashes, and ellipsis) supported by the &quot;Smart Quotes&quot; feature. When the email you received is converted to plain text format or a different encoding by a virus scanner, the character is converted from the ASCII character to a Unicode character, which is not supported on the recipient’s side.</p><p>To prevent this issue from happening, we can turn off the “Smart Quotes” Feature in Outlook:</p><ol><li><p>Open Outlook 2013.</p></li><li><p>Click File &gt; Options &gt; Mail.</p></li><li><p>Click the Spelling and AutoCorrect button.</p></li><li><p>In the Editor Options window, click the AutoCorrect Options button to open the AutoCorrect dialog.</p></li><li><p>Click AutoFormat tab, and then clear the check box before “Straight quotes” with “smart quotes” under Replace heading.</p></li><li><p>Click OK.</p></li></ol><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="453" loading="lazy" src="attachments/2232193337/2232193354.png?width=453" data-image-src="attachments/2232193337/2232193354.png" data-height="260" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232193354" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20210601-220516.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232193337" data-linked-resource-container-version="1" data-media-id="13522417-2a17-40f9-8b27-089b69920b43" data-media-type="file"></span><p /><p>The issue may be related to font substitution when a change is made to the Web Options in Microsoft Word. </p><p>If a change is made to the Web Options in Microsoft Word, registry data under the following key may be configured incorrectly:</p><p>HKEY_CURRENT_USER\Software\Microsoft\Office\15.0\Word\Internet\Fonts</p><p>This problem has been seen to occur when the Latin string value under the \Fonts key was empty (no value). </p><p>We can check the Web Options setting in Word via:</p><ol><li><p>Start Word.</p></li><li><p>Go to File &gt; Options &gt; Advanced.</p></li><li><p>Scroll down to the General section, click Web Options button.</p></li><li><p>Switch to Font tab.</p></li></ol><p>To resolve the problem, we need to delete the \Fonts registry key. To do this, please follow:</p><ol><li><p>Exit Word.</p></li><li><p>Press Windows key + R to open the Run command, type regedit and press Enter.</p></li><li><p>Navigate to:</p></li></ol><p>HKEY_CURRENT_USER\Software\Microsoft\Office\15.0\Word\Internet\Fonts</p><ol><li><p>Right-click the Font key and select Delete.</p></li><li><p>Click Yes and exit Registry Editor.</p></li></ol><p>The sender used an e-mail program that did not mark messages with a language encoding (character set), or marked messages with an incorrect encoding setting.</p><p>In this case, we will see unreadable characters when we open the received message in our Outlook. For example, European regional characters (like German) require UTF-8 encoding protocol. So if the encoding in your environment is set to ASCII, the regional characters will not be available. </p><p>To resolve this issue, we need to change the encoding in Outlook to which will display your message correctly.</p><ol><li><p>Double-click to open the message you received.</p></li><li><p>Click Actions button in the Move group under Message tab.</p></li><li><p>Click Other Actions &gt; Encoding.</p></li><li><p>Click More and select the correct encoding setting for the email.</p></li><li><p>After you finish reading the message, close the message, and click Yes button to save changes to the message.</p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232193337/2232193351.png" data-image-src="attachments/2232193337/2232193351.png" data-height="323" data-width="598" data-unresolved-comment-count="0" data-linked-resource-id="2232193351" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20210601-220559.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232193337" data-linked-resource-container-version="1" data-media-id="9d98765f-43f0-45d3-91c7-cb0a0fb18a57" data-media-type="file"></span></li></ol><p>When we send an email with Outlook, we can set Outlook to automatically select encoding for outgoing email messages to increase the possibility that the recipient receiving the message will see all the characters rendered properly, even if they run older e-mail programs. By default, Outlook 2013 will automatically select an optimal encoding for outgoing e-mail messages. We can change the settings here in Outlook 2013: File &gt; Options &gt; Advanced &gt; International Options section.</p><p>Something you may need to know when you set the encoding settings:</p><ul><li><p>The Unicode (UTF-8) character enables the complete range of characters on all computers. It’s the official IANA code for the UTF-8 character encoding.</p></li><li><p>Western European (ISO) and Western European (Windows) character set can be read by almost all computers.</p></li><li><p>If you are using a language other than English, you must choose the correct character set for that language, or the characters you need will not be displayed correctly.</p></li></ul><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232193337/2232193351.png">image-20210601-220559.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232193337/2232193354.png">image-20210601-220516.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:21</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

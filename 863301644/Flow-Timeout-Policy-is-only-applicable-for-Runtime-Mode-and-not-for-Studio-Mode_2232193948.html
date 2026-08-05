@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Flow Timeout Policy is only applicable for Runtime Mode and not for Studio Mode</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Flow Timeout Policy is only applicable for Runtime Mode and not for Studio Mode
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><strong>Description</strong></p><p>In Magic XPI the flow property of the Timeout policy is not applicable for the Studio Mode. This flow property is only applicable for the Runtime Mode.</p><p> </p><p>Please refer to the sample project provided.</p><p><a href="https://magicsoftwarecorp-my.sharepoint.com/:u:/g/personal/vaishnavi_marathe_magicsoftware_com/Ec9d43Jy37hMg4pNpWOM7RUBmZ9iMQZwrQW8Jztb4Opt7g" class="external-link" rel="nofollow">https://magicsoftwarecorp-my.sharepoint.com/:u:/g/personal/vaishnavi_marathe_magicsoftware_com/Ec9d43Jy37hMg4pNpWOM7RUBmZ9iMQZwrQW8Jztb4Opt7g</a></p><p> </p><p>-In the above project attached, there is a timeout policy property used, and the timeout value given is 10 seconds to abort a flow. and added a delay of 20 seconds using the delay utility.</p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232193948/2232193973.png" data-image-src="attachments/2232193948/2232193973.png" data-height="278" data-width="199" data-unresolved-comment-count="0" data-linked-resource-id="2232193973" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20220819-070654.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232193948" data-linked-resource-container-version="1" data-media-id="0c76c0fe-f934-4163-a57f-f93f1d1ae2d8" data-media-type="file"></span><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232193948/2232193970.png" data-image-src="attachments/2232193948/2232193970.png" data-height="133" data-width="261" data-unresolved-comment-count="0" data-linked-resource-id="2232193970" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20220819-070707.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232193948" data-linked-resource-container-version="1" data-media-id="077026ae-e289-41cc-9d9d-6ba114a38283" data-media-type="file"></span><p>-When you debug the project from Studio Mode, you will not be able to find out the occurrence of a timeout.</p><p> </p><p><strong>Studio Mode results:</strong></p><p> </p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232193948/2232193967.png" data-image-src="attachments/2232193948/2232193967.png" data-height="251" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232193967" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20220819-070902.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232193948" data-linked-resource-container-version="1" data-media-id="8861baa3-01b7-44f9-a7d9-30ddc5bd0481" data-media-type="file"></span><p>To See the Results in Monitor:</p><p>-You need to build the project first</p><p> </p><p><strong>Runtime Mode Results:</strong></p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232193948/2232193964.png" data-image-src="attachments/2232193948/2232193964.png" data-height="250" data-width="468" data-unresolved-comment-count="0" data-linked-resource-id="2232193964" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20220819-070916.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232193948" data-linked-resource-container-version="1" data-media-id="5dba8dd7-9908-4ea7-8d8a-28fdbf37cd1f" data-media-type="file"></span><p /><p> In Runtime Mode you will observe the flow start/flow timeout and flow abort.You can easily see the timeout and abort of the flow with flow id.</p><p> </p>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232193948/2232193964.png">image-20220819-070916.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232193948/2232193967.png">image-20220819-070902.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232193948/2232193970.png">image-20220819-070707.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232193948/2232193973.png">image-20220819-070654.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232193948/2232193976.png">image-20220819-070636.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232193948/2232193979.png">image-20220819-070616.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:21</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

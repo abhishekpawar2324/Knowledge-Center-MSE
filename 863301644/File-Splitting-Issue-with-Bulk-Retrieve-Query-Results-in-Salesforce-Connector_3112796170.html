@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : File Splitting Issue with Bulk Retrieve Query Results in Salesforce Connector</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : File Splitting Issue with Bulk Retrieve Query Results in Salesforce Connector
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Balaji Karagir</span> on 02,Jan, 2025
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><strong>Problem:</strong></p><p>Customers have reported that when using the <strong>Bulk Retrieve Query Results</strong> method in Salesforce, the output is sometimes divided into <strong>3 CSV files</strong> and sometimes into <strong>2 CSV files</strong>, even though the output file size appears to be the same.</p><p><strong>Version Affected:</strong></p><ul><li><p><strong>Magic XPI Version 4.1 and above</strong></p></li></ul><p><strong>Cause:</strong></p><p>This behavior is due to the <strong>Salesforce Bulk Query API</strong>, which Magic XPI uses to fetch data from Salesforce. The splitting of files into multiple CSVs is managed entirely by Salesforce's API. The number of files is not under our control, and the exact logic behind this split is not publicly documented by Salesforce.</p><p><strong>Update from Product Management:</strong></p><p>According to product management, <strong>Salesforce</strong> itself handles the logic for splitting the data into multiple CSV files. Magic XPI does not have any direct control over this splitting process, and this behavior can vary depending on factors such as:</p><ul><li><p><strong>Size of the data</strong> being queried</p></li><li><p><strong>Salesforce API handling</strong> for large datasets</p></li></ul><p><strong>Possible Solution:</strong></p><p>Since the issue is related to how Salesforce handles file splitting internally, there is no direct solution to control or change how Salesforce splits the data into CSV files. However, there are some steps you can take to manage or automate the handling of these files after they have been generated:</p><ol start="1"><li><p><strong>Automate file merging</strong>: Once the CSV files are retrieved, you can set up a process to automatically merge the files into a single one if needed.</p></li></ol><ol start="2"><li><p><strong>Salesforce Documentation</strong></p></li></ol><p><br/>For more information on how Salesforce handles large datasets and the Bulk Query API, refer to Salesforce’s official documentation on bulk API limitations and data handling.</p><p><strong>Additional Considerations:</strong></p><ul><li><p><strong>File Splitting Logic</strong>: The number of files generated is not necessarily proportional to the file size; Salesforce may split files based on internal factors that are not exposed to the users or integrators. Therefore, the size of the output files does not always correlate with the number of files returned.</p></li></ul><p>· The <strong>number of CSV files</strong> created can vary from 1 to 15, depending on the size of the data being returned. Salesforce splits the data into multiple files if the output exceeds 1 GB, but it may still produce multiple files for smaller datasets depending on the API's internal logic.</p><p>· <strong>Salesforce API Limitations</strong>: There is a cap of <strong>15 CSV files</strong> per query, with each file having a maximum size of <strong>1 GB</strong>.</p><p><strong> </strong></p><p>At this time, there is no change expected from Magic XPI to address the file splitting, as this behavior is driven by the Salesforce Bulk Query API. However, we recommend reviewing Salesforce documentation for any updates on their handling of bulk queries and CSV outputs.</p>
+                    </div>
+
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:23</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

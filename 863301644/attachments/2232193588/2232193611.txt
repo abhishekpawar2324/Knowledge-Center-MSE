@@ -1,0 +1,10 @@
+Create procedure [dbo].[sp_user_details_inform_123]
+@DOB datetime,
+@DOJ datetime
+
+As 
+Begin
+select * from userdetails where DOB=@DOB and DOJ=@DOJ
+end
+
+--exec sp_user_details_inform_123 '2001-03-15','2020-03-15'

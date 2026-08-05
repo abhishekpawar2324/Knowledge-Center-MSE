@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : How to define values like list in Project Environment User  variables in XPI.</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : How to define values like list in Project Environment User  variables in XPI.
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Abhishek Pawar</span> on 26,Nov, 2024
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><strong>Description:</strong></p><p>The customer trying to get some values from my User Environment Variables (Project Environment).<br/>For this, they created a variable called &quot;Email Recipient&quot; which contains 2 mail addresses.<br/>Later they want to use this variable to send some mails.</p><p>The value is for example: &quot;<a href="mailto:Mail1@test.com" class="external-link" rel="nofollow">Mail1@test.com</a>, <a href="mailto:Mail2@test.com" class="external-link" rel="nofollow">Mail2@test.com</a>&quot;.<br/>The problem: they only get &quot;<a href="mailto:Mail1@test.com" class="external-link" rel="nofollow">Mail1@test.com</a>&quot;. Everything after the comma is missing.</p><p>CASE NUMBER: 00103764</p><p><strong>Solution:</strong></p><p>User Environment Variable from the 'Project Environment' itself has limitations so we can observe differences in behaviour. <strong>We have a workaround for this.</strong><br/>Workaround 1:</p><p>If we use an asterisk (*) at the start of the email list in the Project Environment User variable, followed by values separated by commas, it will work correctly and send emails to all specified addresses.</p><p>For example *Mail1@test.com, <a href="mailto:Mail2@test.com" class="external-link" rel="nofollow">Mail2@test.com</a><br/></p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20241126-143045.png" width="833" loading="lazy" src="attachments/3037822978/3037396994.png?width=833" data-image-src="attachments/3037822978/3037396994.png" data-height="212" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="3037396994" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20241126-143045.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3037822978" data-linked-resource-container-version="1" data-media-id="073912a5-921d-448d-b25e-eb672e62f984" data-media-type="file"></span><p> <br/></p><p> </p><p>=====================================================================</p><p>Workaround 2:</p><p>Whereas if we use the User Environment Variable from the 'Project Environment' tab then name values inside single quotes separated by a comma works fine.</p><p> </p><p>For Example:  ‘aaa,bbb, ccc,ddd’<br/></p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20241126-143113.png" width="883" loading="lazy" src="attachments/3037822978/3038052353.png?width=883" data-image-src="attachments/3037822978/3038052353.png" data-height="212" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="3038052353" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20241126-143113.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3037822978" data-linked-resource-container-version="1" data-media-id="78c48ff0-c61f-4952-8aab-9b0910276d9f" data-media-type="file"></span><p> <br/></p><p> </p>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3037822978/3037396994.png">image-20241126-143045.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3037822978/3038052353.png">image-20241126-143113.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

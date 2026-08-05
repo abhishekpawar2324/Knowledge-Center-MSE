@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : How to modify the time zone in Magic Monitor to filter activity logs within a specific time range</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : How to modify the time zone in Magic Monitor to filter activity logs within a specific time range
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Shantanu Patil</span> on 11,Mar, 2025
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><strong>Description:</strong><br/>When trying to filter activity logs in Magic Monitor for a specific time range, the logs may not appear correctly due to a time zone mismatch. For example, if the system's time zone is set to <strong>Asia/Calcutta</strong> but the default time zone in the installation directory (C:\Magic xpi 4.14.1\InMemoryMiddleware\deploy\values.yaml) is configured as <strong>US/Central</strong>, the logs may not align with the desired time range.</p><p><strong>Solution:</strong><br/>To resolve this, update the default time zone setting in values.yaml by changing the following entry:<br/><br/><br/></p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250311-022856.png" width="580" loading="lazy" src="attachments/3295969294/3295969304.png?width=580" data-image-src="attachments/3295969294/3295969304.png" data-height="218" data-width="452" data-unresolved-comment-count="0" data-linked-resource-id="3295969304" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250311-022856.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3295969294" data-linked-resource-container-version="1" data-media-id="85c1e9c2-911a-47f6-b2e8-ed9da3d9e5aa" data-media-type="file"></span><p><br/>and systems time zone is<br/><br/></p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250311-022928.png" width="577" loading="lazy" src="attachments/3295969294/3296100367.png?width=577" data-image-src="attachments/3295969294/3296100367.png" data-height="68" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="3296100367" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250311-022928.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3295969294" data-linked-resource-container-version="1" data-media-id="a89cab82-3fbd-4b78-91e5-203129724b10" data-media-type="file"></span><p><br/>Now attempt to filter logs for a specific time range after setting the time zone.<br/><br/></p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><a href="attachments/3295969294/3296034850.webm?width=507">Monitor logs timerange filter.webm</a></span><p><br/>We need to update the values.yaml file by changing the time zone from &quot;US/Central&quot; to &quot;Asia/Calcutta&quot;.<br/><br/></p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250311-023224.png" width="580" loading="lazy" src="attachments/3295969294/3296067597.png?width=580" data-image-src="attachments/3295969294/3296067597.png" data-height="218" data-width="452" data-unresolved-comment-count="0" data-linked-resource-id="3296067597" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250311-023224.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3295969294" data-linked-resource-container-version="1" data-media-id="23ef987e-2d03-4565-8dba-10bfd128c208" data-media-type="file"></span><p><br/>After modifying the values.yaml file, simply redeploy and check the results.<br/><br/></p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><a href="attachments/3295969294/3296067605.webm?width=560">After doing changes in yaml file logs.webm</a></span><p><br/>Observe the result</p>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3295969294/3295969304.png">image-20250311-022856.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3295969294/3296100367.png">image-20250311-022928.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3295969294/3296067597.png">image-20250311-023224.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3295969294/3296165889.png">image-20250311-023226.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3295969294/3296034850.webm">Monitor logs timerange filter.webm</a> (video/webm)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3295969294/3296067605.webm">After doing changes in yaml file logs.webm</a> (video/webm)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:23</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

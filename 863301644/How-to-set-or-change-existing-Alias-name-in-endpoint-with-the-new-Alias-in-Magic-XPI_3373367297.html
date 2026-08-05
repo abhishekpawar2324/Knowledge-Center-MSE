@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : How to set or change existing Alias name in endpoint with the new Alias in Magic XPI</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : How to set or change existing Alias name in endpoint with the new Alias in Magic XPI
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Pooja Thakkhi</span> on 14,Apr, 2025
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><strong>Scenario:</strong> The customer is trying to change the web endpoint alias from &quot;Magicxpi4.14.1&quot; to &quot;magic&quot;. They updated the alias in the project settings and restarted the Agent, Project, and IIS. However, when testing the new endpoint with &quot;magic&quot;, it still points to the old alias &quot;Magicxpi4.14.1&quot;.<br/><br/></p><p><strong>Step-by-Step Instructions</strong></p><ol start="1"><li><p><strong>Create an Alias in IIS</strong></p></li></ol><p>To define the alias under IIS:</p><ol start="1"><li><p>Open <strong>IIS Manager</strong>.</p></li><li><p>Navigate to:</p></li><li><p>Right-click on <strong>Default Web Site</strong> and choose <strong>Add Website</strong></p></li><li><p>Set the following:</p></li></ol><p><strong>Alias</strong>: Magic</p><p><strong>Application Pool</strong>: Assign the appropriate pool (MagicxpiAppPool_x64)</p><p><strong>Physical Path</strong>: Point this to your scripts folder (D:\XPI\4.14\1411\Runtime\scripts)</p><ol start="5"><li><p>Click <strong>OK</strong> to apply the changes.<br/><br/></p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250414-172308.png" width="487" loading="lazy" src="attachments/3373367297/3373170690.png?width=487" data-image-src="attachments/3373367297/3373170690.png" data-height="252" data-width="312" data-unresolved-comment-count="0" data-linked-resource-id="3373170690" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250414-172308.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3373367297" data-linked-resource-container-version="1" data-media-id="7c74ac64-2917-43ab-a77d-8773fb0e20d7" data-media-type="file"></span></li></ol><p /><span class="confluence-embedded-file-wrapper image-left-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-left" alt="image-20250414-172613.png" width="487" loading="lazy" src="attachments/3373367297/3373334531.png?width=487" data-image-src="attachments/3373367297/3373334531.png" data-height="217" data-width="320" data-unresolved-comment-count="0" data-linked-resource-id="3373334531" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250414-172613.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3373367297" data-linked-resource-container-version="1" data-media-id="3aeee57e-da95-423b-ac56-a9692e3e191c" data-media-type="file"></span><p><br/></p><ol start="2"><li><p><strong>Configure the Alias in Magic xpi</strong></p></li></ol><ul><li><p>  Open Magic xpi Studio.</p></li><li><p>  Go to:</p></li></ul><p><strong>Project &gt; Settings &gt; General Environment &gt; Internal Environment Variables</strong></p><ul><li><p><strong> </strong>Set Alias name as<strong> ‘Magic’</strong><br/><br/></p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250414-172839.png" width="487" loading="lazy" src="attachments/3373367297/3373006863.png?width=487" data-image-src="attachments/3373367297/3373006863.png" data-height="207" data-width="401" data-unresolved-comment-count="0" data-linked-resource-id="3373006863" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250414-172839.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3373367297" data-linked-resource-container-version="1" data-media-id="93d26d83-8a1f-41b1-91c5-b0051cc16f76" data-media-type="file"></span></li></ul><p><br/></p><ol start="3"><li><p><strong>Apply the Changes</strong></p></li></ol><p>After completing the above configurations</p><ul><li><p> Restart IIS</p></li><li><p> Restart the Magic xpi Agent</p></li><li><p> Restart the Magic xpi Project</p></li></ul><p><strong> </strong></p><p><strong>Conclusion:</strong></p><p>The alias in the project settings alone does not change the IIS configuration. The new alias <strong>&quot;Magic&quot;</strong> must also be created in IIS under the Default Website to reflect the change.</p>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3373367297/3373170690.png">image-20250414-172308.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3373367297/3373301762.png">image-20250414-172524.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3373367297/3373334531.png">image-20250414-172613.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3373367297/3373006863.png">image-20250414-172839.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:23</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

@@ -1,0 +1,25 @@
+--Option1--
+
+==
+
+CREATE PROCEDURE RunQuery
+    @query NVARCHAR(MAX)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    EXEC sp_executesql @query;
+END
+Go
+=====
+EXEC RunQuery 'OPEN SYMMETRIC KEY Sym_Key_Conns DECRYPTION BY CERTIFICATE MagicDBBusinessAlfaCertif;
+SELECT ID, First_Name, CONVERT(VARCHAR(100), DECRYPTBYKEY(Encrypted_Last_Name)) AS Last_Name, Date_Created FROM Contacts1;
+CLOSE SYMMETRIC KEY Sym_Key_Conns;';
+
+===
+
+--Option2--
+EXEC sp_executesql N'OPEN SYMMETRIC KEY Sym_Key_Conns DECRYPTION BY CERTIFICATE MagicDBBusinessAlfaCertif;
+SELECT ID, First_Name, CONVERT(VARCHAR(100), DECRYPTBYKEY(Encrypted_Last_Name)) AS Last_Name, Date_Created FROM Contacts1;
+CLOSE SYMMETRIC KEY Sym_Key_Conns;'
+====

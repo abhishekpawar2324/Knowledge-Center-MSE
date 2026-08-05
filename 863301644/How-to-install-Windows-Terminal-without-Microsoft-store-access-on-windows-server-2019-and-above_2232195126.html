@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : How to install Windows Terminal without Microsoft store access on windows server 2019 and above</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : How to install Windows Terminal without Microsoft store access on windows server 2019 and above
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <ol start="1"><style>[data-colorid=mczmi2l5hx]{color:#ff5630} html[data-color-mode=dark] [data-colorid=mczmi2l5hx]{color:#cf2600}[data-colorid=dsn7mc7imn]{color:#ff5630} html[data-color-mode=dark] [data-colorid=dsn7mc7imn]{color:#cf2600}</style><li><p>Open&nbsp;<strong>Start&nbsp;</strong>on Windows Server 2022.</p></li></ol><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232195126/2232195154.png" data-image-src="attachments/2232195126/2232195154.png" data-height="524" data-width="782" data-unresolved-comment-count="0" data-linked-resource-id="2232195154" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230509-060944.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232195126" data-linked-resource-container-version="1" data-media-id="da0ab938-ac9e-47b6-bb46-8d575fb29a95" data-media-type="file" /></span><p>2. Search for&nbsp;<strong>PowerShell</strong>, right-click the top result, and select the Run as administrator option.</p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232195126/2232195151.png" data-image-src="attachments/2232195126/2232195151.png" data-height="521" data-width="757" data-unresolved-comment-count="0" data-linked-resource-id="2232195151" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230509-061017.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232195126" data-linked-resource-container-version="1" data-media-id="5a7b06a5-ec4c-48b3-b07c-3f0b180de469" data-media-type="file" /></span><p /><p>3. Type the following command to download the runtime libraries and press&nbsp;<strong>Enter</strong>:</p><p><strong>Invoke-WebRequest -Uri </strong><a href="https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx" class="external-link" rel="nofollow"><strong>https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx</strong></a><strong> -outfile Microsoft.VCLibs.x86.14.00.Desktop.appx</strong></p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232195126/2232195148.png?width=680" data-image-src="attachments/2232195126/2232195148.png" data-height="185" data-width="667" data-unresolved-comment-count="0" data-linked-resource-id="2232195148" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230509-061054.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232195126" data-linked-resource-container-version="1" data-media-id="d39c7367-32d4-4f37-a52b-04b10e7e78e6" data-media-type="file" /></span><p /><p>4. Type the following command to install the &ldquo;.appx&rdquo; package and press&nbsp;<strong>Enter</strong>:</p><p><strong>Add-AppxPackage Microsoft.VCLibs.x86.14.00.Desktop.appx</strong></p><p>5. Type the following command to download the latest version of the Windows Terminal and press&nbsp;Enter:</p><p><strong>Invoke-WebRequest -Uri https://github.com/microsoft/terminal/releases/download/v1.16.10261.0/Microsoft.WindowsTerminal_Win10_1.16.10261.0_8wekyb3d8bbwe.msixbundle -outfile Microsoft.WindowsTerminal_Win10_1.16.10261.0_8wekyb3d8bbwe.msixbundle</strong></p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232195126/2232195145.png?width=680" data-image-src="attachments/2232195126/2232195145.png" data-height="154" data-width="640" data-unresolved-comment-count="0" data-linked-resource-id="2232195145" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230509-061410.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232195126" data-linked-resource-container-version="1" data-media-id="b1331660-9f40-4eaf-aa0b-051e168d482c" data-media-type="file" /></span><p /><p /><p><strong><span data-colorid="mczmi2l5hx">NOTE:</span></strong></p><p> You must change the download link to the latest Windows Terminal version. You can find this information on the&nbsp;GitHub page. Under the &ldquo;Assets&rdquo; section, right-click the latest &ldquo;.msixbundle&rdquo; link and copy the path.</p><p /><p>6. Type the following command to install the Windows Terminal application and press&nbsp;Enter:</p><p><strong>Add-AppxPackage Microsoft.WindowsTerminal_Win10_1.16.10261.0_8wekyb3d8bbwe.msixbundle</strong></p><p>Once you complete the steps, the terminal will install on Windows Server</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232195126/2232195142.png?width=680" data-image-src="attachments/2232195126/2232195142.png" data-height="527" data-width="734" data-unresolved-comment-count="0" data-linked-resource-id="2232195142" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20230509-061627.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232195126" data-linked-resource-container-version="1" data-media-id="4c8292df-bd23-450b-86e7-8c52fc81a944" data-media-type="file" /></span><p /><p /><p><strong><span data-colorid="dsn7mc7imn">You can also use the same instructions to upgrade to a new version of the command console. However, you will need to use the legacy PowerShell console to complete the process because you cannot upgrade the terminal while the application is running.</span></strong></p><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232195126/2232195142.png">image-20230509-061627.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232195126/2232195145.png">image-20230509-061410.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232195126/2232195148.png">image-20230509-061054.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232195126/2232195151.png">image-20230509-061017.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232195126/2232195154.png">image-20230509-060944.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

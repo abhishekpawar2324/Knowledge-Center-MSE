@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Troubleshooting a Forgotten Database Password: By Creating a New User with User Mapping in MSSQL</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Troubleshooting a Forgotten Database Password: By Creating a New User with User Mapping in MSSQL
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Pooja Thakkhi</span> on 28,Jan, 2025
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><strong>Scenario:</strong> The customer has migrated their MSSQL server to a new MSSQL server. They created a database user and password, but the user forgot the new password.<br/>To troubleshoot this scenario we created a new user and assigned access and database rules using user mapping.</p><p> </p><p style="text-align: center;"><strong>Steps to Create a New User and Configure User Mapping:</strong></p><p><strong> </strong></p><p><strong>Step 1: Open SQL Server Management Studio (SSMS)</strong></p><ol start="1"><li><p>Launch SSMS and connect to the MSSQL Server using an account with administrative privileges.</p></li></ol><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250128-024505.png" width="343" loading="lazy" src="attachments/3174727681/3174760449.png?width=343" data-image-src="attachments/3174727681/3174760449.png" data-height="234" data-width="343" data-unresolved-comment-count="0" data-linked-resource-id="3174760449" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250128-024505.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3174727681" data-linked-resource-container-version="1" data-media-id="f2a486f9-99fa-4581-92dd-8b1b5f8ac869" data-media-type="file"></span><p><strong>Step 2: Navigate to Security Settings</strong></p><ol start="1"><li><p>In the Object Explorer, expand the server node.</p></li><li><p>Expand the <strong>Security</strong> folder.</p></li><li><p>Right-click on <strong>Logins</strong> and select <strong>New Login...</strong></p></li></ol><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250128-024601.png" width="380" loading="lazy" src="attachments/3174727681/3174793217.png?width=380" data-image-src="attachments/3174727681/3174793217.png" data-height="241" data-width="380" data-unresolved-comment-count="0" data-linked-resource-id="3174793217" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250128-024601.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3174727681" data-linked-resource-container-version="1" data-media-id="f210b192-73a5-4c7e-a8e4-4f286f1d50c4" data-media-type="file"></span><p><strong>Step 3: Create a New Login</strong></p><ol start="1"><li><p>In the <strong>Login - New</strong> window:</p><ul><li><p>Enter a <strong>Login Name</strong> (e.g., NewDBUser).</p></li><li><p>Select <strong>SQL Server Authentication</strong> and enter a new password.</p></li><li><p>Confirm the password.</p></li><li><p>Uncheck <strong>Enforce password expiration</strong> (optional, based on security requirements).</p></li></ul></li><li><p>Click <strong>OK</strong> to create the login.</p></li></ol><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250128-024637.png" width="376" loading="lazy" src="attachments/3174727681/3174793223.png?width=376" data-image-src="attachments/3174727681/3174793223.png" data-height="225" data-width="376" data-unresolved-comment-count="0" data-linked-resource-id="3174793223" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250128-024637.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3174727681" data-linked-resource-container-version="1" data-media-id="4a24741a-973a-402b-9118-6aa8c65c85c1" data-media-type="file"></span><p /><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250128-024700.png" width="273" loading="lazy" src="attachments/3174727681/3174694926.png?width=273" data-image-src="attachments/3174727681/3174694926.png" data-height="241" data-width="209" data-unresolved-comment-count="0" data-linked-resource-id="3174694926" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250128-024700.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3174727681" data-linked-resource-container-version="1" data-media-id="4c697e1c-e792-4e2a-88a0-17801674c0ba" data-media-type="file"></span><p><strong>Step 4: Configure User Mapping</strong></p><ol start="1"><li><p>In the Object Explorer, right-click the newly created login under <strong>Logins</strong> and select <strong>Properties</strong>.</p></li></ol><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250128-024745.png" width="252" loading="lazy" src="attachments/3174727681/3174727693.png?width=252" data-image-src="attachments/3174727681/3174727693.png" data-height="245" data-width="200" data-unresolved-comment-count="0" data-linked-resource-id="3174727693" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250128-024745.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3174727681" data-linked-resource-container-version="1" data-media-id="a66808a1-1857-4d85-a821-8ed446f5fb09" data-media-type="file"></span><ol start="1"><li><p>In the <strong>Login Properties</strong> window, select the <strong>User Mapping</strong> tab.</p></li><li><p>Under <strong>Users mapped to this login:</strong></p><ul><li><p>Check the box next to the desired database (e.g. Test)</p></li><li><p>In the <strong>Database Role Membership for:</strong> <strong>Test</strong>, assign roles such as:</p></li></ul></li></ol><p>·         <strong>db_owner</strong> for full administrative rights.</p><p>·         <strong>db_datareader</strong> for read access.</p><p>·         <strong>db_datawriter</strong> for write access.</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250128-024831.png" width="424" loading="lazy" src="attachments/3174727681/3174825987.png?width=424" data-image-src="attachments/3174727681/3174825987.png" data-height="249" data-width="424" data-unresolved-comment-count="0" data-linked-resource-id="3174825987" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250128-024831.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3174727681" data-linked-resource-container-version="1" data-media-id="a2fcdb0b-104a-42b4-8b04-f9c11945dfc4" data-media-type="file"></span><ol start="1"><li><p>Click <strong>OK</strong> to save the settings.</p></li><li><p>Refresh the Database.</p></li><li><p>Right-click on the database (e.g., <code>Test</code>) and select <strong>Properties</strong>.</p></li><li><p>Navigate to the <strong>Permissions</strong> tab to verify the newly created user (<code>NewDBUser</code>) and the assigned permissions.</p></li><li><p>Click <strong>OK</strong> to save the settings.</p></li></ol><p><strong>Step 5: Test the New User</strong></p><ol start="1"><li><p>Disconnect the current session in SSMS.</p></li><li><p>Reconnect using the newly created login credentials.</p></li></ol><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250128-024933.png" width="369" loading="lazy" src="attachments/3174727681/3174694935.png?width=369" data-image-src="attachments/3174727681/3174694935.png" data-height="207" data-width="341" data-unresolved-comment-count="0" data-linked-resource-id="3174694935" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250128-024933.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3174727681" data-linked-resource-container-version="1" data-media-id="61edea76-4885-40d0-a7d3-072272d335bd" data-media-type="file"></span><ol start="3"><li><p>The user can access the required database and perform the assigned operations.</p></li></ol><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250128-025020.png" width="451" loading="lazy" src="attachments/3174727681/3174727700.png?width=451" data-image-src="attachments/3174727681/3174727700.png" data-height="205" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="3174727700" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250128-025020.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3174727681" data-linked-resource-container-version="1" data-media-id="2533dc30-8a09-4402-a62d-c3472ce36dd5" data-media-type="file"></span><ol start="4"><li><p>The user cannot access databases where permissions were not granted.</p></li></ol><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" alt="image-20250128-025132.png" width="451" loading="lazy" src="attachments/3174727681/3174694941.png?width=451" data-image-src="attachments/3174727681/3174694941.png" data-height="174" data-width="451" data-unresolved-comment-count="0" data-linked-resource-id="3174694941" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20250128-025132.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="3174727681" data-linked-resource-container-version="1" data-media-id="b594337c-8912-4b6d-a10c-b8fb7bec6554" data-media-type="file"></span><p><strong>Conclusion:</strong> By following these steps, you can resolve issues caused by forgotten passwords by creating a new user and assigning appropriate access using user mapping in MSSQL Server.</p><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3174727681/3174760449.png">image-20250128-024505.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3174727681/3174793217.png">image-20250128-024601.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3174727681/3174793223.png">image-20250128-024637.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3174727681/3174694926.png">image-20250128-024700.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3174727681/3174727693.png">image-20250128-024745.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3174727681/3174825987.png">image-20250128-024831.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3174727681/3174694935.png">image-20250128-024933.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3174727681/3174727700.png">image-20250128-025020.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/3174727681/3174694941.png">image-20250128-025132.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:23</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

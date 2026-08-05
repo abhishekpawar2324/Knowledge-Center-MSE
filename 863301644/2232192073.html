@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : SalesforceRest Client Oauth problem (Browser Control fails)</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : SalesforceRest Client Oauth problem (Browser Control fails)
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><style>[data-colorid=t31q27v459]{color:#222222} html[data-color-mode=dark] [data-colorid=t31q27v459]{color:#dddddd}[data-colorid=euyifphju6]{color:#222222} html[data-color-mode=dark] [data-colorid=euyifphju6]{color:#dddddd}</style> <strong><span data-colorid="t31q27v459">Salesforce/Rest Client Oauth</span></strong> <strong><span data-colorid="euyifphju6">problem (Browser Control fails)&nbsp;</span></strong><br />
+To resolve this issue, you will need to go to registry editor and make a few changes.
+<br />
+What is Registry Editor?<br />
+The Registry Editor contains information, settings, options and other values of programs and<br />
+hardware installed on all versions of Microsoft Window Operating systems.
+<br />
+<br />
+<br />
+When you install a program (e.g. Salesforce Authentication), go to Registry editor and then the following path<br />
+HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Internet Explorer\\Main\Feature Control\FEATURE_BROWSER_EMULATION.<br />
+<span class="confluence-embedded-file-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image" height="114" width="602" loading="lazy" src="attachments/2232192073/2232192090.png?width=602" data-image-src="attachments/2232192073/2232192090.png" data-unresolved-comment-count="0" data-linked-resource-id="2232192090" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="worddava0c5f23bdbad8390e41d19701ebcd7c9.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192073" data-linked-resource-container-version="1" data-media-id="9e59b414-2021-4a41-8461-16f842a85598" data-media-type="file" /></span>
+<br />
+<br />
+Right click under the default entries and add a DWORD 32-bit entry here. <br />
+Once it is added, modify the entry as following:<br />
+&quot;MgxpiStudio.exe&quot;=00412710<br />
+<span class="confluence-embedded-file-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image" height="221" width="602" loading="lazy" src="attachments/2232192073/2232192087.png?width=602" data-image-src="attachments/2232192073/2232192087.png" data-unresolved-comment-count="0" data-linked-resource-id="2232192087" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="worddav0d078d6e96273f187a59e9ee596c52cd.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192073" data-linked-resource-container-version="1" data-media-id="7c9ab5ff-ddfd-4457-bb35-81c9cf625df2" data-media-type="file" /></span><br />
+ Once this is done, its authentication is added to the Windows Registry.</p>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192073/2232192087.png">worddav0d078d6e96273f187a59e9ee596c52cd.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192073/2232192090.png">worddava0c5f23bdbad8390e41d19701ebcd7c9.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:21</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

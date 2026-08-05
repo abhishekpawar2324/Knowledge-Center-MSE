@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : FTP: Error &quot;Connection to requested FTP server could not be established. The key format is not a supported format&quot; with 4096-bit SSH RSA key.</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : FTP: Error &quot;Connection to requested FTP server could not be established. The key format is not a supported format&quot; with 4096-bit SSH RSA key.
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><strong>Objective:</strong></p><p>The customer was trying to connect with the SFTP server using FTP Connector and while validating the resource got an error as below:<br/>&quot;Connection to requested FTP server could not be established. The key format is not a supported format.&quot;</p><span class="confluence-embedded-file-wrapper image-center-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image image-center" width="680" loading="lazy" src="attachments/2232195062/2232195081.png?width=680" data-image-src="attachments/2232195062/2232195081.png" data-height="396" data-width="641" data-unresolved-comment-count="0" data-linked-resource-id="2232195081" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="Error Screenshot.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232195062" data-linked-resource-container-version="1" data-media-id="114c067f-ffd3-4ef8-a3c1-625938e12cf8" data-media-type="file"></span><p /><p>Using 2048 bit SSH RSA key earlier, they were able to validate the FTP resource in xpi.</p><p>Customer wants to know if the 4096-bit SSH RSA key is supported with FTP Connector.</p><p /><p><strong>Solution:</strong></p><p>We review it with our product management and after comparing it with our product specification got the following information.</p><p><strong>The FTP connector does not yet support PPK version 3 keys.</strong></p><p>Please check the version of the PPK key in use for FTP Resource and make sure it is of PPK Key version 2.</p><p>We can easily check the PPK file version with Notepat++.<br/>See the below screenshot for the difference between PPK file versions 2 and 3.</p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232195062/2232195078.png" data-image-src="attachments/2232195062/2232195078.png" data-height="259" data-width="960" data-unresolved-comment-count="0" data-linked-resource-id="2232195078" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="SSH Key Versions.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232195062" data-linked-resource-container-version="1" data-media-id="27d0fd65-9a4b-46a4-9719-16b71db35a34" data-media-type="file"></span><p>The user will have to create the PPK key with version 2 and use it in the FTP resource to resolve this issue.</p><p>PuTTY (PuTTYgen) 0.75 uses a new format for SSH private key (PPK version 3)</p><p>To Generate PPK version 2 key with PuTTYgen 0.75 (or later) see the below link for reference:<br/><a href="https://ccportal.ims.ac.jp/en/node/2914" data-card-appearance="inline" class="external-link" rel="nofollow">https://ccportal.ims.ac.jp/en/node/2914</a> </p>
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232195062/2232195078.png">SSH Key Versions.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232195062/2232195081.png">Error Screenshot.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:22</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

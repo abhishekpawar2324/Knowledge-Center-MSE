@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : Handling HTTP Error 500.0 – Internal Server Error</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : Handling HTTP Error 500.0 – Internal Server Error
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232192708/2232192728.png" data-image-src="attachments/2232192708/2232192728.png" data-height="394" data-width="602" data-unresolved-comment-count="0" data-linked-resource-id="2232192728" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20210408-090254.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192708" data-linked-resource-container-version="1" data-media-id="d9cd6a13-0cef-423c-ace9-47098d9fb709" data-media-type="file"></span><p>When trying to execute a web application, this error occurs if the timeout exceeds while waiting for a response.</p><p> There are several ways to solve this problem:</p><p> First, under IIS follow the provided steps:</p><p> </p><ul><li><p>Open your IIS.</p></li><li><p>Go to &quot;Sites&quot; option.</p></li><li><p>Mouse right-click.</p></li><li><p>Then open property &quot;Manage Web Site&quot;.</p></li><li><p>Then click on &quot;Advance Settings&quot;.</p></li><li><p>Expand section &quot;Connection Limits&quot;, here you can set your &quot;connection time out&quot;</p></li></ul><p /><p>By default, its 120 seconds (2 minutes)</p><p>Here you can set valid values between 0 to 300 (seconds)</p><p>So, make it 300 seconds i.e 5 minutes</p><p /><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232192708/2232192725.png" data-image-src="attachments/2232192708/2232192725.png" data-height="319" data-width="643" data-unresolved-comment-count="0" data-linked-resource-id="2232192725" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20210408-090343.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192708" data-linked-resource-container-version="1" data-media-id="41f4f154-09d3-4116-af26-e467ae9c0136" data-media-type="file"></span><p /><p>Second approach increase the configured Timeout change the timeout from the</p><p><strong>mgreq.ini &lt;installation dir&gt;\Runtime\Scripts\config&gt;</strong></p><p> </p><p>By default, it is 30 sec you can increase it to 300 sec (i.e 5 min), after making changes in mgreq.ini make sure to restart the IIS.</p><p> </p><p>Also check the IIS timeout is more than the timeout set in mgreq.ini attached screenshot for reference (by default IIS timeout is 1:50)</p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232192708/2232192722.png" data-image-src="attachments/2232192708/2232192722.png" data-height="378" data-width="602" data-unresolved-comment-count="0" data-linked-resource-id="2232192722" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20210408-090408.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192708" data-linked-resource-container-version="1" data-media-id="bf627dbc-11f2-4ca7-9075-03aba55478df" data-media-type="file"></span><p /><p>(** Please always restart IIS after making changes in IIS or mgreq.ini)</p><p style="text-align: right;"></p><p style="text-align: right;">-Anand W.</p><p> </p><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192708/2232192722.png">image-20210408-090408.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192708/2232192725.png">image-20210408-090343.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192708/2232192728.png">image-20210408-090254.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:21</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>

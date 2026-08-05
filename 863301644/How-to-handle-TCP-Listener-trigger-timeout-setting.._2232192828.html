@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Magic Global Support : How to handle TCP Listener trigger timeout setting..</title>
+        <link rel="stylesheet" href="styles/site.css" type="text/css" />
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body class="theme-default aui-theme-default">
+        <div id="page">
+            <div id="main" class="aui-page-panel">
+                <div id="main-header">
+                    <div id="breadcrumb-section">
+                        <ol id="breadcrumbs">
+                            <li class="first">
+                                <span><a href="index.html">Magic Global Support</a></span>
+                            </li>
+                                                    <li>
+                                <span><a href="Windows-XPI_2232192054.html">Windows-XPI</a></span>
+                            </li>
+                                                </ol>
+                    </div>
+                    <h1 id="title-heading" class="pagetitle">
+                                                <span id="title-text">
+                            Magic Global Support : How to handle TCP Listener trigger timeout setting..
+                        </span>
+                    </h1>
+                </div>
+
+                <div id="content" class="view">
+                    <div class="page-metadata">
+                            
+        
+    
+        
+    
+        
+        
+            Created by <span class='author'> Amjad Madre</span> on 31,May, 2023
+                        </div>
+                    <div id="main-content" class="wiki-content group">
+                    <p><strong>Platform Line</strong>: Magic XPI</p><p> </p><p><strong>Objective</strong>:</p><p>How to handle TCP Listener trigger timeout setting.</p><p> </p><p><strong>Problem</strong>:</p><p>If you experience this scenario where TCP Listener trigger getting a timeout. One of the scenarios where the default is zero so there is no timeout. However, it gets time out in 30 seconds.</p><p> </p><p>Please refer to the below screenshot of mgreq.ini which shows the RequesterTimeoutSec setting.</p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232192828/2232192845.png" data-image-src="attachments/2232192828/2232192845.png" data-height="168" data-width="648" data-unresolved-comment-count="0" data-linked-resource-id="2232192845" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20210425-174120.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192828" data-linked-resource-container-version="1" data-media-id="ccb40367-190a-4546-a146-ea6e355045a5" data-media-type="file"></span><p /><p><strong>Solution</strong>:</p><p>The solution needs to do the following.</p><p>In mgreq.ini the   RequesterTimeoutSec is default 30 seconds is the default.</p><p>For this issue, if we try this setting so after increasing the setting from requester timeout to 120 seconds (RequesterTimeoutSec = 120) in mgreq.ini from %installation%/Runtime.<br/>This works correctly as expected with the TCP Listener trigger.</p><p>Below screenshot shows RequesterTimeoutSec=120 seconds.</p><span class="confluence-embedded-file-wrapper image-center-wrapper"><img class="confluence-embedded-image image-center" loading="lazy" src="attachments/2232192828/2232192842.png" data-image-src="attachments/2232192828/2232192842.png" data-height="167" data-width="669" data-unresolved-comment-count="0" data-linked-resource-id="2232192842" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="image-20210425-174131.png" data-base-url="https://magicsoftware2.atlassian.net/wiki" data-linked-resource-content-type="image/png" data-linked-resource-container-id="2232192828" data-linked-resource-container-version="1" data-media-id="c2d57fad-31a5-4a0d-a070-2dad28a7c6d9" data-media-type="file"></span><p />
+                    </div>
+
+                                        <div class="pageSection group">
+                        <div class="pageSectionHeader">
+                            <h2 id="attachments" class="pageSectionTitle">Attachments:</h2>
+                        </div>
+
+                        <div class="greybox" align="left">
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192828/2232192842.png">image-20210425-174131.png</a> (image/png)
+                                <br/>
+                                                            <img src="images/icons/bullet_blue.gif" height="8" width="8" alt=""/>
+                                <a href="attachments/2232192828/2232192845.png">image-20210425-174120.png</a> (image/png)
+                                <br/>
+                                                    </div>
+                    </div>
+                    
+                                                      
+                </div>             </div> 
+            <div id="footer" role="contentinfo">
+                <section class="footer-body">
+                    <p>Document generated by Confluence on 31,Jul , 2025 09:21</p>
+                    <div id="footer-logo"><a href="http://www.atlassian.com/">Atlassian</a></div>
+                </section>
+            </div>
+        </div>     </body>
+</html>
