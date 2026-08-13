@@ -1,0 +1,20 @@
+<service>
+  <id>MagicKnowledgeCenter</id>
+  <name>Magic Software Enterprise Knowledge Center</name>
+  <description>Centralized Technical Knowledge Base, Master SOPs, and AI Copilot Resolution Portal for Magic Software Enterprises.</description>
+  <executable>%BASE%\.venv\Scripts\python.exe</executable>
+  <arguments>-m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --workers 4</arguments>
+  <workingdirectory>%BASE%</workingdirectory>
+  <logpath>%BASE%\logs</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>5</keepFiles>
+  </log>
+  <onfailure action="restart" delay="5 sec" />
+  <resetfailure>1 hour</resetfailure>
+  <priority>Normal</priority>
+  <stoptimeout>15 sec</stoptimeout>
+  <serviceaccount>
+    <username>LocalSystem</username>
+  </serviceaccount>
+</service>
