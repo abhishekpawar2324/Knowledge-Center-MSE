@@ -9,54 +9,47 @@ echo.
 set SCRIPT_DIR=%~dp0
 cd /d "%SCRIPT_DIR%"
 
-:: 1. Check if Python is installed
-python --version >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] Python was not found on this machine!
-    echo Please ask IT to install Python 3.10, 3.11, or 3.12 (64-bit) and add to PATH.
-    echo.
-    pause
-    exit /b 1
-)
-
-:: 2. Setup Local Isolated Virtual Environment (.venv) if needed
-if not exist ".venv\Scripts\activate.bat" (
-    echo [1/3] Creating self-contained Python virtual environment (.venv)...
-    python -m venv .venv
-    if %ERRORLEVEL% NEQ 0 (
-        echo [ERROR] Failed to create virtual environment.
-        pause
-        exit /b 1
+:: 1. Locate Python runtime (Portable -> .venv -> System -> Program Files)
+set "PY_CMD="
+if exist "runtime\python.exe" (
+    set "PY_CMD=%SCRIPT_DIR%runtime\python.exe"
+) else if exist ".venv\Scripts\python.exe" (
+    set "PY_CMD=%SCRIPT_DIR%.venv\Scripts\python.exe"
+) else (
+    where python >nul 2>&1
+    if %ERRORLEVEL% EQU 0 (
+        for /f "delims=" %%I in ('where python') do (
+            if not defined PY_CMD set "PY_CMD=%%I"
+        )
+    ) else if exist "C:\Python311\python.exe" (
+        set "PY_CMD=C:\Python311\python.exe"
+    ) else if exist "C:\Program Files\Python311\python.exe" (
+        set "PY_CMD=C:\Program Files\Python311\python.exe"
+    ) else if exist "%LocalAppData%\Programs\Python\Python311\python.exe" (
+        set "PY_CMD=%LocalAppData%\Programs\Python\Python311\python.exe"
     )
 )
 
-:: 3. Activate Virtual Environment
-call ".venv\Scripts\activate.bat"
-
-:: 4. Install Dependencies (Offline-first from vendor\wheels or online fallback)
-echo [2/3] Verifying runtime dependencies...
-if exist "vendor\wheels" (
-    echo Installing from pre-bundled offline wheels (Zero Internet Mode)...
-    python -m pip install --no-index --find-links=vendor\wheels -r requirements.txt --quiet
-) else (
-    echo Installing dependencies from requirements.txt...
-    python -m pip install -r requirements.txt --quiet
+if "%PY_CMD%"=="" (
+    echo [INFO] Python was not found on this machine.
+    echo Automatically setting up self-contained portable Python runtime...
+    call setup_portable_runtime.bat
+    set "PY_CMD=%SCRIPT_DIR%runtime\python.exe"
 )
 
-:: 5. Launch Knowledge Center Server on Port 8000
+echo [1/2] Using Python Runtime: %PY_CMD%
+echo [2/2] Starting Magic Knowledge Center Server on Port 8000...
 echo.
-echo [3/3] Starting Magic Knowledge Center Server on Port 8000...
 echo ======================================================================
 echo  Knowledge Center is LIVE and accessible at:
 echo  - Local:   http://localhost:8000
 echo  - Network: http://[VM-IP-ADDRESS]:8000
 echo.
-echo  Default Super Admin: superadmin / admin@123
+echo  Default Admin Account: admin / admin
 echo  Press Ctrl+C to stop the server.
 echo ======================================================================
 echo.
 
-:: Launch the server using the virtual environment python
-python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --workers 4
+"%PY_CMD%" -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
 
 pause
