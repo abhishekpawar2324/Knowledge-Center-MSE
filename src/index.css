@@ -2,27 +2,28 @@
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-display: 'Outfit', sans-serif;
   
-  /* Color Palette */
+  /* MSE Corporate Color Palette */
   --bg-main: #06040d;
-  --bg-card: rgba(18, 14, 33, 0.6);
-  --bg-card-hover: rgba(26, 21, 46, 0.8);
+  --bg-card: rgba(15, 23, 42, 0.65);
+  --bg-card-hover: rgba(30, 41, 59, 0.85);
   --border-color: rgba(255, 255, 255, 0.08);
-  --border-hover: rgba(99, 102, 241, 0.4);
+  --border-hover: rgba(0, 141, 199, 0.5);
   
-  --primary: #6366f1; /* Indigo */
-  --primary-hover: #4f46e5;
-  --primary-glow: rgba(99, 102, 241, 0.35);
+  --primary: #008DC7; /* Magic MSE Vivid Cyan */
+  --primary-hover: #00568C; /* Magic Deep Blue */
+  --primary-glow: rgba(0, 141, 199, 0.35);
   
-  --accent-cyan: #06b6d4;
+  --accent-cyan: #2DBCEE;
   --accent-emerald: #10b981;
+  --accent-amber: #f59e0b;
   --accent-rose: #f43f5e;
   
-  --text-main: #f3f4f6;
-  --text-muted: #9ca3af;
-  --text-inverse: #0b071a;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-inverse: #020617;
   
-  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
-  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.25);
+  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+  --shadow-glow: 0 0 20px rgba(0, 141, 199, 0.25);
   
   --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -36,8 +37,8 @@
 body {
   background-color: var(--bg-main);
   background-image: 
-    radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.06) 0%, transparent 40%);
+    radial-gradient(circle at 10% 20%, rgba(0, 141, 199, 0.09) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(45, 188, 238, 0.07) 0%, transparent 40%);
   color: var(--text-main);
   font-family: var(--font-sans);
   line-height: 1.6;

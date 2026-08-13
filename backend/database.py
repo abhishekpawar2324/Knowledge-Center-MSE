@@ -20,6 +20,8 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     role = Column(String, default="Viewer") # Admin, Editor, Viewer
+    product_space = Column(String, default="all") # all, xpa, xpi, cloud_native
+    is_active = Column(Boolean, default=True)
 
 class Document(Base):
     __tablename__ = "documents"
@@ -31,6 +33,10 @@ class Document(Base):
     content = Column(Text, nullable=False) # Clean raw text for searching
     author = Column(String, default="System")
     breadcrumbs = Column(String, default="") # JSON list or separated categories
+    product = Column(String, default="xpi", index=True) # xpa, xpi, cloud_native, general
+    version = Column(String, default="Universal") # 4.14, 4.13, 4.9, 3.x, Universal
+    doc_type = Column(String, default="troubleshooting") # troubleshooting, how_to, connector, architecture, release_note
+    status = Column(String, default="published", index=True) # published, draft, archived
     created_at = Column(DateTime, default=datetime.utcnow)
     views = Column(Integer, default=0)
     likes = Column(Integer, default=0)
@@ -45,6 +51,7 @@ class Comment(Base):
     username = Column(String, nullable=False)
     content = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
 
 class Favorite(Base):
     __tablename__ = "favorites"
@@ -61,6 +68,28 @@ class IndexLog(Base):
     status = Column(String, nullable=False) # Success, Error
     message = Column(String, nullable=True)
     indexed_count = Column(Integer, default=0)
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    message = Column(String, nullable=False)
+    product = Column(String, default="all") # xpa, xpi, cloud_native, all
+    doc_id = Column(Integer, nullable=True)
+    notification_type = Column(String, default="kb_published") # kb_published, advisory, system
+    created_at = Column(DateTime, default=datetime.utcnow)
+    is_read = Column(Boolean, default=False)
+
+class SearchAnalytic(Base):
+    __tablename__ = "search_analytics"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    query = Column(String, nullable=False, index=True)
+    product = Column(String, default="all")
+    results_count = Column(Integer, default=0)
+    username = Column(String, default="Guest")
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 def init_db():
     Base.metadata.create_all(bind=engine)
@@ -82,6 +111,21 @@ def init_db():
             cursor.execute("ALTER TABLE documents ADD COLUMN tags TEXT DEFAULT ''")
         if "is_pinned" not in columns:
             cursor.execute("ALTER TABLE documents ADD COLUMN is_pinned INTEGER DEFAULT 0")
+        if "product" not in columns:
+            cursor.execute("ALTER TABLE documents ADD COLUMN product TEXT DEFAULT 'xpi'")
+        if "version" not in columns:
+            cursor.execute("ALTER TABLE documents ADD COLUMN version TEXT DEFAULT 'Universal'")
+        if "doc_type" not in columns:
+            cursor.execute("ALTER TABLE documents ADD COLUMN doc_type TEXT DEFAULT 'troubleshooting'")
+        if "status" not in columns:
+            cursor.execute("ALTER TABLE documents ADD COLUMN status TEXT DEFAULT 'published'")
+            
+        cursor.execute("PRAGMA table_info(users)")
+        user_cols = [row[1] for row in cursor.fetchall()]
+        if "product_space" not in user_cols:
+            cursor.execute("ALTER TABLE users ADD COLUMN product_space TEXT DEFAULT 'all'")
+        if "is_active" not in user_cols:
+            cursor.execute("ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1")
             
         conn.commit()
         conn.close()

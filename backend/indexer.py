@@ -38,9 +38,74 @@ from backend.database import SessionLocal, Document, IndexLog, init_db
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFLUENCE_DIR = os.path.join(BASE_DIR, "863301644")
 UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
+UPLOADS_XPA = os.path.join(UPLOADS_DIR, "xpa")
+UPLOADS_XPI = os.path.join(UPLOADS_DIR, "xpi")
+UPLOADS_CLOUD = os.path.join(UPLOADS_DIR, "cloud_native")
+UPLOADS_GENERAL = os.path.join(UPLOADS_DIR, "general")
 
-# Ensure uploads directory exists
-os.makedirs(UPLOADS_DIR, exist_ok=True)
+# Ensure all product upload directories exist
+for p_dir in [UPLOADS_DIR, UPLOADS_XPA, UPLOADS_XPI, UPLOADS_CLOUD, UPLOADS_GENERAL]:
+    os.makedirs(p_dir, exist_ok=True)
+
+def detect_product(file_path: str, title: str = "", content: str = "", breadcrumbs: list = None) -> str:
+    """
+    Intelligently identifies which Magic product space an article belongs to:
+    'xpa' (Application Platform), 'xpi' (Integration Platform), 'cloud_native', or 'general'.
+    """
+    path_lower = file_path.lower().replace("\\", "/")
+    if "/xpa/" in path_lower or "/xpa" in path_lower:
+        return "xpa"
+    if "/xpi/" in path_lower or "/xpi" in path_lower:
+        return "xpi"
+    if "/cloud_native/" in path_lower or "/cloud" in path_lower:
+        return "cloud_native"
+    if "/general/" in path_lower:
+        return "general"
+        
+    crumbs_text = " ".join(breadcrumbs) if breadcrumbs else ""
+    combined = (title + " " + crumbs_text + " " + content[:2500]).lower()
+    
+    # 1. Cloud Native checks
+    if any(k in combined for k in ["cloud native", "kubernetes", "docker", "microservice", "modernization factory", "cloud migration"]):
+        return "cloud_native"
+        
+    # 2. Magic xpa checks
+    if any(k in combined for k in ["magic xpa", "xpa studio", "ria application", "unipaas", "magic.ini", "mgreq.ini", "xpa "]):
+        if "xpi" not in combined:
+            return "xpa"
+            
+    # 3. Magic xpi checks (connectors, datamapper, gigaspaces, etc.)
+    if any(k in combined for k in ["xpi", "gigaspace", "gsc", "datamapper", "data mapper", "connector", "sap b1", "salesforce connector", "sugarcrm", "dynamics", "tcp-listener", "http trigger", "rest client"]):
+        return "xpi"
+        
+    # 4. Default for historical 863301644 Confluence space
+    if "863301644" in file_path:
+        return "xpi"
+        
+    return "general"
+
+def detect_version(title: str = "", content: str = "") -> str:
+    """Extracts software version from title or first paragraphs."""
+    text = title + " " + content[:600]
+    match = re.search(r'\b(4\.\d+(\.\d+)?|3\.\d+|12\.\d+|10\.\d+|v\d+(\.\d+)?)\b', text, re.IGNORECASE)
+    if match:
+        return match.group(0)
+    return "Universal"
+
+def detect_doc_type(title: str = "", content: str = "") -> str:
+    """Categorizes document into troubleshooting, how_to, connector, architecture, release_note."""
+    text = (title + " " + content[:400]).lower()
+    if any(w in text for w in ["error", "issue", "problem", "fail", "leak", "warning", "fix", "troubleshoot", "crash", "bug"]):
+        return "troubleshooting"
+    if any(w in text for w in ["how to", "how-to", "guide", "setup", "configure", "installation", "steps"]):
+        return "how_to"
+    if any(w in text for w in ["connector", "adapter", "interface", "api", "rest", "soap", "odata", "salesforce", "sap"]):
+        return "connector"
+    if any(w in text for w in ["architecture", "overview", "lifecycle", "design", "specification"]):
+        return "architecture"
+    if any(w in text for w in ["release", "what's new", "changelog", "version"]):
+        return "release_note"
+    return "general"
 
 def parse_html_file(file_path):
     """
@@ -346,14 +411,17 @@ def scan_and_index(db: Session):
     # 1. Scan for files
     all_files = []
     
-    # Confluence folder
+    # Confluence folder (discover all supported file types: html, docx, pdf, txt, md)
     if os.path.exists(CONFLUENCE_DIR):
         for root, _, files in os.walk(CONFLUENCE_DIR):
             for file in files:
-                if file.endswith(".html") and file != "index.html":
-                    all_files.append((os.path.join(root, file), "html"))
+                if file == "index.html":
+                    continue
+                ext = file.split(".")[-1].lower()
+                if ext in ["html", "pdf", "docx", "txt", "md"]:
+                    all_files.append((os.path.join(root, file), ext))
                     
-    # Uploads folder
+    # Uploads folder (and all product subdirectories)
     if os.path.exists(UPLOADS_DIR):
         for root, _, files in os.walk(UPLOADS_DIR):
             for file in files:
@@ -401,13 +469,24 @@ def scan_and_index(db: Session):
             parsed_data = parse_text_file(file_path, file_type)
             
         if parsed_data:
+            breadcrumbs_list = json.loads(parsed_data["breadcrumbs"]) if parsed_data["breadcrumbs"] else []
+            product_tag = detect_product(file_path, parsed_data["title"], parsed_data["content"], breadcrumbs_list)
+            version_tag = detect_version(parsed_data["title"], parsed_data["content"])
+            doc_type_tag = detect_doc_type(parsed_data["title"], parsed_data["content"])
+            
             if existing_doc:
-                # Update existing
                 existing_doc.title = parsed_data["title"]
                 existing_doc.breadcrumbs = parsed_data["breadcrumbs"]
-                existing_doc.author = parsed_data["author"]
                 existing_doc.content = parsed_data["content"]
+                if parsed_data.get("author") and parsed_data["author"] not in ["Editor", "System"] or not existing_doc.author:
+                    existing_doc.author = parsed_data["author"]
                 existing_doc.created_at = parsed_data["created_at"]
+                if not existing_doc.product or existing_doc.product == "xpi":
+                    existing_doc.product = product_tag
+                if not existing_doc.version or existing_doc.version == "Universal":
+                    existing_doc.version = version_tag
+                if not existing_doc.doc_type:
+                    existing_doc.doc_type = doc_type_tag
             else:
                 # Create new
                 new_doc = Document(
@@ -417,6 +496,10 @@ def scan_and_index(db: Session):
                     content=parsed_data["content"],
                     author=parsed_data["author"],
                     breadcrumbs=parsed_data["breadcrumbs"],
+                    product=product_tag,
+                    version=version_tag,
+                    doc_type=doc_type_tag,
+                    status="published",
                     created_at=parsed_data["created_at"]
                 )
                 db.add(new_doc)
@@ -449,7 +532,9 @@ def scan_and_index(db: Session):
     db.add(idx_log)
     db.commit()
     print(final_message)
-def index_single_file(file_path: str, file_type: str, db: Session):
+    return indexed_count, final_message
+
+def index_single_file(file_path: str, file_type: str, db: Session, explicit_product: str = None, explicit_version: str = None, explicit_doc_type: str = None):
     """
     Instantly parses and indexes a single uploaded file into the database in under 50ms.
     Eliminates full workspace re-scanning delays during uploads.
@@ -470,12 +555,20 @@ def index_single_file(file_path: str, file_type: str, db: Session):
     if not parsed_data:
         return None
 
+    breadcrumbs_list = json.loads(parsed_data["breadcrumbs"]) if parsed_data["breadcrumbs"] else []
+    product_tag = explicit_product or detect_product(file_path, parsed_data["title"], parsed_data["content"], breadcrumbs_list)
+    version_tag = explicit_version or detect_version(parsed_data["title"], parsed_data["content"])
+    doc_type_tag = explicit_doc_type or detect_doc_type(parsed_data["title"], parsed_data["content"])
+
     existing_doc = db.query(Document).filter(Document.file_path == normalized_path).first()
     if existing_doc:
         existing_doc.title = parsed_data["title"]
         existing_doc.breadcrumbs = parsed_data["breadcrumbs"]
         existing_doc.author = parsed_data["author"]
         existing_doc.content = parsed_data["content"]
+        existing_doc.product = product_tag
+        existing_doc.version = version_tag
+        existing_doc.doc_type = doc_type_tag
         existing_doc.created_at = parsed_data["created_at"]
         doc = existing_doc
     else:
@@ -486,6 +579,10 @@ def index_single_file(file_path: str, file_type: str, db: Session):
             content=parsed_data["content"],
             author=parsed_data["author"],
             breadcrumbs=parsed_data["breadcrumbs"],
+            product=product_tag,
+            version=version_tag,
+            doc_type=doc_type_tag,
+            status="published",
             created_at=parsed_data["created_at"]
         )
         db.add(doc)
