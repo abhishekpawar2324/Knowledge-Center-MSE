@@ -800,8 +800,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ==================== 12. DOCUMENT READER VIEW ====================
   async function openDocument(docId) {
+    // Hide all modal overlays if open
+    const copilotModal = document.getElementById('modal-copilot')
+    if (copilotModal) copilotModal.classList.add('hide')
+
+    const publishModal = document.getElementById('modal-publish-ai-kb')
+    if (publishModal) publishModal.classList.add('hide')
+
+    const writeModal = document.getElementById('modal-write-kb')
+    if (writeModal) writeModal.classList.add('hide')
+
     document.getElementById('page-admin-suite').classList.add('hide')
     document.getElementById('page-upload-portal').classList.add('hide')
+    const pageLogin = document.getElementById('page-login')
+    if (pageLogin) pageLogin.classList.add('hide')
+
     document.getElementById('page-home-landing').classList.add('hide')
     document.getElementById('page-product-workspace').classList.remove('hide')
     document.getElementById('view-product-doc-listing').classList.add('hide')
@@ -817,7 +830,7 @@ document.addEventListener('DOMContentLoaded', () => {
       addRecentlyViewed(currentDoc)
 
       document.getElementById('reader-doc-title').textContent = currentDoc.title
-      document.getElementById('reader-product-badge').textContent = `${currentDoc.product || 'XPI'} Platform`
+      document.getElementById('reader-product-badge').textContent = `${(currentDoc.product || 'XPI').toUpperCase()} Platform`
       document.getElementById('reader-version-badge').textContent = currentDoc.version || 'Universal'
       document.getElementById('reader-format-badge').textContent = `Format: ${currentDoc.file_type}`
       document.getElementById('reader-doc-author').textContent = currentDoc.author || 'Engineering'
@@ -837,11 +850,13 @@ document.addEventListener('DOMContentLoaded', () => {
         bodyContainer.innerHTML = `<pre style="white-space:pre-wrap; font-family:inherit;">${currentDoc.content}</pre>`
       }
 
+      window.scrollTo({ top: 0, behavior: 'smooth' })
       fetchComments(docId)
     } catch (e) {
       console.error(e)
     }
   }
+  window.openDocument = openDocument
 
   // Favourite Button in Reader
   document.getElementById('btn-doc-fav').addEventListener('click', () => {
@@ -943,176 +958,1937 @@ document.addEventListener('DOMContentLoaded', () => {
     const modal = document.getElementById('modal-copilot')
     modal.classList.remove('hide')
     const thread = document.getElementById('copilot-messages-thread')
-    if (thread.children.length === 0) {
+    if (thread && thread.children.length === 0) {
       thread.innerHTML = `
-        <div style="padding:14px; border-radius:10px; background:rgba(0,141,199,0.12); border:1px solid rgba(0,141,199,0.25); color:#e2e8f0; font-size:0.88rem; line-height:1.6;">
-          👋 Hello! I am your <strong>Magic AI Assistant</strong>. Ask me any configuration question, error code diagnosis, or step-by-step SOP across Magic xpa, Magic xpi, or Cloud Native.
+        <div style="padding:14px 16px; border-radius:10px; background:rgba(0,141,199,0.12); border:1px solid rgba(0,141,199,0.25); color:#e2e8f0; font-size:0.88rem; line-height:1.6;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+            <span style="font-size:1.1rem;">👋</span>
+            <strong style="color:#38bdf8;">Welcome to Magic AI Copilot & Analyzer</strong>
+          </div>
+          <div>Ask any technical configuration question, paste log errors, or switch to the <strong>Case Analyzer</strong> tab for root-cause diagnosis and ready-to-send customer email drafts.</div>
         </div>
       `
     }
+    fetchCopilotSessions()
+    updateEngineIndicator()
     if (initialQ) {
-      document.getElementById('copilot-input').value = initialQ
-      document.getElementById('copilot-form').dispatchEvent(new Event('submit'))
+      const input = document.getElementById('copilot-input')
+      if (input) {
+        input.value = initialQ
+        const form = document.getElementById('copilot-form')
+        if (form) form.dispatchEvent(new Event('submit'))
+      }
     }
   }
 
-  document.getElementById('btn-open-copilot').addEventListener('click', () => openCopilotWithQuery())
-  document.getElementById('btn-close-copilot').addEventListener('click', () => {
-    document.getElementById('modal-copilot').classList.add('hide')
-  })
+  // Client ID for per-browser isolation
+  let clientId = localStorage.getItem('kc_client_id')
+  if (!clientId) {
+    clientId = 'client_' + Math.random().toString(36).substring(2, 12)
+    localStorage.setItem('kc_client_id', clientId)
+  }
 
-  document.getElementById('copilot-form').addEventListener('submit', async (e) => {
-    e.preventDefault()
+  let activeSessionId = 'sess_' + Date.now()
+  let stagedAttachments = []
+
+  // Safe Markdown Renderer
+  function safeRenderMarkdown(mdText) {
+    if (!mdText) return ''
+    if (window.marked && typeof marked.parse === 'function') {
+      try {
+        return marked.parse(mdText)
+      } catch (e) {
+        console.warn('[Markdown parse error]', e)
+      }
+    }
+    return mdText
+      .replace(/### (.*)/g, '<h3 style="color:#7dd3fc; margin-top:10px;">$1</h3>')
+      .replace(/## (.*)/g, '<h2 style="color:#38bdf8; margin-top:12px;">$1</h2>')
+      .replace(/# (.*)/g, '<h1 style="color:#fff; margin-top:14px;">$1</h1>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/`([^`]+)`/g, '<code style="background:rgba(0,0,0,0.4); padding:2px 6px; border-radius:4px; color:#38bdf8;">$1</code>')
+      .replace(/\n/g, '<br>')
+  }
+
+  // Global Quick Prompt Trigger
+  window.triggerQuickPrompt = function(q) {
+    switchCopilotTab('chat')
     const input = document.getElementById('copilot-input')
-    const prompt = input.value.trim()
-    if (!prompt) return
+    if (input) {
+      input.value = q
+      const form = document.getElementById('copilot-form')
+      if (form) form.dispatchEvent(new Event('submit'))
+    }
+  }
 
-    const thread = document.getElementById('copilot-messages-thread')
-    const scope = document.getElementById('copilot-product-scope').value
-
-    const userMsg = document.createElement('div')
-    userMsg.style.cssText = 'align-self:flex-end; max-width:80%; padding:10px 14px; border-radius:10px; background:linear-gradient(135deg,#008DC7,#2DBCEE); color:#fff; font-size:0.88rem;'
-    userMsg.textContent = prompt
-    thread.appendChild(userMsg)
-    input.value = ''
-
-    const botLoading = document.createElement('div')
-    botLoading.style.cssText = 'align-self:flex-start; max-width:85%; padding:12px; border-radius:10px; background:rgba(255,255,255,0.04); color:#94a3b8; font-size:0.85rem;'
-    botLoading.textContent = 'Synthesizing verified documentation...'
-    thread.appendChild(botLoading)
-    thread.scrollTop = thread.scrollHeight
-
+  // Global Mark Verified Resolution
+  window.markResolutionVerified = async function(resId, btnEl) {
+    if (!resId) return
     try {
-      const res = await fetch('/api/copilot/ask', {
+      if (btnEl) {
+        btnEl.disabled = true
+        btnEl.innerHTML = '⏳ Verifying...'
+      }
+      const res = await fetch('/api/ai/mark-verified', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, product: scope })
+        body: JSON.stringify({ resolution_id: resId })
       })
-      if (!res.ok) throw new Error('Assistant response error')
+      if (!res.ok) throw new Error('Verification failed')
+      if (btnEl) {
+        btnEl.style.background = 'rgba(16, 185, 129, 0.25)'
+        btnEl.style.borderColor = '#10b981'
+        btnEl.style.color = '#34d399'
+        btnEl.innerHTML = '✓ Verified & Benchmark Learned'
+      }
+    } catch (err) {
+      alert(err.message || 'Could not verify resolution.')
+      if (btnEl) {
+        btnEl.disabled = false
+        btnEl.innerHTML = '⭐ Mark Verified'
+      }
+    }
+  }
+
+  // Global Copy Text
+  window.copyTextToClipboard = function(text, btnEl) {
+    if (!text) return
+    navigator.clipboard.writeText(text).then(() => {
+      if (btnEl) {
+        const orig = btnEl.innerHTML
+        btnEl.innerHTML = '✓ Copied!'
+        setTimeout(() => { btnEl.innerHTML = orig }, 2000)
+      }
+    }).catch(() => {
+      alert('Copied to clipboard!')
+    })
+  }
+
+  // Switch Copilot Tabs
+  let currentCopilotTab = 'chat'
+  let activeCaseDiagnosticId = null
+
+  function switchCopilotTab(tab) {
+    currentCopilotTab = tab
+    const tabChat = document.getElementById('copilot-pane-chat')
+    const tabCase = document.getElementById('copilot-pane-case')
+    const tabSettings = document.getElementById('copilot-pane-settings')
+    const btnChat = document.getElementById('copilot-tab-btn-chat')
+    const btnCase = document.getElementById('copilot-tab-btn-case')
+    const btnSettings = document.getElementById('copilot-tab-btn-settings')
+    const sidebarTitle = document.getElementById('copilot-sidebar-title')
+    const btnNew = document.getElementById('btn-new-copilot-chat')
+    const btnClear = document.getElementById('btn-clear-copilot-history')
+
+    if (btnChat) btnChat.classList.toggle('active', tab === 'chat')
+    if (btnCase) btnCase.classList.toggle('active', tab === 'case')
+    if (btnSettings) btnSettings.classList.toggle('active', tab === 'settings')
+
+    if (tabChat) tabChat.classList.toggle('hide', tab !== 'chat')
+    if (tabCase) tabCase.classList.toggle('hide', tab !== 'case')
+    if (tabSettings) tabSettings.classList.toggle('hide', tab !== 'settings')
+
+    if (tab === 'chat') {
+      if (sidebarTitle) sidebarTitle.textContent = 'Recent Chats'
+      if (btnNew) btnNew.innerHTML = '<i data-lucide="plus" style="width:15px; height:15px;"></i> New Chat'
+      if (btnClear) btnClear.style.display = 'inline-block'
+      fetchCopilotSessions()
+    } else if (tab === 'case') {
+      if (sidebarTitle) sidebarTitle.textContent = 'Recent Diagnostics'
+      if (btnNew) btnNew.innerHTML = '<i data-lucide="plus" style="width:15px; height:15px;"></i> New Diagnostic'
+      if (btnClear) btnClear.style.display = 'inline-block'
+      fetchCaseSessions()
+    } else if (tab === 'settings') {
+      if (sidebarTitle) sidebarTitle.textContent = 'Engine Status'
+      if (btnNew) btnNew.innerHTML = '<i data-lucide="settings" style="width:15px; height:15px;"></i> Config'
+      if (btnClear) btnClear.style.display = 'none'
+      loadAISettings()
+    }
+
+    if (window.lucide) lucide.createIcons()
+  }
+
+  const btnTabChat = document.getElementById('copilot-tab-btn-chat')
+  if (btnTabChat) btnTabChat.addEventListener('click', () => switchCopilotTab('chat'))
+
+  const btnTabCase = document.getElementById('copilot-tab-btn-case')
+  if (btnTabCase) btnTabCase.addEventListener('click', () => switchCopilotTab('case'))
+
+  const btnTabSettings = document.getElementById('copilot-tab-btn-settings')
+  if (btnTabSettings) btnTabSettings.addEventListener('click', () => switchCopilotTab('settings'))
+
+  const btnOpenCopilot = document.getElementById('btn-open-copilot')
+  if (btnOpenCopilot) btnOpenCopilot.addEventListener('click', () => openCopilotWithQuery())
+
+  const btnCloseCopilot = document.getElementById('btn-close-copilot')
+  if (btnCloseCopilot) {
+    btnCloseCopilot.addEventListener('click', () => {
+      const modal = document.getElementById('modal-copilot')
+      if (modal) modal.classList.add('hide')
+    })
+  }
+
+  // New Chat / New Diagnostic Session Button
+  const btnNewChat = document.getElementById('btn-new-copilot-chat')
+  if (btnNewChat) {
+    btnNewChat.addEventListener('click', () => {
+      if (currentCopilotTab === 'case') {
+        activeCaseDiagnosticId = null
+        const caseNumInput = document.getElementById('case-input-number')
+        const custInput = document.getElementById('case-input-customer')
+        const histInput = document.getElementById('case-input-history')
+        const prodInput = document.getElementById('case-input-product')
+        const results = document.getElementById('case-results-container')
+
+        if (caseNumInput) caseNumInput.value = ''
+        if (custInput) custInput.value = ''
+        if (histInput) histInput.value = ''
+        if (prodInput) prodInput.value = 'xpi'
+        caseUploadedAttachments = []
+        renderCaseUploadedAttachments()
+        if (results) {
+          results.classList.add('hide')
+          results.innerHTML = ''
+        }
+        fetchCaseSessions()
+      } else {
+        activeSessionId = 'sess_' + Date.now()
+        const thread = document.getElementById('copilot-messages-thread')
+        if (thread) {
+          thread.innerHTML = `
+            <div style="padding:14px 16px; border-radius:10px; background:rgba(0,141,199,0.12); border:1px solid rgba(0,141,199,0.25); color:#e2e8f0; font-size:0.88rem; line-height:1.6;">
+              👋 New troubleshooting session started. Ask any question across Magic xpa, Magic xpi, or Cloud Native.
+            </div>
+          `
+        }
+        stagedAttachments = []
+        renderStagedAttachments()
+        switchCopilotTab('chat')
+        fetchCopilotSessions()
+      }
+    })
+  }
+
+  // Clear History Button (Works for both Chat and Case Diagnostics)
+  const btnClearHistory = document.getElementById('btn-clear-copilot-history')
+  if (btnClearHistory) {
+    btnClearHistory.addEventListener('click', async () => {
+      if (currentCopilotTab === 'case') {
+        if (!confirm('Are you sure you want to clear recent case diagnostics history?')) return
+        try {
+          await fetch('/api/ai/cases/history', { method: 'DELETE' })
+          activeCaseDiagnosticId = null
+          const results = document.getElementById('case-results-container')
+          if (results) {
+            results.classList.add('hide')
+            results.innerHTML = ''
+          }
+          fetchCaseSessions()
+        } catch (err) {
+          console.warn('Could not clear case history:', err)
+        }
+      } else {
+        if (!confirm('Are you sure you want to clear all recent chat sessions?')) return
+        try {
+          await fetch('/api/ai/sessions?client_id=' + encodeURIComponent(clientId), { method: 'DELETE' })
+          activeSessionId = 'sess_' + Date.now()
+          const thread = document.getElementById('copilot-messages-thread')
+          if (thread) {
+            thread.innerHTML = `
+              <div style="padding:14px 16px; border-radius:10px; background:rgba(0,141,199,0.12); border:1px solid rgba(0,141,199,0.25); color:#e2e8f0; font-size:0.88rem; line-height:1.6;">
+                👋 New troubleshooting session started. Ask any question across Magic xpa, Magic xpi, or Cloud Native.
+              </div>
+            `
+          }
+          fetchCopilotSessions()
+        } catch (err) {
+          console.warn('Could not clear sessions:', err)
+        }
+      }
+    })
+  }
+
+  // File Attachments (Chat)
+  const btnAttach = document.getElementById('btn-copilot-attach')
+  const attachInput = document.getElementById('copilot-attach-input')
+  if (btnAttach && attachInput) {
+    btnAttach.addEventListener('click', () => attachInput.click())
+    attachInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files || [])
+      for (const file of files) {
+        try {
+          const text = await file.text()
+          stagedAttachments.push({
+            name: file.name,
+            size: file.size,
+            type: file.type || 'text/plain',
+            content: text.slice(0, 30000)
+          })
+        } catch (err) {
+          console.warn('File read error:', err)
+        }
+      }
+      renderStagedAttachments()
+      attachInput.value = ''
+    })
+  }
+
+  function renderStagedAttachments() {
+    const tray = document.getElementById('copilot-attachments-tray')
+    if (!tray) return
+    if (stagedAttachments.length === 0) {
+      tray.classList.add('hide')
+      tray.innerHTML = ''
+      return
+    }
+    tray.classList.remove('hide')
+    tray.innerHTML = stagedAttachments.map((att, i) => `
+      <div style="padding:4px 10px; border-radius:6px; background:rgba(0,141,199,0.2); border:1px solid rgba(0,141,199,0.4); color:#38bdf8; font-size:0.75rem; display:flex; align-items:center; gap:6px;">
+        <span>📎 ${att.name} (${Math.round(att.size / 1024)} KB)</span>
+        <button type="button" onclick="removeStagedAttachment(${i})" style="background:none; border:none; color:#f43f5e; cursor:pointer; font-size:0.8rem; font-weight:700;">×</button>
+      </div>
+    `).join('')
+  }
+
+  window.removeStagedAttachment = function(idx) {
+    stagedAttachments.splice(idx, 1)
+    renderStagedAttachments()
+  }
+
+  // Fetch & Render Chat Sessions
+  async function fetchCopilotSessions() {
+    if (currentCopilotTab !== 'chat') return
+    const listContainer = document.getElementById('copilot-sessions-list')
+    if (!listContainer) return
+    try {
+      const res = await fetch('/api/ai/sessions?client_id=' + encodeURIComponent(clientId), {
+        headers: { 'X-Client-Id': clientId }
+      })
+      if (!res.ok) return
+      const sessions = await res.json()
+      if (!sessions || sessions.length === 0) {
+        listContainer.innerHTML = '<div style="padding:10px; text-align:center; color:#64748b; font-size:0.75rem;">No recent chat sessions</div>'
+        return
+      }
+      listContainer.innerHTML = sessions.map(s => `
+        <div class="sidebar-item-row" onclick="loadCopilotSession('${s.id}')" style="background:${s.id === activeSessionId ? 'rgba(0,141,199,0.18)' : 'rgba(255,255,255,0.02)'}; border-color:${s.id === activeSessionId ? 'rgba(0,141,199,0.4)' : 'transparent'};">
+          <div style="display:flex; align-items:center; gap:6px; min-width:0; flex:1;">
+            <i data-lucide="message-square" style="width:13px; height:13px; color:#38bdf8; flex-shrink:0;"></i>
+            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#e2e8f0; font-size:0.78rem;">${s.title}</span>
+          </div>
+          <button type="button" class="sidebar-item-remove" onclick="deleteCopilotSession('${s.id}', event)" title="Delete session">×</button>
+        </div>
+      `).join('')
+      if (window.lucide) lucide.createIcons()
+    } catch (err) {
+      console.warn('Could not fetch sessions:', err)
+    }
+  }
+
+  window.loadCopilotSession = async function(sessId) {
+    activeSessionId = sessId
+    switchCopilotTab('chat')
+    fetchCopilotSessions()
+    const thread = document.getElementById('copilot-messages-thread')
+    if (!thread) return
+    thread.innerHTML = '<div style="padding:10px; color:#94a3b8; font-size:0.8rem;">Loading conversation...</div>'
+    try {
+      const res = await fetch(`/api/ai/sessions/${sessId}/messages`, {
+        headers: { 'X-Client-Id': clientId }
+      })
+      if (!res.ok) throw new Error('Failed to load messages')
+      const msgs = await res.json()
+      thread.innerHTML = ''
+      msgs.forEach(m => {
+        const div = document.createElement('div')
+        if (m.role === 'user') {
+          div.style.cssText = 'align-self:flex-end; max-width:82%; padding:10px 14px; border-radius:10px; background:linear-gradient(135deg,#008DC7,#2DBCEE); color:#fff; font-size:0.88rem;'
+          div.textContent = m.content
+        } else {
+          div.style.cssText = 'align-self:flex-start; max-width:92%; padding:14px 16px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); color:#e2e8f0;'
+          div.innerHTML = `<div class="markdown-body">${safeRenderMarkdown(m.content)}</div>`
+        }
+        thread.appendChild(div)
+      })
+      thread.scrollTop = thread.scrollHeight
+    } catch (err) {
+      thread.innerHTML = `<div style="color:#f43f5e;">Could not load session messages.</div>`
+    }
+  }
+
+  window.deleteCopilotSession = async function(sessId, e) {
+    if (e) e.stopPropagation()
+    try {
+      await fetch(`/api/ai/sessions/${sessId}`, { method: 'DELETE' })
+      if (activeSessionId === sessId) {
+        activeSessionId = 'sess_' + Date.now()
+        const thread = document.getElementById('copilot-messages-thread')
+        if (thread) thread.innerHTML = ''
+      }
+      fetchCopilotSessions()
+    } catch (err) {
+      console.warn('Could not delete session:', err)
+    }
+  }
+
+  // --- Fetch & Render Case Diagnostic History ---
+  async function fetchCaseSessions() {
+    if (currentCopilotTab !== 'case') return
+    const listContainer = document.getElementById('copilot-sessions-list')
+    if (!listContainer) return
+    try {
+      const res = await fetch('/api/ai/cases/history')
+      if (!res.ok) return
+      const cases = await res.json()
+      if (!cases || cases.length === 0) {
+        listContainer.innerHTML = '<div style="padding:10px; text-align:center; color:#64748b; font-size:0.75rem;">No recent case diagnostics</div>'
+        return
+      }
+      listContainer.innerHTML = cases.map(c => `
+        <div class="sidebar-item-row" onclick="loadCaseDiagnostic(${c.id})" style="background:${c.id === activeCaseDiagnosticId ? 'rgba(0,141,199,0.18)' : 'rgba(255,255,255,0.02)'}; border-color:${c.id === activeCaseDiagnosticId ? 'rgba(0,141,199,0.4)' : 'transparent'};">
+          <div style="display:flex; align-items:center; gap:6px; min-width:0; flex:1;">
+            <i data-lucide="file-text" style="width:13px; height:13px; color:#38bdf8; flex-shrink:0;"></i>
+            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#e2e8f0; font-size:0.78rem;">
+              ${c.case_number ? `Case #${c.case_number}` : 'Diagnostic'}: ${c.problem_summary || (c.product || 'MSE').toUpperCase()}
+            </span>
+          </div>
+          <button type="button" class="sidebar-item-remove" onclick="deleteCaseDiagnostic(${c.id}, event)" title="Delete diagnostic">×</button>
+        </div>
+      `).join('')
+      if (window.lucide) lucide.createIcons()
+    } catch (err) {
+      console.warn('Could not fetch case sessions:', err)
+    }
+  }
+
+  window.loadCaseDiagnostic = async function(resId) {
+    activeCaseDiagnosticId = resId
+    switchCopilotTab('case')
+    fetchCaseSessions()
+    try {
+      const res = await fetch(`/api/ai/cases/history/${resId}`)
+      if (!res.ok) throw new Error('Could not load case diagnostic')
       const data = await res.json()
 
-      botLoading.innerHTML = `
-        <div style="color:#e2e8f0; font-size:0.9rem; line-height:1.7; white-space:pre-wrap;">${data.answer}</div>
-        ${data.sources && data.sources.length > 0 ? `
-          <div style="margin-top:14px; border-top:1px solid rgba(255,255,255,0.08); padding-top:10px;">
-            <span style="font-size:0.75rem; color:#94a3b8; font-weight:700;">Verified Knowledge Citations:</span>
-            <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">
-              ${data.sources.map(s => `
-                <div onclick="openDocument(${s.id})" style="padding:6px 10px; border-radius:6px; background:rgba(0,141,199,0.15); color:#38bdf8; font-size:0.78rem; cursor:pointer;">
-                  📖 ${s.title}
-                </div>
-              `).join('')}
+      const caseNumInput = document.getElementById('case-input-number')
+      const prodInput = document.getElementById('case-input-product')
+      const histInput = document.getElementById('case-input-history')
+      const resultsContainer = document.getElementById('case-results-container')
+
+      if (caseNumInput) caseNumInput.value = data.case_number || ''
+      if (prodInput) prodInput.value = (data.product || 'xpi').toLowerCase()
+      if (histInput && data.query_prompt) {
+        const cleanPrompt = data.query_prompt.replace(/SALESFORCE CASE #.*?\nCASE HISTORY & LOG DETAILS:\n/s, '').trim()
+        histInput.value = cleanPrompt || data.query_prompt
+      }
+
+      if (resultsContainer && data.solution_steps) {
+        resultsContainer.classList.remove('hide')
+        const formattedHtml = safeRenderMarkdown(data.solution_steps)
+        const sources = data.citations || []
+        const prod = (data.product || 'xpi').toUpperCase()
+
+        resultsContainer.innerHTML = `
+          <div style="padding:18px; border-radius:12px; background:rgba(15,23,42,0.8); border:1px solid rgba(0,141,199,0.3); box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:10px; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:0.75rem; padding:3px 8px; border-radius:6px; background:rgba(0,141,199,0.2); color:#38bdf8; font-weight:700;">
+                  CASE #${data.case_number || 'DIAGNOSTIC'}
+                </span>
+                <span style="font-size:0.75rem; color:#94a3b8;">${prod} Platform</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:4px 10px;" onclick="copyTextToClipboard(\`${encodeURIComponent(data.solution_steps).replace(/`/g, '\\`')}\`, this)">
+                  📋 Copy Diagnosis & Draft
+                </button>
+                <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:4px 10px; color:${data.is_verified ? '#34d399' : '#fbbf24'}; border-color:${data.is_verified ? 'rgba(16,185,129,0.5)' : 'rgba(251,191,36,0.3)'};" onclick="markResolutionVerified(${data.id}, this)">
+                  ${data.is_verified ? '⭐ Verified in Memory (✓)' : '⭐ Mark Verified'}
+                </button>
+                <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:4px 10px; color:#34d399; border-color:rgba(16,185,129,0.3);" onclick="openPublishAiKbModal(${data.id}, \`SOP: Case #${data.case_number || 'Resolution'} - ${prod}\`, '${data.product || 'xpi'}', \`${encodeURIComponent(data.solution_steps).replace(/`/g, '\\`')}\`)">
+                  📝 Publish as KB Article
+                </button>
+              </div>
             </div>
+
+            <div class="markdown-body">${formattedHtml}</div>
+
+            ${sources && sources.length > 0 ? `
+              <div style="margin-top:14px; padding:10px 12px; border-radius:8px; background:rgba(0,141,199,0.08); border:1px solid rgba(0,141,199,0.2);">
+                <span style="font-size:0.72rem; color:#38bdf8; font-weight:700;">Verified Knowledge Base Citations:</span>
+                <div style="display:flex; flex-direction:column; gap:4px; margin-top:6px;">
+                  ${sources.map(s => `
+                    <div onclick="openDocument(${s.id})" style="padding:4px 8px; border-radius:6px; background:rgba(255,255,255,0.03); color:#38bdf8; font-size:0.75rem; cursor:pointer;">
+                      📖 ${s.title}
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
           </div>
-        ` : ''}
-      `
+        `
+      }
     } catch (err) {
-      botLoading.textContent = 'Sorry, could not process request.'
+      console.warn('Error loading case diagnostic:', err)
     }
-    thread.scrollTop = thread.scrollHeight
+  }
+
+  window.deleteCaseDiagnostic = async function(resId, e) {
+    if (e) e.stopPropagation()
+    try {
+      await fetch(`/api/ai/cases/history/${resId}`, { method: 'DELETE' })
+      if (activeCaseDiagnosticId === resId) {
+        activeCaseDiagnosticId = null
+        const results = document.getElementById('case-results-container')
+        if (results) {
+          results.classList.add('hide')
+          results.innerHTML = ''
+        }
+      }
+      fetchCaseSessions()
+    } catch (err) {
+      console.warn('Could not delete case diagnostic:', err)
+    }
+  }
+
+  // Update Engine Indicator
+  async function updateEngineIndicator() {
+    const indicator = document.getElementById('copilot-engine-indicator')
+    if (!indicator) return
+    try {
+      const res = await fetch('/api/ai/settings')
+      if (res.ok) {
+        const data = await res.json()
+        const prov = (data.provider || 'groq').toUpperCase()
+        const model = data.model_name || 'LLaMA 3.3'
+        indicator.innerHTML = `
+          <div style="width:8px; height:8px; border-radius:50%; background:#10b981; box-shadow:0 0 8px #10b981;"></div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:0.68rem; color:#94a3b8; text-transform:uppercase; font-weight:700;">Engine: ${prov}</div>
+            <div style="font-size:0.75rem; color:#38bdf8; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">● Active (${model})</div>
+          </div>
+        `
+      }
+    } catch (e) {
+      console.warn('Could not update engine indicator:', e)
+    }
+  }
+
+  // Global Mark Resolution Verified Handler
+  window.markResolutionVerified = async function(resId, btnEl) {
+    if (!resId) return
+    if (btnEl) {
+      btnEl.disabled = true
+      btnEl.innerHTML = '<span style="color:#fbbf24;">Verifying...</span>'
+    }
+    try {
+      const res = await fetch('/api/ai/mark-verified', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ resolution_id: resId })
+      })
+      if (!res.ok) throw new Error('Could not mark verified')
+      const data = await res.json()
+      if (btnEl) {
+        btnEl.style.color = '#34d399'
+        btnEl.style.borderColor = 'rgba(16,185,129,0.5)'
+        btnEl.innerHTML = '⭐ Verified in Memory (✓)'
+      }
+      alert('✓ Success: Resolution verified and trained into continuous institutional memory!')
+    } catch (err) {
+      if (btnEl) {
+        btnEl.disabled = false
+        btnEl.innerHTML = '⭐ Mark Verified'
+      }
+      alert('Error: ' + err.message)
+    }
+  }
+
+  // Chat Form Submission
+  const copilotForm = document.getElementById('copilot-form')
+  if (copilotForm) {
+    copilotForm.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const input = document.getElementById('copilot-input')
+      if (!input) return
+      const prompt = input.value.trim()
+      if (!prompt) return
+
+      const thread = document.getElementById('copilot-messages-thread')
+      const scope = (document.getElementById('copilot-product-scope') || {}).value || 'all'
+
+      // Render user message bubble
+      const userMsg = document.createElement('div')
+      userMsg.style.cssText = 'align-self:flex-end; max-width:82%; padding:10px 14px; border-radius:10px; background:linear-gradient(135deg,#008DC7,#2DBCEE); color:#fff; font-size:0.88rem;'
+      userMsg.innerHTML = `<div>${prompt}</div>`
+      if (thread) thread.appendChild(userMsg)
+      input.value = ''
+
+      // Render loading placeholder
+      const botLoading = document.createElement('div')
+      botLoading.style.cssText = 'align-self:flex-start; max-width:92%; padding:14px 16px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); color:#94a3b8; font-size:0.85rem;'
+      botLoading.innerHTML = `
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="width:14px; height:14px; border:2px solid #008DC7; border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite;"></div>
+          <span>Synthesizing verified documentation with active diagnostic engine...</span>
+        </div>
+      `
+      if (thread) {
+        thread.appendChild(botLoading)
+        thread.scrollTop = thread.scrollHeight
+      }
+
+      try {
+        const res = await fetch('/api/ai/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Client-Id': clientId
+          },
+          body: JSON.stringify({
+            prompt,
+            product: scope,
+            session_id: activeSessionId,
+            client_id: clientId
+          })
+        })
+        if (!res.ok) throw new Error('AI Engine service temporarily unavailable')
+        const data = await res.json()
+
+        const formattedHtml = safeRenderMarkdown(data.answer)
+        const sources = data.citations || data.sources || []
+        const resId = data.resolution_id
+
+        botLoading.style.color = '#e2e8f0'
+        botLoading.innerHTML = `
+          <div class="markdown-body">${formattedHtml}</div>
+
+          <!-- Bottom Actions Bar -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.08); flex-wrap:wrap; gap:8px;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="copyTextToClipboard(\`${encodeURIComponent(data.answer).replace(/`/g, '\\`')}\`, this)">
+                📋 Copy Response
+              </button>
+              ${resId ? `
+                <button type="button" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px; color:#fbbf24; border-color:rgba(251,191,36,0.3);" onclick="markResolutionVerified(${resId}, this)">
+                  ⭐ Mark Verified
+                </button>
+              ` : ''}
+              <button type="button" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px; color:#34d399; border-color:rgba(16,185,129,0.3);" onclick="openPublishAiKbModal(${resId || 'null'}, \`${encodeURIComponent(prompt || 'Magic Troubleshooting SOP').replace(/`/g, '\\`')}\`, '${scope}', \`${encodeURIComponent(data.answer).replace(/`/g, '\\`')}\`)">
+                📝 Publish as KB
+              </button>
+            </div>
+            <span style="font-size:0.7rem; color:#64748b;">Provider: <strong>${data.provider || 'Groq'}</strong></span>
+          </div>
+
+          <!-- Verified Knowledge Base Citations -->
+          ${sources && sources.length > 0 ? `
+            <div style="margin-top:10px; padding:10px 12px; border-radius:8px; background:rgba(0,141,199,0.08); border:1px solid rgba(0,141,199,0.2);">
+              <span style="font-size:0.72rem; color:#38bdf8; font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">Verified Citations & References:</span>
+              <div style="display:flex; flex-direction:column; gap:4px; margin-top:6px;">
+                ${sources.map(s => `
+                  <div onclick="openDocument(${s.id})" style="padding:4px 8px; border-radius:6px; background:rgba(255,255,255,0.03); color:#38bdf8; font-size:0.75rem; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                    <span>📖 ${s.title}</span>
+                    <span style="font-size:0.68rem; color:#94a3b8;">(${s.product ? s.product.toUpperCase() : 'MSE'})</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+        `
+        fetchCopilotSessions()
+      } catch (err) {
+        botLoading.innerHTML = `
+          <div style="color:#f43f5e; font-size:0.85rem;">
+            ⚠️ Could not reach AI engine: ${err.message}. Please verify your network connection or review the <strong>Settings</strong> tab.
+          </div>
+        `
+      }
+      if (thread) thread.scrollTop = thread.scrollHeight
+    })
+  }
+
+  // --- Salesforce Case Analyzer Attachments ---
+  let caseUploadedAttachments = []
+
+  function renderCaseUploadedAttachments() {
+    const list = document.getElementById('case-files-chip-list')
+    const placeholder = document.getElementById('case-files-placeholder')
+    if (!list) return
+    list.innerHTML = ''
+
+    if (caseUploadedAttachments.length === 0) {
+      if (placeholder) placeholder.style.display = 'flex'
+      return
+    }
+    if (placeholder) placeholder.style.display = 'none'
+
+    caseUploadedAttachments.forEach((att, idx) => {
+      const chip = document.createElement('div')
+      chip.style.cssText = 'display:flex; align-items:center; gap:6px; padding:3px 8px; border-radius:6px; background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.35); font-size:0.75rem; color:#e0f2fe;'
+      
+      let icon = '📎'
+      if (att.name.endsWith('.log') || att.name.endsWith('.txt')) icon = '📄'
+      else if (att.name.endsWith('.ini') || att.name.endsWith('.xml') || att.name.endsWith('.properties') || att.name.endsWith('.json') || att.name.endsWith('.sql')) icon = '⚙️'
+      else if (att.name.endsWith('.zip')) icon = '🗜️'
+      else if (att.name.match(/\.(png|jpg|jpeg|webp)$/i)) icon = '🖼️'
+      else if (att.name.endsWith('.pdf') || att.name.endsWith('.docx')) icon = '📕'
+
+      chip.innerHTML = `
+        <span>${icon} <strong>${att.name}</strong> <span style="opacity:0.7;">(${Math.round((att.size || 0) / 1024)} KB)</span></span>
+        <button type="button" style="background:none; border:none; color:#f87171; cursor:pointer; font-weight:700; padding:0 2px; font-size:0.85rem;" title="Remove attachment">&times;</button>
+      `
+      chip.querySelector('button').addEventListener('click', (e) => {
+        e.stopPropagation()
+        caseUploadedAttachments.splice(idx, 1)
+        renderCaseUploadedAttachments()
+      })
+      list.appendChild(chip)
+    })
+  }
+
+  async function processCaseUploadedFile(file) {
+    return new Promise((resolve) => {
+      const ext = (file.name.split('.').pop() || '').toLowerCase()
+      const isText = ['log', 'txt', 'ini', 'xml', 'properties', 'json', 'sql', 'yaml', 'yml', 'md', 'csv', 'conf', 'cfg', 'bat', 'sh'].includes(ext)
+      const isImage = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp'].includes(ext)
+
+      if (isText) {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          resolve({
+            name: file.name,
+            size: file.size,
+            type: 'text',
+            content: e.target.result
+          })
+        }
+        reader.onerror = () => {
+          resolve({ name: file.name, size: file.size, type: 'text', content: `[Attached Text File: ${file.name}]` })
+        }
+        reader.readAsText(file)
+      } else if (isImage) {
+        const formData = new FormData()
+        formData.append('file', file)
+        fetch('/api/kb/upload-asset', {
+          method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+          resolve({
+            name: file.name,
+            size: file.size,
+            type: 'image',
+            url: data.url,
+            content: `[Attached Screenshot / Image: ${file.name} - Asset URL: ${data.url}]`
+          })
+        })
+        .catch(() => {
+          resolve({
+            name: file.name,
+            size: file.size,
+            type: 'image',
+            content: `[Attached Image File: ${file.name} (${Math.round(file.size / 1024)} KB)]`
+          })
+        })
+      } else {
+        // Zip archives, PDF, Word documents
+        resolve({
+          name: file.name,
+          size: file.size,
+          type: ext,
+          content: `[Attached Diagnostic File: ${file.name} (${Math.round(file.size / 1024)} KB, Format: ${ext.toUpperCase()})]`
+        })
+      }
+    })
+  }
+
+  async function handleCaseAttachmentFiles(files) {
+    if (!files || files.length === 0) return
+    for (const f of files) {
+      const item = await processCaseUploadedFile(f)
+      caseUploadedAttachments.push(item)
+    }
+    renderCaseUploadedAttachments()
+  }
+
+  const caseFileUploadInput = document.getElementById('case-file-upload-input')
+  if (caseFileUploadInput) {
+    caseFileUploadInput.addEventListener('change', async (e) => {
+      await handleCaseAttachmentFiles(e.target.files)
+      e.target.value = ''
+    })
+  }
+
+  const caseFilesDropzone = document.getElementById('case-files-dropzone')
+  if (caseFilesDropzone) {
+    caseFilesDropzone.addEventListener('click', (e) => {
+      if (e.target.tagName !== 'BUTTON' && caseFileUploadInput) {
+        caseFileUploadInput.click()
+      }
+    })
+
+    ;['dragenter', 'dragover'].forEach(name => {
+      caseFilesDropzone.addEventListener(name, (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        caseFilesDropzone.style.borderColor = '#38bdf8'
+        caseFilesDropzone.style.background = 'rgba(56,189,248,0.12)'
+      })
+    })
+
+    ;['dragleave', 'dragend'].forEach(name => {
+      caseFilesDropzone.addEventListener(name, (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        caseFilesDropzone.style.borderColor = 'rgba(56,189,248,0.3)'
+        caseFilesDropzone.style.background = 'rgba(56,189,248,0.03)'
+      })
+    })
+
+    caseFilesDropzone.addEventListener('drop', async (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      caseFilesDropzone.style.borderColor = 'rgba(56,189,248,0.3)'
+      caseFilesDropzone.style.background = 'rgba(56,189,248,0.03)'
+      if (e.dataTransfer && e.dataTransfer.files) {
+        await handleCaseAttachmentFiles(e.dataTransfer.files)
+      }
+    })
+  }
+
+  // Salesforce Case Diagnostic Runner
+  const btnRunCaseDiag = document.getElementById('btn-run-case-diagnostic')
+  if (btnRunCaseDiag) {
+    btnRunCaseDiag.addEventListener('click', async () => {
+      const caseNum = (document.getElementById('case-input-number') || {}).value || ''
+      const customer = (document.getElementById('case-input-customer') || {}).value || ''
+      const product = (document.getElementById('case-input-product') || {}).value || 'xpi'
+      const history = (document.getElementById('case-input-history') || {}).value || ''
+
+      if (!history.trim() && caseUploadedAttachments.length === 0) {
+        alert('Please enter customer case inquiries, error logs, or attach diagnostic files.')
+        return
+      }
+
+      const resultsContainer = document.getElementById('case-results-container')
+      if (!resultsContainer) return
+
+      resultsContainer.classList.remove('hide')
+      resultsContainer.innerHTML = `
+        <div style="padding:20px; text-align:center; color:#94a3b8; background:rgba(255,255,255,0.02); border-radius:12px; border:1px solid rgba(255,255,255,0.06);">
+          <div style="width:20px; height:20px; border:2px solid #008DC7; border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 10px auto;"></div>
+          <span>Analyzing Salesforce Case #${caseNum || 'INQ'}${caseUploadedAttachments.length > 0 ? ` with ${caseUploadedAttachments.length} attachment(s)` : ''}, running RAG across enterprise knowledge base, and generating root-cause diagnostic...</span>
+        </div>
+      `
+
+      try {
+        const currentCaseAttachments = [...caseUploadedAttachments]
+        const res = await fetch('/api/ai/analyze-case', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Client-Id': clientId
+          },
+          body: JSON.stringify({
+            case_number: caseNum,
+            customer_name: customer,
+            product,
+            case_history: history,
+            client_id: clientId,
+            attachments: currentCaseAttachments
+          })
+        })
+        if (!res.ok) throw new Error('Failed to analyze case')
+        const data = await res.json()
+
+        const formattedHtml = safeRenderMarkdown(data.answer)
+        const sources = data.citations || []
+        const resId = data.resolution_id
+
+        resultsContainer.innerHTML = `
+          <div style="padding:18px; border-radius:12px; background:rgba(15,23,42,0.8); border:1px solid rgba(0,141,199,0.3); box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:10px; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:0.75rem; padding:3px 8px; border-radius:6px; background:rgba(0,141,199,0.2); color:#38bdf8; font-weight:700;">
+                  CASE #${caseNum || 'DIAGNOSTIC'}
+                </span>
+                <span style="font-size:0.75rem; color:#94a3b8;">${product.toUpperCase()} Platform</span>
+                ${customer ? `<span style="font-size:0.75rem; color:#cbd5e1;">• Customer: <strong>${customer}</strong></span>` : ''}
+              </div>
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:4px 10px;" onclick="copyTextToClipboard(\`${encodeURIComponent(data.answer).replace(/`/g, '\\`')}\`, this)">
+                  📋 Copy Diagnosis & Draft
+                </button>
+                ${resId ? `
+                  <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:4px 10px; color:#fbbf24; border-color:rgba(251,191,36,0.3);" onclick="markResolutionVerified(${resId}, this)">
+                    ⭐ Mark Verified
+                  </button>
+                ` : ''}
+                <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:4px 10px; color:#34d399; border-color:rgba(16,185,129,0.3);" onclick="openPublishAiKbModal(${resId || 'null'}, \`SOP: Case #${caseNum || 'Resolution'} - ${customer || product.toUpperCase()}\`, '${product}', \`${encodeURIComponent(data.answer).replace(/`/g, '\\`')}\`)">
+                  📝 Publish as KB Article
+                </button>
+              </div>
+            </div>
+
+            <div class="markdown-body">${formattedHtml}</div>
+
+            ${sources && sources.length > 0 ? `
+              <div style="margin-top:14px; padding:10px 12px; border-radius:8px; background:rgba(0,141,199,0.08); border:1px solid rgba(0,141,199,0.2);">
+                <span style="font-size:0.72rem; color:#38bdf8; font-weight:700;">Verified Knowledge Base Citations:</span>
+                <div style="display:flex; flex-direction:column; gap:4px; margin-top:6px;">
+                  ${sources.map(s => `
+                    <div onclick="openDocument(${s.id})" style="padding:4px 8px; border-radius:6px; background:rgba(255,255,255,0.03); color:#38bdf8; font-size:0.75rem; cursor:pointer;">
+                      📖 ${s.title}
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        `
+        activeCaseDiagnosticId = resId || null
+        fetchCaseSessions()
+      } catch (err) {
+        resultsContainer.innerHTML = `
+          <div style="padding:14px; border-radius:8px; background:rgba(244,63,94,0.15); color:#f43f5e; font-size:0.85rem;">
+            ✗ Diagnostic failed: ${err.message}
+          </div>
+        `
+      }
+    })
+  }
+
+  // 1-Click Publish AI to KB Modal Handler
+  window.openPublishAiKbModal = function(resId, titleEncoded, product, contentEncoded, version) {
+    const modal = document.getElementById('modal-publish-ai-kb')
+    if (!modal) return
+
+    let title = ''
+    let content = ''
+    try { title = decodeURIComponent(titleEncoded) } catch (e) { title = titleEncoded }
+    try { content = decodeURIComponent(contentEncoded) } catch (e) { content = contentEncoded }
+
+    const resIdInput = document.getElementById('publish-ai-resolution-id')
+    const titleInput = document.getElementById('publish-ai-title')
+    const prodSelect = document.getElementById('publish-ai-product')
+    const versionInput = document.getElementById('publish-ai-version')
+    const contentInput = document.getElementById('publish-ai-content')
+
+    if (resIdInput) resIdInput.value = resId || ''
+    if (titleInput) titleInput.value = (title || 'AI Troubleshooting SOP').replace(/^#+\s*/, '').slice(0, 120)
+    if (prodSelect) prodSelect.value = (product || activeProduct || 'xpi').toLowerCase()
+    if (versionInput) versionInput.value = version || 'Universal'
+    if (contentInput) contentInput.value = content || ''
+
+    modal.classList.remove('hide')
+    if (window.lucide) lucide.createIcons()
+  }
+
+  const btnClosePubAi = document.getElementById('btn-close-publish-ai-kb')
+  if (btnClosePubAi) {
+    btnClosePubAi.addEventListener('click', () => {
+      const modal = document.getElementById('modal-publish-ai-kb')
+      if (modal) modal.classList.add('hide')
+    })
+  }
+
+  const btnCancelPubAi = document.getElementById('btn-cancel-publish-ai')
+  if (btnCancelPubAi) {
+    btnCancelPubAi.addEventListener('click', () => {
+      const modal = document.getElementById('modal-publish-ai-kb')
+      if (modal) modal.classList.add('hide')
+    })
+  }
+
+  const formPublishAi = document.getElementById('form-publish-ai-kb')
+  if (formPublishAi) {
+    formPublishAi.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const title = (document.getElementById('publish-ai-title') || {}).value || ''
+      const product = (document.getElementById('publish-ai-product') || {}).value || 'xpi'
+      const version = (document.getElementById('publish-ai-version') || {}).value || 'Universal'
+      const content = (document.getElementById('publish-ai-content') || {}).value || ''
+      const resId = (document.getElementById('publish-ai-resolution-id') || {}).value || null
+      const submitBtn = document.getElementById('btn-submit-publish-ai')
+
+      if (submitBtn) {
+        submitBtn.disabled = true
+        submitBtn.textContent = 'Publishing & Indexing...'
+      }
+
+      try {
+        const res = await fetch('/api/ai/create-kb', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({
+            title: title.trim(),
+            product: product.trim().toLowerCase(),
+            version: version.trim(),
+            content: content.trim(),
+            resolution_id: resId ? parseInt(resId, 10) : null,
+            category: 'troubleshooting'
+          })
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error(err.detail || 'Failed to publish KB article')
+        }
+        const data = await res.json()
+        const modal = document.getElementById('modal-publish-ai-kb')
+        if (modal) modal.classList.add('hide')
+
+        fetchOverview()
+        fetchNotifications()
+
+        if (data.doc_id) {
+          if (confirm(`✓ Success! Article '${title}' was published and indexed into ${product.toUpperCase()} space. Open in Reader now?`)) {
+            openDocument(data.doc_id)
+          }
+        } else {
+          alert(`✓ Article '${title}' published and indexed successfully!`)
+        }
+      } catch (err) {
+        alert('Publication error: ' + err.message)
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false
+          submitBtn.innerHTML = '<i data-lucide="check" style="width:16px; height:16px;"></i> Publish & Index to Knowledge Base'
+          if (window.lucide) lucide.createIcons()
+        }
+      }
+    })
+  }
+
+  // AI Settings Manager
+  async function loadAISettings() {
+    const feedback = document.getElementById('ai-settings-feedback')
+    if (feedback) feedback.classList.add('hide')
+    try {
+      const res = await fetch('/api/ai/settings')
+      if (!res.ok) return
+      const data = await res.json()
+      const provEl = document.getElementById('ai-setting-provider')
+      const modelEl = document.getElementById('ai-setting-model')
+      const keyEl = document.getElementById('ai-setting-apikey')
+      const baseEl = document.getElementById('ai-setting-baseurl')
+      const tempEl = document.getElementById('ai-setting-temp')
+      const promptEl = document.getElementById('ai-setting-prompt')
+
+      if (provEl) provEl.value = data.provider || 'groq'
+      if (modelEl) modelEl.value = data.model_name || 'llama-3.3-70b-versatile'
+      if (keyEl) keyEl.value = data.api_key || ''
+      if (baseEl) baseEl.value = data.api_base_url || ''
+      if (tempEl) tempEl.value = data.temperature || '0.2'
+      if (promptEl) promptEl.value = data.system_prompt || ''
+    } catch (e) {
+      console.warn('Could not load AI settings:', e)
+    }
+  }
+
+  const btnSaveSettings = document.getElementById('btn-save-ai-settings')
+  if (btnSaveSettings) {
+    btnSaveSettings.addEventListener('click', async () => {
+      const feedback = document.getElementById('ai-settings-feedback')
+      const prov = (document.getElementById('ai-setting-provider') || {}).value
+      const model = (document.getElementById('ai-setting-model') || {}).value
+      const key = (document.getElementById('ai-setting-apikey') || {}).value
+      const base = (document.getElementById('ai-setting-baseurl') || {}).value
+      const temp = (document.getElementById('ai-setting-temp') || {}).value
+      const prompt = (document.getElementById('ai-setting-prompt') || {}).value
+
+      if (feedback) {
+        feedback.className = ''
+        feedback.style.background = 'rgba(0,141,199,0.15)'
+        feedback.style.color = '#38bdf8'
+        feedback.textContent = 'Saving configuration...'
+        feedback.classList.remove('hide')
+      }
+
+      try {
+        const res = await fetch('/api/ai/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: prov,
+            model_name: model,
+            api_key: key,
+            api_base_url: base,
+            temperature: parseFloat(temp) || 0.2,
+            system_prompt: prompt
+          })
+        })
+        if (!res.ok) throw new Error('Failed to save settings')
+        if (feedback) {
+          feedback.style.background = 'rgba(16,185,129,0.15)'
+          feedback.style.color = '#34d399'
+          feedback.textContent = '✓ AI Configuration updated successfully!'
+        }
+        updateEngineIndicator()
+      } catch (err) {
+        if (feedback) {
+          feedback.style.background = 'rgba(244,63,94,0.15)'
+          feedback.style.color = '#f43f5e'
+          feedback.textContent = '✗ ' + err.message
+        }
+      }
+    })
+  }
+
+  const btnTestConn = document.getElementById('btn-test-ai-conn')
+  if (btnTestConn) {
+    btnTestConn.addEventListener('click', async () => {
+      const feedback = document.getElementById('ai-settings-feedback')
+      const prov = (document.getElementById('ai-setting-provider') || {}).value
+      const model = (document.getElementById('ai-setting-model') || {}).value
+      const key = (document.getElementById('ai-setting-apikey') || {}).value
+      const base = (document.getElementById('ai-setting-baseurl') || {}).value
+
+      if (feedback) {
+        feedback.className = ''
+        feedback.style.background = 'rgba(0,141,199,0.15)'
+        feedback.style.color = '#38bdf8'
+        feedback.textContent = 'Testing connection with ' + prov.toUpperCase() + '...'
+        feedback.classList.remove('hide')
+      }
+
+      try {
+        const res = await fetch('/api/ai/test-connection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: prov,
+            model_name: model,
+            api_key: key,
+            api_base_url: base
+          })
+        })
+        const data = await res.json()
+        if (feedback) {
+          if (data.success) {
+            feedback.style.background = 'rgba(16,185,129,0.15)'
+            feedback.style.color = '#34d399'
+            feedback.textContent = '✓ ' + data.message
+          } else {
+            feedback.style.background = 'rgba(244,63,94,0.15)'
+            feedback.style.color = '#f43f5e'
+            feedback.textContent = '✗ ' + data.message
+          }
+        }
+      } catch (err) {
+        if (feedback) {
+          feedback.style.background = 'rgba(244,63,94,0.15)'
+          feedback.style.color = '#f43f5e'
+          feedback.textContent = '✗ Connection test failed: ' + err.message
+        }
+      }
+    })
+  }
+
+  // ==================== 15. ADVANCED IN-APP KB AUTHORING STUDIO ====================
+  function updateKbLivePreview() {
+    const contentInput = document.getElementById('kb-input-content')
+    const previewContainer = document.getElementById('kb-live-preview-content')
+    const wordCountEl = document.getElementById('kb-word-count')
+    const charCountEl = document.getElementById('kb-char-count')
+
+    if (!contentInput || !previewContainer) return
+    const val = contentInput.value
+
+    if (val.trim()) {
+      previewContainer.innerHTML = safeRenderMarkdown(val)
+    } else {
+      previewContainer.innerHTML = '<p style="color:#64748b; font-style:italic;">Live rendered article preview will appear here as you type...</p>'
+    }
+
+    if (wordCountEl) {
+      const words = val.trim() ? val.trim().split(/\s+/).length : 0
+      wordCountEl.textContent = `${words} words`
+    }
+    if (charCountEl) {
+      charCountEl.textContent = `${val.length} characters`
+    }
+  }
+
+  // Text Selection & Formatting Helper
+  window.insertKbFormat = function(type) {
+    const textarea = document.getElementById('kb-input-content')
+    if (!textarea) return
+
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const text = textarea.value
+    const selected = text.substring(start, end)
+    let replacement = ''
+
+    switch (type) {
+      case 'h1':
+        replacement = selected ? `# ${selected}` : '# Heading 1\n'
+        break
+      case 'h2':
+        replacement = selected ? `## ${selected}` : '## Heading 2\n'
+        break
+      case 'h3':
+        replacement = selected ? `### ${selected}` : '### Heading 3\n'
+        break
+      case 'bold':
+        replacement = `**${selected || 'bold text'}**`
+        break
+      case 'italic':
+        replacement = `*${selected || 'italic text'}*`
+        break
+      case 'underline':
+        replacement = `<u>${selected || 'underlined text'}</u>`
+        break
+      case 'strike':
+        replacement = `~~${selected || 'strikethrough text'}~~`
+        break
+      case 'code':
+        replacement = `\`${selected || 'code_symbol'}\``
+        break
+      case 'bullet':
+        replacement = `\n• ${selected || 'Bullet item'}`
+        break
+      case 'numbered':
+        replacement = `\n1. ${selected || 'Step instruction'}`
+        break
+      case 'checklist':
+        replacement = `\n- [ ] ${selected || 'Verification task'}`
+        break
+      case 'quote':
+        replacement = `\n> ${selected || 'Important quoted instruction or reference...'}`
+        break
+      case 'divider':
+        replacement = `\n\n---\n\n`
+        break
+      default:
+        replacement = selected
+    }
+
+    textarea.value = text.substring(0, start) + replacement + text.substring(end)
+    textarea.focus()
+    textarea.selectionStart = start + replacement.length
+    textarea.selectionEnd = start + replacement.length
+    updateKbLivePreview()
+  }
+
+  // Text Color Inserter
+  window.insertKbColor = function(colorHex) {
+    const textarea = document.getElementById('kb-input-content')
+    const menu = document.getElementById('kb-color-menu')
+    if (menu) menu.classList.add('hide')
+    if (!textarea) return
+
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const text = textarea.value
+    const selected = text.substring(start, end) || 'Colored text'
+
+    const replacement = `<span style="color:${colorHex}; font-weight:600;">${selected}</span>`
+    textarea.value = text.substring(0, start) + replacement + text.substring(end)
+    textarea.focus()
+    textarea.selectionStart = start + replacement.length
+    textarea.selectionEnd = start + replacement.length
+    updateKbLivePreview()
+  }
+
+  // Highlight Text Inserter
+  window.insertKbHighlight = function(bgColor, textColor) {
+    const textarea = document.getElementById('kb-input-content')
+    const menu = document.getElementById('kb-highlight-menu')
+    if (menu) menu.classList.add('hide')
+    if (!textarea) return
+
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const text = textarea.value
+    const selected = text.substring(start, end) || 'Highlighted callout'
+
+    const replacement = `<mark style="background:${bgColor}; color:${textColor}; padding:2px 6px; border-radius:4px; font-weight:600;">${selected}</mark>`
+    textarea.value = text.substring(0, start) + replacement + text.substring(end)
+    textarea.focus()
+    textarea.selectionStart = start + replacement.length
+    textarea.selectionEnd = start + replacement.length
+    updateKbLivePreview()
+  }
+
+  // Table Generator
+  window.insertKbTable = function() {
+    const textarea = document.getElementById('kb-input-content')
+    if (!textarea) return
+
+    const tableTemplate = `\n\n| Configuration Parameter | Target Environment | Default Value | Recommended Setting |\n| :--- | :--- | :--- | :--- |\n| \`JVM_ARGS\` | Server Engine | \`-Xms512m\` | \`-Xms2048m -Xmx4096m\` |\n| \`CloseTablesOnExit\` | Magic xpa Runtime | \`N\` | \`Immediately (Y)\` |\n| \`MaxActiveConnections\` | GigaSpaces Space | \`50\` | \`200\` |\n\n`
+
+    const start = textarea.selectionStart
+    const text = textarea.value
+    textarea.value = text.substring(0, start) + tableTemplate + text.substring(start)
+    textarea.focus()
+    textarea.selectionStart = start + tableTemplate.length
+    textarea.selectionEnd = start + tableTemplate.length
+    updateKbLivePreview()
+  }
+
+  // Code Block Inserter
+  window.insertKbCodeBlock = function(lang) {
+    const textarea = document.getElementById('kb-input-content')
+    const menu = document.getElementById('kb-code-menu')
+    if (menu) menu.classList.add('hide')
+    if (!textarea) return
+
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const text = textarea.value
+    const selected = text.substring(start, end) || (
+      lang === 'ini' ? 'JVM_ARGS=-Xms1024m -Xmx4096m -Dmagic.home=C:\\Magic\\xpa\nCloseCursors=Y' :
+      lang === 'xml' ? '<configuration>\n  <connector name="SalesforceOAuth" enabled="true">\n    <endpoint>https://api.salesforce.com/v2</endpoint>\n  </connector>\n</configuration>' :
+      lang === 'sql' ? 'SELECT count(*) FROM v$open_cursor WHERE user_name = \'MAGIC_USER\';' :
+      lang === 'json' ? '{\n  "status": "success",\n  "version": "4.14.1",\n  "activeThreads": 16\n}' :
+      '# Terminal diagnosis command\nkubectl get pods -n magic-cloud --field-selector status.phase=Running'
+    )
+
+    const block = `\n\n\`\`\`${lang}\n${selected}\n\`\`\`\n\n`
+    textarea.value = text.substring(0, start) + block + text.substring(end)
+    textarea.focus()
+    textarea.selectionStart = start + block.length
+    textarea.selectionEnd = start + block.length
+    updateKbLivePreview()
+  }
+
+  // Callout Alert Inserter
+  window.insertKbAlert = function(type) {
+    const textarea = document.getElementById('kb-input-content')
+    if (!textarea) return
+
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const text = textarea.value
+    const selected = text.substring(start, end) || (
+      type === 'NOTE' ? 'This configuration requires Magic xpa 4.14.1 or higher.' :
+      type === 'TIP' ? 'Always verify port 8005 is unobstructed prior to restarting GigaSpaces agents.' :
+      type === 'WARNING' ? 'Incorrect JVM heap values can cause java.lang.OutOfMemoryError on high load.' :
+      'Do not modify raw SQLite database files directly while the runtime engine is active.'
+    )
+
+    const alertSnippet = `\n\n> [!${type}]\n> ${selected}\n\n`
+    textarea.value = text.substring(0, start) + alertSnippet + text.substring(end)
+    textarea.focus()
+    textarea.selectionStart = start + alertSnippet.length
+    textarea.selectionEnd = start + alertSnippet.length
+    updateKbLivePreview()
+  }
+
+  // Upload Asset (Image or Downloadable File)
+  async function uploadKbAssetFile(file) {
+    if (!file) return
+    const statusEl = document.getElementById('kb-upload-status')
+    if (statusEl) statusEl.style.display = 'inline'
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const res = await fetch('/api/kb/upload-asset', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData
+      })
+      if (!res.ok) {
+        let errMsg = 'Asset upload failed'
+        try {
+          const errData = await res.json()
+          if (typeof errData.detail === 'string') errMsg = errData.detail
+          else if (Array.isArray(errData.detail)) errMsg = errData.detail.map(d => d.msg || JSON.stringify(d)).join(', ')
+          else if (errData.message) errMsg = errData.message
+        } catch (_) {
+          errMsg = res.statusText || 'Asset upload failed'
+        }
+        throw new Error(errMsg)
+      }
+      const data = await res.json()
+
+      const textarea = document.getElementById('kb-input-content')
+      if (textarea) {
+        const start = textarea.selectionStart
+        const text = textarea.value
+        let embed = ''
+
+        if (data.is_image) {
+          embed = `\n\n![${data.filename}](${data.url})\n*Caption: ${data.filename}*\n\n`
+        } else {
+          embed = `\n\n<a href="${data.url}" download="${data.filename}" class="kb-download-card">📥 Download Attached File: <strong>${data.filename}</strong> (${Math.round(data.size_bytes / 1024)} KB)</a>\n\n`
+        }
+
+        textarea.value = text.substring(0, start) + embed + text.substring(start)
+        textarea.selectionStart = start + embed.length
+        textarea.selectionEnd = start + embed.length
+        updateKbLivePreview()
+      }
+    } catch (err) {
+      alert('Upload error: ' + err.message)
+    } finally {
+      if (statusEl) statusEl.style.display = 'none'
+    }
+  }
+
+  // Clipboard Screenshot Paste Interception
+  const kbTextarea = document.getElementById('kb-input-content')
+  if (kbTextarea) {
+    kbTextarea.addEventListener('input', updateKbLivePreview)
+
+    kbTextarea.addEventListener('paste', async (e) => {
+      const items = (e.clipboardData || e.originalEvent.clipboardData).items
+      for (const item of items) {
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          e.preventDefault()
+          const blob = item.getAsFile()
+          const file = new File([blob], `screenshot_${Date.now()}.png`, { type: blob.type })
+          await uploadKbAssetFile(file)
+          return
+        }
+      }
+    })
+
+    // Drag & Drop on Editor Pane
+    const editorPane = document.getElementById('kb-editor-pane')
+    const dropOverlay = document.getElementById('kb-drop-overlay')
+    if (editorPane && dropOverlay) {
+      editorPane.addEventListener('dragover', (e) => {
+        e.preventDefault()
+        dropOverlay.classList.remove('hide')
+      })
+      editorPane.addEventListener('dragleave', (e) => {
+        if (!editorPane.contains(e.relatedTarget)) {
+          dropOverlay.classList.add('hide')
+        }
+      })
+      editorPane.addEventListener('drop', async (e) => {
+        e.preventDefault()
+        dropOverlay.classList.add('hide')
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          for (const file of e.dataTransfer.files) {
+            await uploadKbAssetFile(file)
+          }
+        }
+      })
+    }
+  }
+
+  // Hidden File Inputs for Toolbar Buttons
+  const btnInsertImg = document.getElementById('btn-kb-insert-image')
+  const hiddenImgInput = document.getElementById('kb-hidden-image-input')
+  if (btnInsertImg && hiddenImgInput) {
+    btnInsertImg.addEventListener('click', () => hiddenImgInput.click())
+    hiddenImgInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        uploadKbAssetFile(e.target.files[0])
+        e.target.value = ''
+      }
+    })
+  }
+
+  const btnInsertAttach = document.getElementById('btn-kb-insert-attach')
+  const hiddenAttachInput = document.getElementById('kb-hidden-attach-input')
+  if (btnInsertAttach && hiddenAttachInput) {
+    btnInsertAttach.addEventListener('click', () => hiddenAttachInput.click())
+    hiddenAttachInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        uploadKbAssetFile(e.target.files[0])
+        e.target.value = ''
+      }
+    })
+  }
+
+  // Dropdown Menu Toggles in Toolbar
+  const toggleDropdown = (btnId, menuId) => {
+    const btn = document.getElementById(btnId)
+    const menu = document.getElementById(menuId)
+    if (btn && menu) {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation()
+        const isHidden = menu.classList.contains('hide')
+        document.querySelectorAll('.kb-dropdown-menu').forEach(m => m.classList.add('hide'))
+        if (isHidden) menu.classList.remove('hide')
+      })
+    }
+  }
+  toggleDropdown('btn-toggle-color-menu', 'kb-color-menu')
+  toggleDropdown('btn-toggle-highlight-menu', 'kb-highlight-menu')
+  toggleDropdown('btn-toggle-code-menu', 'kb-code-menu')
+
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.kb-dropdown-menu').forEach(m => m.classList.add('hide'))
   })
 
-  // ==================== 15. IN-APP KB AUTHORING & TEMPLATES ====================
+  // View Mode Toggles (Edit / Split / Preview)
+  const btnModeEdit = document.getElementById('kb-view-mode-edit')
+  const btnModeSplit = document.getElementById('kb-view-mode-split')
+  const btnModePrev = document.getElementById('kb-view-mode-preview')
+  const paneEditor = document.getElementById('kb-editor-pane')
+  const panePreview = document.getElementById('kb-preview-pane')
+
+  if (btnModeEdit && btnModeSplit && btnModePrev) {
+    btnModeEdit.addEventListener('click', () => {
+      btnModeEdit.classList.add('active')
+      btnModeSplit.classList.remove('active')
+      btnModePrev.classList.remove('active')
+      if (paneEditor) paneEditor.style.display = 'flex'
+      if (panePreview) panePreview.style.display = 'none'
+    })
+
+    btnModeSplit.addEventListener('click', () => {
+      btnModeSplit.classList.add('active')
+      btnModeEdit.classList.remove('active')
+      btnModePrev.classList.remove('active')
+      if (paneEditor) paneEditor.style.display = 'flex'
+      if (panePreview) panePreview.style.display = 'flex'
+      updateKbLivePreview()
+    })
+
+    btnModePrev.addEventListener('click', () => {
+      btnModePrev.classList.add('active')
+      btnModeEdit.classList.remove('active')
+      btnModeSplit.classList.remove('active')
+      if (paneEditor) paneEditor.style.display = 'none'
+      if (panePreview) panePreview.style.display = 'flex'
+      updateKbLivePreview()
+    })
+  }
+
+  // Pre-structured Enterprise Templates
   window.insertDocTemplate = function(type) {
     const titleInput = document.getElementById('kb-input-title')
     const contentInput = document.getElementById('kb-input-content')
     const prodSelect = document.getElementById('kb-input-product')
+    const docTypeSelect = document.getElementById('kb-input-doctype')
 
     if (type === 'connector') {
-      titleInput.value = 'How to Configure [Target] Connector with OAuth2'
-      prodSelect.value = 'xpi'
-      contentInput.value = `## Overview
-This Standard Operating Procedure details step-by-step setup for connecting Magic xpi to [Target System].
+      if (titleInput) titleInput.value = 'How to Configure [Target System] REST Connector with OAuth2'
+      if (prodSelect) prodSelect.value = 'xpi'
+      if (docTypeSelect) docTypeSelect.value = 'connector'
+      if (contentInput) {
+        contentInput.value = `## Executive Summary
+This Standard Operating Procedure details step-by-step setup for connecting **Magic xpi Integration Platform** to external enterprise APIs via OAuth2.
 
-### Prerequisites
-- Magic xpi Studio 4.14+
-- Valid API credentials (Client ID, Client Secret, Refresh Token)
+> [!NOTE]
+> Ensure you have obtained valid Client Credentials from your Identity Provider prior to running this SOP.
 
-### Step 1: Connector Topology Setup
+### Prerequisites & Architecture
+- **Magic xpi Studio:** v4.14+
+- **Security:** TLS 1.3 / OAuth 2.0 Client Credentials Grant
+- **Target Gateway:** \`https://api.enterprise.com/v2\`
+
+---
+
+### Step 1: Connector Resource Configuration
 1. In Magic xpi Studio, open the **Resource Repository**.
-2. Add a new **REST / OData Resource**.
-3. Set Base URL: \`https://api.example.com/v2\`
+2. Add a new **REST / HTTP Resource** with the following parameters:
 
-### Step 2: Data Mapper Configuration
-- Map incoming JSON schema to Magic xpi Flow Variables.
-- Ensure error handling sub-flows are attached.
+| Parameter | Configuration Key | Recommended Value |
+| :--- | :--- | :--- |
+| **Authentication Type** | \`AuthMode\` | \`OAuth2_ClientCredentials\` |
+| **Token Endpoint** | \`OAuthTokenUrl\` | \`https://auth.enterprise.com/oauth/v2/token\` |
+| **HTTP Timeout** | \`RequestTimeoutSeconds\` | \`60\` |
 
-### Verification & Testing
-Trigger flow execution in Debugger and inspect Server Monitor logs.`
-    } else if (type === 'troubleshooting') {
-      titleInput.value = 'Troubleshooting: Error [Code] in Magic Runtime'
-      prodSelect.value = 'xpa'
-      contentInput.value = `## Problem Statement
-When running Magic xpa / xpi runtime, the engine halts with Error Code \`[-105]\` or \`[Database Error]\`.
+---
 
-### Root Cause
-Typically caused by mismatched JVM_ARGS heap allocation or locked database records in Magic.ini.
+### Step 2: Data Mapper Transformation
+Map the incoming JSON payload variables into internal Magic xpi Flow Variables:
 
-### Resolution Steps
-1. Navigate to configuration directory.
-2. Locate \`Magic.ini\` and verify:
-   \`\`\`ini
-   JVM_ARGS=-Xms512m -Xmx2048m -Dmagic.home=...
-   \`\`\`
-3. Restart GigaSpaces Grid Management Agent (GSA).
-4. Verify port \`8005\` is free.`
-    } else if (type === 'cloud_sop') {
-      titleInput.value = 'SOP: AOC Modernization & Docker Container Deployment'
-      prodSelect.value = 'cloud_native'
-      contentInput.value = `## Cloud Native Deployment Guide
-Standard SOP for containerizing and deploying workloads to Kubernetes cluster.
-
-### Dockerfile Setup
-\`\`\`dockerfile
-FROM alpine:3.19
-RUN apk add --no-cache openjdk17
-COPY . /app
-WORKDIR /app
-CMD ["./start-server.sh"]
+\`\`\`json
+{
+  "transactionId": "TX-984102",
+  "status": "APPROVED",
+  "syncedAt": "2026-08-16T01:30:00Z"
+}
 \`\`\`
 
-### Deployment Verification
-Run \`kubectl get pods -n magic-cloud\` and check health probes.`
+> [!TIP]
+> Always attach an Error Handling Flow on Data Mapper steps to capture schema mismatch exceptions.
+
+---
+
+### Verification & Testing
+Trigger flow execution in Debugger and verify status code \`200 OK\` in Server Monitor.`
+      }
+    } else if (type === 'troubleshooting') {
+      if (titleInput) titleInput.value = 'Troubleshooting: Resolving Runtime Error [-105] in Magic.ini'
+      if (prodSelect) prodSelect.value = 'xpa'
+      if (docTypeSelect) docTypeSelect.value = 'troubleshooting'
+      if (contentInput) {
+        contentInput.value = `## Issue Summary
+When launching Magic xpa or Magic xpi runtime engines, the process halts with error code \`[-105]\` or \`ORA-01000: maximum open cursors exceeded\`.
+
+> [!WARNING]
+> This issue directly affects active user sessions and should be resolved by reviewing JVM memory and cursor parameters.
+
+---
+
+### Root Cause Analysis (RCA)
+1. **Unclosed DB Cursors:** Database task property \`Close Tables on Exit\` set to \`N\` instead of \`Immediately\`.
+2. **Heap Exhaustion:** Insufficient JVM memory allocated under \`JVM_ARGS\` in \`Magic.ini\`.
+
+---
+
+### Step-by-Step Resolution Plan
+1. Open \`Magic.ini\` located in the platform installation directory.
+2. Verify and update the following settings:
+
+\`\`\`ini
+[MAGIC_ENV]
+JVM_ARGS=-Xms1024m -Xmx4096m -Dmagic.home=C:\\Magic\\xpa
+CloseCursors=Y
+MaxActiveConnections=200
+\`\`\`
+
+3. In **Magic Studio Form Designer**, ensure all task properties specify \`Close Tables on Exit = Immediately\`.
+4. Restart the GigaSpaces Grid Agent (GSA):
+   \`\`\`bash
+   gs.sh restart-gsa
+   \`\`\`
+
+---
+
+### Verification Query
+Run the following SQL statement in Oracle / Postgres to verify active cursor handles:
+\`\`\`sql
+SELECT count(*) FROM v$open_cursor WHERE user_name = 'MAGIC_APP';
+\`\`\``
+      }
+    } else if (type === 'cloud_sop') {
+      if (titleInput) titleInput.value = 'SOP: AOC Modernization & Kubernetes Pod Deployment'
+      if (prodSelect) prodSelect.value = 'cloud_native'
+      if (docTypeSelect) docTypeSelect.value = 'architecture'
+      if (contentInput) {
+        contentInput.value = `## Cloud Native Modernization Guide
+Standard Operating Procedure for containerizing Magic microservices and deploying to Kubernetes multi-cloud clusters.
+
+---
+
+### Containerfile Specification
+\`\`\`dockerfile
+FROM alpine:3.19
+RUN apk add --no-cache openjdk17-jre-headless
+WORKDIR /opt/magic-service
+COPY ./bin ./bin
+EXPOSE 8000 8005
+CMD ["./bin/mgserver", "-ini", "Magic.ini"]
+\`\`\`
+
+---
+
+### Kubernetes Deployment Configuration
+\`\`\`yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: magic-xpi-engine
+  namespace: magic-cloud
+spec:
+  replicas: 3
+  template:
+    spec:
+      containers:
+      - name: mgengine
+        image: registry.magicsoftware.com/xpi-engine:v4.14
+        resources:
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+\`\`\`
+
+> [!TIP]
+> Configure readiness and liveness probes on port \`8005\` to allow Kubernetes to automatically heal frozen runtime pods.`
+      }
+    } else if (type === 'salesforce_case') {
+      if (titleInput) titleInput.value = 'Salesforce Case SOP: Resolution for Ingestion Pipeline Timeout'
+      if (prodSelect) prodSelect.value = 'xpi'
+      if (docTypeSelect) docTypeSelect.value = 'troubleshooting'
+      if (contentInput) {
+        contentInput.value = `## Salesforce Case Resolution SOP
+
+| Case Field | Value |
+| :--- | :--- |
+| **Case #** | \`#104928\` |
+| **Product** | Magic xpi Integration Platform |
+| **Severity** | High (Production Workload) |
+| **Resolution Status** | <span style="color:#34d399; font-weight:700;">Verified & Resolved</span> |
+
+---
+
+### Customer Problem Statement
+Data Mapper ingestion pipeline times out after 120 seconds during peak hourly batch updates from Salesforce.
+
+---
+
+### Diagnostics & Root Cause
+Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces GSC.
+
+---
+
+### Applied Fix
+1. Increased thread pool size to 32 workers in \`Magic.ini\`.
+2. Implemented batch streaming in Data Mapper (batch size = 500 records).
+3. Verified zero latency degradation under load.`
+      }
+    }
+    updateKbLivePreview()
+  }
+
+  // ==================== DRAFT AUTO-SAVE & STATE MANAGEMENT ====================
+  const DRAFT_KEY = 'magic_kb_studio_draft'
+  let draftAutoSaveTimer = null
+
+  function saveKbDraft(showToast = false) {
+    const titleEl = document.getElementById('kb-input-title')
+    const prodEl = document.getElementById('kb-input-product')
+    const verEl = document.getElementById('kb-input-version')
+    const docTypeEl = document.getElementById('kb-input-doctype')
+    const contentEl = document.getElementById('kb-input-content')
+
+    const draft = {
+      title: titleEl ? titleEl.value : '',
+      product: prodEl ? prodEl.value : 'xpi',
+      version: verEl ? verEl.value : 'Universal',
+      doc_type: docTypeEl ? docTypeEl.value : 'troubleshooting',
+      content: contentEl ? contentEl.value : '',
+      saved_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    }
+
+    if (draft.title.trim() || draft.content.trim()) {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+      if (showToast) {
+        const statusPill = document.getElementById('kb-draft-save-status')
+        if (statusPill) {
+          statusPill.textContent = `✓ Draft Saved (${draft.saved_at})`
+          statusPill.style.display = 'inline'
+          setTimeout(() => { statusPill.style.display = 'none' }, 3500)
+        }
+      }
     }
   }
 
-  document.getElementById('btn-write-kb').addEventListener('click', () => {
-    document.getElementById('modal-write-kb').classList.remove('hide')
-  })
-  document.getElementById('btn-close-write-kb').addEventListener('click', () => {
-    document.getElementById('modal-write-kb').classList.add('hide')
-  })
+  function checkAndPromptKbDraft() {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    const banner = document.getElementById('kb-draft-banner')
+    const timeEl = document.getElementById('kb-draft-timestamp')
+    const contentEl = document.getElementById('kb-input-content')
 
-  document.getElementById('form-write-kb').addEventListener('submit', async (e) => {
-    e.preventDefault()
-    const title = document.getElementById('kb-input-title').value.trim()
-    const product = document.getElementById('kb-input-product').value
-    const version = document.getElementById('kb-input-version').value.trim()
-    const content = document.getElementById('kb-input-content').value.trim()
+    if (raw && banner) {
+      try {
+        const draft = JSON.parse(raw)
+        if ((draft.title || draft.content) && (!contentEl || !contentEl.value.trim())) {
+          if (timeEl) timeEl.textContent = draft.saved_at || 'Recently'
+          banner.classList.remove('hide')
+          if (window.lucide) lucide.createIcons()
+          return
+        }
+      } catch (_) {}
+    }
+    if (banner) banner.classList.add('hide')
+  }
 
-    const formData = new FormData()
-    formData.append('title', title)
-    formData.append('product', product)
-    formData.append('version', version)
-    formData.append('content', content)
-
+  function restoreKbDraft() {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    if (!raw) return
     try {
-      const res = await fetch('/api/kb/create', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData
+      const draft = JSON.parse(raw)
+      const titleEl = document.getElementById('kb-input-title')
+      const prodEl = document.getElementById('kb-input-product')
+      const verEl = document.getElementById('kb-input-version')
+      const docTypeEl = document.getElementById('kb-input-doctype')
+      const contentEl = document.getElementById('kb-input-content')
+      const banner = document.getElementById('kb-draft-banner')
+
+      if (titleEl && draft.title) titleEl.value = draft.title
+      if (prodEl && draft.product) prodEl.value = draft.product
+      if (verEl && draft.version) verEl.value = draft.version
+      if (docTypeEl && draft.doc_type) docTypeEl.value = draft.doc_type
+      if (contentEl && draft.content) contentEl.value = draft.content
+
+      if (banner) banner.classList.add('hide')
+      updateKbLivePreview()
+    } catch (_) {}
+  }
+
+  function discardKbDraft(closeStudio = false) {
+    localStorage.removeItem(DRAFT_KEY)
+    const titleEl = document.getElementById('kb-input-title')
+    const contentEl = document.getElementById('kb-input-content')
+    const verEl = document.getElementById('kb-input-version')
+    const banner = document.getElementById('kb-draft-banner')
+
+    if (titleEl) titleEl.value = ''
+    if (contentEl) contentEl.value = ''
+    if (verEl) verEl.value = 'Universal'
+    if (banner) banner.classList.add('hide')
+    updateKbLivePreview()
+
+    if (closeStudio) {
+      const modal = document.getElementById('modal-write-kb')
+      if (modal) modal.classList.add('hide')
+    }
+  }
+
+  function handleKbExitPrompt() {
+    const title = (document.getElementById('kb-input-title') || {}).value || ''
+    const content = (document.getElementById('kb-input-content') || {}).value || ''
+
+    if (title.trim() || content.trim()) {
+      const choice = confirm('Do you want to discard your unsaved changes?\n\n• Click OK to discard changes and close.\n• Click Cancel to save your draft and continue editing.')
+      if (choice) {
+        discardKbDraft(true)
+      } else {
+        saveKbDraft(true)
+      }
+    } else {
+      discardKbDraft(true)
+    }
+  }
+
+  // Bind Draft Buttons
+  const btnRestoreDraft = document.getElementById('btn-restore-kb-draft')
+  if (btnRestoreDraft) {
+    btnRestoreDraft.addEventListener('click', restoreKbDraft)
+  }
+
+  const btnDiscardDraft = document.getElementById('btn-discard-kb-draft')
+  if (btnDiscardDraft) {
+    btnDiscardDraft.addEventListener('click', () => discardKbDraft(false))
+  }
+
+  const btnSaveDraft = document.getElementById('btn-save-draft-write-kb')
+  if (btnSaveDraft) {
+    btnSaveDraft.addEventListener('click', () => saveKbDraft(true))
+  }
+
+  const btnDiscardWriteKb = document.getElementById('btn-discard-write-kb')
+  if (btnDiscardWriteKb) {
+    btnDiscardWriteKb.addEventListener('click', () => {
+      const choice = confirm('Are you sure you want to discard all current edits in this article?')
+      if (choice) discardKbDraft(true)
+    })
+  }
+
+  // Open & Close Write KB Modal
+  const btnWriteKb = document.getElementById('btn-write-kb')
+  if (btnWriteKb) {
+    btnWriteKb.addEventListener('click', () => {
+      const modal = document.getElementById('modal-write-kb')
+      if (modal) {
+        modal.classList.remove('hide')
+        checkAndPromptKbDraft()
+        updateKbLivePreview()
+        if (window.lucide) lucide.createIcons()
+      }
+    })
+  }
+
+  const btnBackWriteKb = document.getElementById('btn-back-write-kb')
+  if (btnBackWriteKb) {
+    btnBackWriteKb.addEventListener('click', handleKbExitPrompt)
+  }
+
+  const btnCloseWriteKb = document.getElementById('btn-close-write-kb')
+  if (btnCloseWriteKb) {
+    btnCloseWriteKb.addEventListener('click', handleKbExitPrompt)
+  }
+
+  const btnCancelWriteKb = document.getElementById('btn-cancel-write-kb')
+  if (btnCancelWriteKb) {
+    btnCancelWriteKb.addEventListener('click', handleKbExitPrompt)
+  }
+
+  // Auto-save on typing (debounced 1.5s)
+  const kbInputs = ['kb-input-title', 'kb-input-content', 'kb-input-version', 'kb-input-product', 'kb-input-doctype']
+  kbInputs.forEach(id => {
+    const el = document.getElementById(id)
+    if (el) {
+      el.addEventListener('input', () => {
+        clearTimeout(draftAutoSaveTimer)
+        draftAutoSaveTimer = setTimeout(() => saveKbDraft(false), 1500)
       })
-      if (!res.ok) throw new Error('Failed to publish article')
-      const doc = await res.json()
-      document.getElementById('modal-write-kb').classList.add('hide')
-      fetchOverview()
-      fetchNotifications()
-      switchProductScope(product)
-      openDocument(doc.id)
-    } catch (err) {
-      alert(err.message)
     }
   })
+
+  // Form Submission
+  const formWriteKb = document.getElementById('form-write-kb')
+  if (formWriteKb) {
+    formWriteKb.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const title = (document.getElementById('kb-input-title') || {}).value.trim()
+      const product = (document.getElementById('kb-input-product') || {}).value || 'xpi'
+      const version = (document.getElementById('kb-input-version') || {}).value.trim() || 'Universal'
+      const docType = (document.getElementById('kb-input-doctype') || {}).value || 'troubleshooting'
+      const content = (document.getElementById('kb-input-content') || {}).value.trim()
+      const submitBtn = document.getElementById('btn-submit-write-kb')
+
+      if (!title || !content) {
+        alert('Please provide both an article title and content body.')
+        return
+      }
+
+      if (submitBtn) {
+        submitBtn.disabled = true
+        submitBtn.textContent = 'Publishing & Indexing...'
+      }
+
+      try {
+        const res = await fetch('/api/kb/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({
+            title,
+            product,
+            version,
+            doc_type: docType,
+            content
+          })
+        })
+        if (!res.ok) {
+          let errMsg = 'Failed to publish article'
+          try {
+            const errData = await res.json()
+            if (typeof errData.detail === 'string') errMsg = errData.detail
+            else if (Array.isArray(errData.detail)) errMsg = errData.detail.map(d => d.msg || JSON.stringify(d)).join(', ')
+            else if (errData.message) errMsg = errData.message
+          } catch (_) {
+            errMsg = res.statusText || 'Failed to publish article'
+          }
+          throw new Error(errMsg)
+        }
+        const data = await res.json()
+        localStorage.removeItem(DRAFT_KEY)
+        const modal = document.getElementById('modal-write-kb')
+        if (modal) modal.classList.add('hide')
+
+        fetchOverview()
+        fetchNotifications()
+        switchProductScope(product)
+        if (data.id || data.doc_id) {
+          openDocument(data.id || data.doc_id)
+        }
+      } catch (err) {
+        alert('Publication failed: ' + err.message)
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false
+          submitBtn.innerHTML = '<i data-lucide="check" style="width:16px; height:16px;"></i> Publish & Index Article (<50ms)'
+          if (window.lucide) lucide.createIcons()
+        }
+      }
+    })
+  }
 
   // ==================== 16. UPLOAD PORTAL ====================
   document.getElementById('btn-tab-upload').addEventListener('click', () => {
@@ -1126,35 +2902,105 @@ Run \`kubectl get pods -n magic-cloud\` and check health probes.`
     switchProductScope('all')
   })
 
-  document.getElementById('file-upload-input').addEventListener('change', async (e) => {
-    const files = Array.from(e.target.files)
-    if (files.length === 0) return
+  const uploadDropZone = document.getElementById('upload-drop-zone')
+  const fileUploadInput = document.getElementById('file-upload-input')
+
+  async function handleIngestionUpload(files) {
+    const fileList = Array.from(files || [])
+    if (fileList.length === 0) return
 
     const feedback = document.getElementById('upload-status-feedback')
-    const targetProduct = document.getElementById('upload-target-product').value
+    const targetProduct = (document.getElementById('upload-target-product') || {}).value || 'xpi'
 
-    feedback.innerHTML = `<div style="padding:14px; border-radius:8px; background:rgba(0,141,199,0.15); color:#38bdf8;">Processing & indexing ${files.length} file(s) into ${targetProduct.toUpperCase()} (uploads/${targetProduct}/)...</div>`
+    if (feedback) {
+      feedback.innerHTML = `<div style="padding:14px 18px; border-radius:8px; background:rgba(0,141,199,0.15); color:#38bdf8; display:flex; align-items:center; gap:10px; font-weight:600;">
+        <span style="display:inline-block; width:16px; height:16px; border:2px solid rgba(56,189,248,0.3); border-top-color:#38bdf8; border-radius:50%; animation:spin 0.8s linear infinite;"></span>
+        <span>Uploading & indexing ${fileList.length} document(s) into ${targetProduct.toUpperCase()} (uploads/${targetProduct}/)...</span>
+      </div>`
+    }
 
     const formData = new FormData()
     formData.append('product', targetProduct)
-    files.forEach(f => formData.append('files', f))
+    fileList.forEach(f => formData.append('files', f))
 
     try {
       const res = await fetch('/api/upload', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData
       })
-      if (!res.ok) throw new Error('Upload failed')
+      if (!res.ok) {
+        let errMsg = 'Upload failed'
+        try {
+          const errData = await res.json()
+          errMsg = errData.detail || errData.message || errMsg
+        } catch (_) {}
+        throw new Error(errMsg)
+      }
       const data = await res.json()
-      feedback.innerHTML = `<div style="padding:14px; border-radius:8px; background:rgba(16,185,129,0.15); color:#34d399; font-weight:600;">✓ ${data.message}</div>`
+      if (feedback) {
+        feedback.innerHTML = `<div style="padding:14px 18px; border-radius:8px; background:rgba(16,185,129,0.15); color:#34d399; font-weight:600;">✓ ${data.message || 'Files uploaded and indexed successfully!'}</div>`
+      }
+      if (fileUploadInput) fileUploadInput.value = ''
       fetchOverview()
       fetchNotifications()
       if (activeProduct === targetProduct) fetchFeaturedProductDocs()
     } catch (err) {
-      feedback.innerHTML = `<div style="padding:14px; border-radius:8px; background:rgba(244,63,94,0.15); color:#f43f5e;">✗ ${err.message}</div>`
+      if (feedback) {
+        feedback.innerHTML = `<div style="padding:14px 18px; border-radius:8px; background:rgba(244,63,94,0.15); color:#f43f5e; font-weight:600;">✗ ${err.message}</div>`
+      }
     }
-  })
+  }
+
+  if (fileUploadInput) {
+    fileUploadInput.addEventListener('change', (e) => {
+      handleIngestionUpload(e.target.files)
+    })
+  }
+
+  if (uploadDropZone) {
+    uploadDropZone.addEventListener('click', (e) => {
+      if (e.target !== fileUploadInput && fileUploadInput) {
+        fileUploadInput.click()
+      }
+    })
+
+    ;['dragenter', 'dragover'].forEach(eventName => {
+      uploadDropZone.addEventListener(eventName, (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        uploadDropZone.style.borderColor = '#38bdf8'
+        uploadDropZone.style.background = 'rgba(0, 141, 199, 0.15)'
+        uploadDropZone.style.transform = 'scale(1.01)'
+      }, false)
+    })
+
+    ;['dragleave', 'dragend'].forEach(eventName => {
+      uploadDropZone.addEventListener(eventName, (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        uploadDropZone.style.borderColor = 'rgba(0, 141, 199, 0.4)'
+        uploadDropZone.style.background = 'rgba(0, 141, 199, 0.04)'
+        uploadDropZone.style.transform = 'scale(1)'
+      }, false)
+    })
+
+    uploadDropZone.addEventListener('drop', (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      uploadDropZone.style.borderColor = 'rgba(0, 141, 199, 0.4)'
+      uploadDropZone.style.background = 'rgba(0, 141, 199, 0.04)'
+      uploadDropZone.style.transform = 'scale(1)'
+
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleIngestionUpload(e.dataTransfer.files)
+      }
+    }, false)
+  }
+
+  // Prevent browser window navigation on accidental drop outside zone
+  window.addEventListener('dragover', (e) => e.preventDefault(), false)
+  window.addEventListener('drop', (e) => e.preventDefault(), false)
 
   // ==================== 17. ENTERPRISE ADMIN SUITE ====================
   document.getElementById('btn-tab-admin').addEventListener('click', () => {

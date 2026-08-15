@@ -91,6 +91,74 @@ class SearchAnalytic(Base):
     username = Column(String, default="Guest")
     created_at = Column(DateTime, default=datetime.utcnow)
 
+class SalesforceCase(Base):
+    __tablename__ = "salesforce_cases"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    case_number = Column(String, unique=True, index=True, nullable=False)
+    subject = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    product = Column(String, default="xpi", index=True) # xpa, xpi, cloud_native, general
+    version = Column(String, default="Universal")
+    status = Column(String, default="Closed")
+    root_cause = Column(Text, nullable=True)
+    resolution = Column(Text, nullable=True)
+    error_codes = Column(String, default="")
+    tags = Column(String, default="")
+    customer_name = Column(String, nullable=True)
+    created_date = Column(DateTime, default=datetime.utcnow)
+    closed_date = Column(DateTime, nullable=True)
+
+class AIResolution(Base):
+    __tablename__ = "ai_resolutions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    case_number = Column(String, nullable=True, index=True)
+    product = Column(String, default="xpi", index=True)
+    query_prompt = Column(Text, nullable=False)
+    problem_summary = Column(Text, nullable=True)
+    root_cause = Column(Text, nullable=True)
+    solution_steps = Column(Text, nullable=False)
+    citations_json = Column(Text, default="[]")
+    is_verified = Column(Boolean, default=False)
+    created_by = Column(String, default="Magic AI Assistant")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    kb_doc_id = Column(Integer, nullable=True)
+
+class AISetting(Base):
+    __tablename__ = "ai_settings"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    provider = Column(String, default="auto") # auto, gemini, openai, azure, anthropic, ollama, offline
+    api_key = Column(String, nullable=True)
+    api_base_url = Column(String, nullable=True)
+    model_name = Column(String, default="gemini-1.5-flash")
+    system_prompt = Column(Text, nullable=True)
+    temperature = Column(String, default="0.3")
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+class AIChatSession(Base):
+    __tablename__ = "ai_chat_sessions"
+    
+    id = Column(String, primary_key=True, index=True) # UUID or session_xxx
+    title = Column(String, default="New Troubleshooting Session")
+    product = Column(String, default="all")
+    client_id = Column(String, default="anonymous", index=True)
+    user_id = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+class AIChatMessage(Base):
+    __tablename__ = "ai_chat_messages"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(String, index=True)
+    role = Column(String) # user, assistant, system
+    content = Column(Text, nullable=False)
+    attachments_json = Column(Text, default="[]")
+    citations_json = Column(Text, default="[]")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 def init_db():
     Base.metadata.create_all(bind=engine)
     # Manual schema migrations for existing SQLite databases
@@ -99,6 +167,52 @@ def init_db():
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
+        # Ensure AI tables exist
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS ai_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            provider TEXT DEFAULT 'gemini',
+            api_key TEXT,
+            api_base_url TEXT,
+            model_name TEXT DEFAULT 'gemini-1.5-flash',
+            system_prompt TEXT,
+            temperature TEXT DEFAULT '0.3',
+            updated_at TIMESTAMP
+        )
+        """)
+        
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS ai_chat_sessions (
+            id TEXT PRIMARY KEY,
+            title TEXT DEFAULT 'New Troubleshooting Session',
+            product TEXT DEFAULT 'all',
+            client_id TEXT DEFAULT 'anonymous',
+            user_id TEXT,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP
+        )
+        """)
+
+        # Check columns in ai_chat_sessions
+        cursor.execute("PRAGMA table_info(ai_chat_sessions)")
+        sess_cols = [row[1] for row in cursor.fetchall()]
+        if "client_id" not in sess_cols:
+            cursor.execute("ALTER TABLE ai_chat_sessions ADD COLUMN client_id TEXT DEFAULT 'anonymous'")
+        if "user_id" not in sess_cols:
+            cursor.execute("ALTER TABLE ai_chat_sessions ADD COLUMN user_id TEXT")
+        
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS ai_chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT,
+            role TEXT,
+            content TEXT,
+            attachments_json TEXT DEFAULT '[]',
+            citations_json TEXT DEFAULT '[]',
+            created_at TIMESTAMP
+        )
+        """)
+
         # Check columns in documents table
         cursor.execute("PRAGMA table_info(documents)")
         columns = [row[1] for row in cursor.fetchall()]
@@ -126,6 +240,15 @@ def init_db():
             cursor.execute("ALTER TABLE users ADD COLUMN product_space TEXT DEFAULT 'all'")
         if "is_active" not in user_cols:
             cursor.execute("ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1")
+
+        # Seed AI Settings with Built-in Deep-Reasoning Diagnostic Engine if empty
+        cursor.execute("SELECT id FROM ai_settings LIMIT 1")
+        ai_row = cursor.fetchone()
+        if not ai_row:
+            cursor.execute(
+                "INSERT INTO ai_settings (provider, api_key, model_name, temperature) VALUES (?, ?, ?, ?)",
+                ("expert_synthesizer", "", "Built-in Deep-Reasoning Diagnostic Engine", "0.3")
+            )
             
         conn.commit()
         conn.close()
@@ -138,5 +261,6 @@ def get_db():
         yield db
     finally:
         db.close()
+
 
 

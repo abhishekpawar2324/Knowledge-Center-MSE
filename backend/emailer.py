@@ -18,7 +18,7 @@ def send_superadmin_alert(subject: str, html_body: str, recipient: str = SUPER_A
     Falls back gracefully to structured system audit log if external SMTP relay is not configured.
     """
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"\n📧 [SUPER ADMIN EMAIL NOTIFICATION - {timestamp}]")
+    print(f"\n[SUPER ADMIN EMAIL NOTIFICATION - {timestamp}]")
     print(f"To: {recipient}")
     print(f"Subject: {subject}")
     print("=" * 60)
@@ -36,13 +36,13 @@ def send_superadmin_alert(subject: str, html_body: str, recipient: str = SUPER_A
                 server.starttls()
                 server.login(SMTP_USER, SMTP_PASSWORD)
                 server.sendmail(FROM_EMAIL, recipient, msg.as_string())
-            print(f"✓ Email successfully delivered via SMTP to {recipient}")
+            print(f"[OK] Email successfully delivered via SMTP to {recipient}")
             return True
         except Exception as e:
-            print(f"✗ Failed to dispatch email via SMTP: {e}")
+            print(f"[WARN] Failed to dispatch email via SMTP: {e}")
             return False
     else:
-        print(f"ℹ️ [SMTP Relay Simulated] In-app notification and email payload generated for {recipient}")
+        print(f"[INFO] [SMTP Relay Simulated] In-app notification and email payload generated for {recipient}")
         return True
 
 def notify_document_uploaded(doc_title: str, product_space: str, author: str, file_type: str):

@@ -8,9 +8,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <!-- Lucide Icons -->
+  <!-- Lucide Icons & Markdown Parser -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <link rel="stylesheet" href="styles.css?v=2">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="styles.css?v=9.7">
   <script>
     function openAddUserModal() {
       var modal = document.getElementById('modal-admin-add-user');
@@ -469,13 +470,13 @@
 
 
       <!-- Drag and drop upload zone -->
-      <div style="padding:40px 20px; text-align:center; border:2px dashed rgba(0,141,199,0.4); border-radius:14px; cursor:pointer; background:rgba(0,141,199,0.04);" onclick="document.getElementById('file-upload-input').click()">
+      <div id="upload-drop-zone" class="upload-drop-zone" style="padding:40px 20px; text-align:center; border:2px dashed rgba(0,141,199,0.4); border-radius:14px; cursor:pointer; background:rgba(0,141,199,0.04); transition:all 0.25s ease;">
         <input type="file" id="file-upload-input" multiple accept=".html,.pdf,.docx,.txt,.md" style="display:none;">
-        <div style="width:60px; height:60px; border-radius:16px; background:rgba(0,141,199,0.15); display:flex; align-items:center; justify-content:center; color:#008DC7; margin:0 auto 16px auto;">
+        <div style="width:60px; height:60px; border-radius:16px; background:rgba(0,141,199,0.15); display:flex; align-items:center; justify-content:center; color:#008DC7; margin:0 auto 16px auto; pointer-events:none;">
           <i data-lucide="upload" style="width:30px; height:30px;"></i>
         </div>
-        <h3 style="font-size:1.25rem; font-weight:700; color:#fff; margin-bottom:6px;">Choose files or drag and drop</h3>
-        <p style="font-size:0.85rem; color:#94a3b8;">Supported formats: Word (.docx), PDF manuals (.pdf), Confluence HTML (.html), Markdown (.md), TXT</p>
+        <h3 style="font-size:1.25rem; font-weight:700; color:#fff; margin-bottom:6px; pointer-events:none;">Choose files or drag and drop</h3>
+        <p style="font-size:0.85rem; color:#94a3b8; pointer-events:none;">Supported formats: Word (.docx), PDF manuals (.pdf), Confluence HTML (.html), Markdown (.md), TXT</p>
       </div>
 
       <div id="upload-status-feedback"></div>
@@ -845,96 +846,560 @@
 
   <!-- ==================== MODALS ==================== -->
 
-  <!-- 1. Magic AI Assistant Modal -->
+  <!-- 1. Magic AI Copilot & Analyzer Modal -->
   <div id="modal-copilot" class="modal-overlay hide">
-    <div class="modal-container">
-      <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px; background:linear-gradient(135deg, rgba(0,86,140,0.5), rgba(0,141,199,0.25)); border-bottom:1px solid rgba(0,141,199,0.3);">
-        <div style="display:flex; align-items:center; gap:10px;">
-          <div style="width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg, #008DC7, #2DBCEE); display:flex; align-items:center; justify-content:center; color:#fff;">
-            <i data-lucide="bot" style="width:20px; height:20px;"></i>
+    <div class="modal-container" style="max-width: 1060px; height: 88vh; max-height: 800px; display: flex; flex-direction: column;">
+      
+      <!-- Top Modal Header -->
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:linear-gradient(135deg, rgba(0,86,140,0.5), rgba(0,141,199,0.25)); border-bottom:1px solid rgba(0,141,199,0.3); flex-shrink:0;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg, #008DC7, #2DBCEE); display:flex; align-items:center; justify-content:center; color:#fff; box-shadow:0 2px 10px rgba(0,141,199,0.4);">
+            <i data-lucide="sparkles" style="width:20px; height:20px;"></i>
           </div>
           <div>
-            <h3 style="font-size:1.1rem; font-weight:800; color:#fff; margin:0;">Magic AI Assistant</h3>
-            <span style="font-size:0.72rem; color:#38bdf8;">Enterprise Technical Resolution Engine</span>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <h3 style="font-size:1.15rem; font-weight:800; color:#fff; margin:0;">Magic AI Copilot & Analyzer</h3>
+              <span style="font-size:0.68rem; padding:2px 7px; border-radius:6px; background:rgba(0,141,199,0.25); border:1px solid rgba(45,188,238,0.4); color:#38bdf8; font-weight:800; letter-spacing:0.04em;">GPT-TIER SUPPORT</span>
+            </div>
+            <span style="font-size:0.75rem; color:#94a3b8;">Salesforce Case Diagnostic, Multi-Turn Chat, Attachments & Continuous Learning</span>
           </div>
         </div>
-        <button id="btn-close-copilot" style="background:none; border:none; color:#9ca3af; cursor:pointer;">
-          <i data-lucide="x" style="width:20px; height:20px;"></i>
-        </button>
+
+        <div style="display:flex; align-items:center; gap:10px;">
+          <!-- Product Scope Selector -->
+          <div style="display:flex; align-items:center; gap:6px; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:8px; border:1px solid rgba(255,255,255,0.08);">
+            <span style="font-size:0.72rem; color:#94a3b8; font-weight:600;">Scope:</span>
+            <select id="copilot-product-scope" style="font-size:0.78rem !important; padding:4px 8px !important; border:none !important; background:transparent !important;">
+              <option value="all">🌐 All Products</option>
+              <option value="xpa">⚡ Magic xpa</option>
+              <option value="xpi">🔗 Magic xpi</option>
+              <option value="cloud_native">☁️ Cloud Native</option>
+            </select>
+          </div>
+
+          <!-- 3 Mode Tabs -->
+          <div style="display:flex; align-items:center; background:rgba(255,255,255,0.04); padding:3px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); gap:2px;">
+            <button id="copilot-tab-btn-chat" class="copilot-tab-btn active" type="button">
+              <i data-lucide="message-square" style="width:14px; height:14px;"></i> Chat
+            </button>
+            <button id="copilot-tab-btn-case" class="copilot-tab-btn" type="button">
+              <i data-lucide="file-search" style="width:14px; height:14px;"></i> Case Analyzer
+            </button>
+            <button id="copilot-tab-btn-settings" class="copilot-tab-btn" type="button">
+              <i data-lucide="settings" style="width:14px; height:14px;"></i> Settings
+            </button>
+          </div>
+
+          <!-- Close Button -->
+          <button id="btn-close-copilot" type="button" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:8px; width:32px; height:32px; color:#9ca3af; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.15s;">
+            <i data-lucide="x" style="width:18px; height:18px;"></i>
+          </button>
+        </div>
       </div>
 
-      <div style="padding:10px 20px; background:rgba(0,0,0,0.2); border-bottom:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; gap:10px;">
-        <span style="font-size:0.75rem; color:#94a3b8; font-weight:600;">Scoping Knowledge To:</span>
-        <select id="copilot-product-scope">
-          <option value="all">🌐 All Products</option>
-          <option value="xpa">⚡ Magic xpa</option>
-          <option value="xpi">🔗 Magic xpi</option>
-          <option value="cloud_native">☁️ Cloud Native</option>
-        </select>
+      <!-- Main Modal Body with 2 Columns -->
+      <div style="display:flex; flex:1; overflow:hidden;">
+        
+        <!-- Left Sidebar: Chat History & Engine Status -->
+        <div style="width:250px; flex-shrink:0; background:rgba(6,4,13,0.6); border-right:1px solid rgba(255,255,255,0.06); display:flex; flex-direction:column; padding:14px; gap:12px;">
+          <button id="btn-new-copilot-chat" type="button" class="btn btn-primary" style="width:100%; padding:9px 12px; font-size:0.82rem; font-weight:700; gap:6px;">
+            <i data-lucide="plus" style="width:15px; height:15px;"></i> New Chat
+          </button>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; padding-top:4px;">
+            <span id="copilot-sidebar-title" style="font-size:0.75rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em;">Recent Chats</span>
+            <button id="btn-clear-copilot-history" type="button" style="background:none; border:none; color:#64748b; font-size:0.7rem; cursor:pointer;" onmouseover="this.style.color='#f43f5e'" onmouseout="this.style.color='#64748b'">Clear</button>
+          </div>
+
+          <!-- Sessions List -->
+          <div id="copilot-sessions-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:5px;">
+            <div style="padding:10px; text-align:center; color:#64748b; font-size:0.75rem;">No recent sessions</div>
+          </div>
+
+          <!-- Active AI Engine Pill -->
+          <div id="copilot-engine-indicator" style="padding:8px 10px; border-radius:8px; background:rgba(0,141,199,0.12); border:1px solid rgba(0,141,199,0.25); display:flex; align-items:center; gap:8px;">
+            <div style="width:8px; height:8px; border-radius:50%; background:#10b981; box-shadow:0 0 8px #10b981;"></div>
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:0.68rem; color:#94a3b8; text-transform:uppercase; font-weight:700;">Engine: Groq LLaMA 3.3</div>
+              <div style="font-size:0.75rem; color:#38bdf8; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">● Active</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Main Workspace -->
+        <div style="flex:1; display:flex; flex-direction:column; min-width:0; background:rgba(15,23,42,0.6); position:relative; overflow:hidden;">
+          
+          <!-- TAB 1: Chat Pane -->
+          <div id="copilot-pane-chat" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+            
+            <!-- Quick Suggestion Pills -->
+            <div style="padding:10px 16px; border-bottom:1px solid rgba(255,255,255,0.06); background:rgba(0,0,0,0.15); display:flex; align-items:center; gap:8px; overflow-x:auto;">
+              <span style="font-size:0.72rem; color:#64748b; font-weight:700; flex-shrink:0;">Quick Topics:</span>
+              <button type="button" class="quick-pill" onclick="triggerQuickPrompt('How to bind .NET Radio button controls in Magic xpa?')">📻 .NET Radio Button Binding</button>
+              <button type="button" class="quick-pill" onclick="triggerQuickPrompt('How to fix SQLite database migration schema mismatch in Magic xpa?')">📱 SQLite Schema Migration</button>
+              <button type="button" class="quick-pill" onclick="triggerQuickPrompt('How to resolve UTF-8 character encoding issues in XML JSON Data Mapper in Magic xpi?')">🔤 XML in JSON UTF-8 Encoding</button>
+              <button type="button" class="quick-pill" onclick="triggerQuickPrompt('How to tune GigaSpaces JVM heap memory and queryCache flag in Magic.ini?')">📊 GigaSpaces JVM Tuning</button>
+            </div>
+
+            <!-- Messages Thread -->
+            <div id="copilot-messages-thread" style="flex:1; padding:18px; overflow-y:auto; display:flex; flex-direction:column; gap:16px;"></div>
+
+            <!-- Attachment Tray (Shown when files staged) -->
+            <div id="copilot-attachments-tray" class="hide" style="padding:8px 16px; background:rgba(0,0,0,0.3); border-top:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; gap:8px; flex-wrap:wrap;"></div>
+
+            <!-- Chat Input Bar -->
+            <form id="copilot-form" style="padding:12px 16px; border-top:1px solid rgba(255,255,255,0.08); background:rgba(6,4,13,0.7); display:flex; align-items:center; gap:10px;">
+              <input type="file" id="copilot-attach-input" multiple accept=".txt,.log,.ini,.xml,.json,.properties,.csv,.pdf,.md" class="hide">
+              
+              <button id="btn-copilot-attach" type="button" title="Attach log files or configuration (.ini, .log, .xml, .txt)" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#cbd5e1; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:all 0.15s;">
+                <i data-lucide="paperclip" style="width:18px; height:18px;"></i>
+              </button>
+
+              <input type="text" id="copilot-input" placeholder="Ask any configuration question, error code diagnosis, or paste log snippet..." autocomplete="off" style="flex:1; padding:11px 14px; border-radius:10px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:#fff; font-size:0.9rem; outline:none;">
+
+              <button id="btn-copilot-send" type="submit" class="btn btn-primary" style="padding:11px 18px; font-weight:700; flex-shrink:0; gap:6px;">
+                <i data-lucide="send" style="width:16px; height:16px;"></i> Ask
+              </button>
+            </form>
+          </div>
+
+          <!-- TAB 2: Case Analyzer Pane -->
+          <div id="copilot-pane-case" class="hide" style="display:flex; flex-direction:column; flex:1; overflow-y:auto; padding:20px; gap:18px;">
+            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:18px; display:flex; flex-direction:column; gap:12px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <i data-lucide="file-text" style="width:18px; height:18px; color:#38bdf8;"></i>
+                <span style="font-size:0.95rem; font-weight:700; color:#fff;">Salesforce Case Details & Diagnostic Input</span>
+              </div>
+
+              <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+                <div>
+                  <label style="display:block; font-size:0.75rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">Salesforce Case #</label>
+                  <input type="text" id="case-input-number" placeholder="e.g. 0863301644" style="width:100%; padding:9px 12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none;">
+                </div>
+                <div>
+                  <label style="display:block; font-size:0.75rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">Customer / Account Name</label>
+                  <input type="text" id="case-input-customer" placeholder="e.g. Enterprise Client" style="width:100%; padding:9px 12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none;">
+                </div>
+                <div>
+                  <label style="display:block; font-size:0.75rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">Target Product Space</label>
+                  <select id="case-input-product" style="width:100%;">
+                    <option value="xpi">🔗 Magic xpi</option>
+                    <option value="xpa">⚡ Magic xpa</option>
+                    <option value="cloud_native">☁️ Cloud Native</option>
+                    <option value="general">🌐 General</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style="display:block; font-size:0.75rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">Customer Inquiries, Error Logs, and Thread History *</label>
+                <textarea id="case-input-history" rows="5" placeholder="Paste customer inquiry, Salesforce case subject/description, runtime logs, or error stack trace..." style="width:100%; padding:10px 12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none; font-family:monospace; font-size:0.85rem; line-height:1.5;"></textarea>
+              </div>
+
+              <!-- Case Attachments Bar -->
+              <div style="background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 14px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                  <div style="display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="paperclip" style="width:14px; height:14px; color:#38bdf8;"></i>
+                    <span style="font-size:0.78rem; font-weight:700; color:#e2e8f0;">Attachments & Error Logs (.log, .ini, .xml, .zip, .txt, .png, .pdf)</span>
+                  </div>
+                  <div>
+                    <button type="button" id="btn-case-attach-trigger" class="btn btn-secondary" style="padding:4px 10px; font-size:0.75rem; gap:6px; color:#38bdf8; border-color:rgba(56,189,248,0.4);" onclick="document.getElementById('case-file-upload-input').click()">
+                      <i data-lucide="plus" style="width:12px; height:12px;"></i> Attach File(s)
+                    </button>
+                    <input type="file" id="case-file-upload-input" multiple accept=".log,.txt,.ini,.xml,.properties,.json,.sql,.zip,.png,.jpg,.jpeg,.pdf,.docx,.yaml,.yml" style="display:none;">
+                  </div>
+                </div>
+
+                <!-- Dropzone / Chip list -->
+                <div id="case-files-dropzone" style="padding:8px 12px; border:1.5px dashed rgba(56,189,248,0.3); border-radius:8px; background:rgba(56,189,248,0.03); min-height:38px; display:flex; flex-direction:column; justify-content:center; cursor:pointer; transition:all 0.2s ease;">
+                  <div id="case-files-placeholder" style="display:flex; align-items:center; justify-content:center; gap:8px; color:#94a3b8; font-size:0.75rem; pointer-events:none;">
+                    <i data-lucide="upload-cloud" style="width:14px; height:14px; color:#38bdf8;"></i>
+                    <span>Drag & drop log files, <code>Magic.ini</code>, screenshots, or click to attach</span>
+                  </div>
+                  <div id="case-files-chip-list" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+                </div>
+              </div>
+
+              <div style="display:flex; justify-content:space-between; align-items:center; padding-top:4px;">
+                <span style="font-size:0.75rem; color:#94a3b8;">Uses RAG across verified knowledge base & historical benchmarks.</span>
+                <button id="btn-run-case-diagnostic" type="button" class="btn btn-primary" style="padding:10px 20px; font-weight:700; gap:8px;">
+                  <i data-lucide="zap" style="width:16px; height:16px;"></i> Run Salesforce Case Diagnostic & Draft Email
+                </button>
+              </div>
+            </div>
+
+            <!-- Case Diagnostic Results -->
+            <div id="case-results-container" class="hide" style="display:flex; flex-direction:column; gap:14px;"></div>
+          </div>
+
+          <!-- TAB 3: Settings Pane -->
+          <div id="copilot-pane-settings" class="hide" style="display:flex; flex-direction:column; flex:1; overflow-y:auto; padding:22px; gap:16px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:10px;">
+              <div>
+                <h4 style="font-size:1.05rem; font-weight:700; color:#fff; margin:0 0 2px 0;">LLM Intelligence & Diagnostics Engine</h4>
+                <p style="font-size:0.78rem; color:#94a3b8; margin:0;">Configure external LLM providers (Groq, OpenRouter, Gemini, OpenAI) or use the Built-in Deep-Reasoning Engine.</p>
+              </div>
+            </div>
+
+            <div id="ai-settings-feedback" class="hide" style="padding:10px 14px; border-radius:8px; font-size:0.85rem;"></div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+              <div>
+                <label style="display:block; font-size:0.75rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">AI Provider</label>
+                <select id="ai-setting-provider" style="width:100%;">
+                  <option value="groq" selected>⚡ Groq Cloud AI (LLaMA 3.3 70B - Ultra Fast & Accurate)</option>
+                  <option value="openrouter">🌐 OpenRouter (Multi-Model & Free Tiers)</option>
+                  <option value="gemini">✨ Google Gemini (1.5 Flash / 2.0 Flash)</option>
+                  <option value="openai">🧠 OpenAI (GPT-4o / GPT-4o-mini)</option>
+                  <option value="ollama">💻 Local Ollama / vLLM (Local Host)</option>
+                  <option value="expert_synthesizer">🛡️ Built-in Deep-Reasoning Diagnostic Engine (Offline Fallback)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style="display:block; font-size:0.75rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">Model Identifier</label>
+                <input type="text" id="ai-setting-model" placeholder="e.g. llama-3.3-70b-versatile, gpt-4o, gemini-1.5-flash" style="width:100%; padding:9px 12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none;">
+              </div>
+            </div>
+
+            <div>
+              <label style="display:block; font-size:0.75rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">API Key / Secret Token</label>
+              <input type="password" id="ai-setting-apikey" placeholder="Enter provider API key (e.g. gsk_... or sk-or-...)" style="width:100%; padding:10px 12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none; font-family:monospace;">
+            </div>
+
+            <div style="display:grid; grid-template-columns:2fr 1fr; gap:14px;">
+              <div>
+                <label style="display:block; font-size:0.75rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">Custom Base URL (Optional for OpenAI / OpenRouter / Ollama)</label>
+                <input type="text" id="ai-setting-baseurl" placeholder="e.g. https://api.groq.com/openai/v1 or http://localhost:11434" style="width:100%; padding:9px 12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none;">
+              </div>
+              <div>
+                <label style="display:block; font-size:0.75rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">Temperature</label>
+                <input type="number" id="ai-setting-temp" step="0.1" min="0" max="1" value="0.2" style="width:100%; padding:9px 12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none;">
+              </div>
+            </div>
+
+            <div>
+              <label style="display:block; font-size:0.75rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">Enterprise Diagnostic System Prompt</label>
+              <textarea id="ai-setting-prompt" rows="3" style="width:100%; padding:10px 12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none; font-size:0.8rem; font-family:monospace; line-height:1.5;"></textarea>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-top:8px;">
+              <button id="btn-test-ai-conn" type="button" class="btn btn-secondary" style="padding:10px 16px; font-weight:600; gap:6px;">
+                <i data-lucide="activity" style="width:15px; height:15px;"></i> Test Connection
+              </button>
+              <button id="btn-save-ai-settings" type="button" class="btn btn-primary" style="padding:10px 22px; font-weight:700; gap:6px;">
+                <i data-lucide="save" style="width:15px; height:15px;"></i> Save Configuration
+              </button>
+            </div>
+          </div>
+
+        </div>
       </div>
-
-      <div id="copilot-messages-thread" style="flex:1; padding:20px; overflow-y:auto; min-height:300px; display:flex; flex-direction:column; gap:14px;"></div>
-
-      <form id="copilot-form" style="padding:16px 20px; border-top:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); display:flex; gap:10px;">
-        <input type="text" id="copilot-input" placeholder="Ask about SAP connector errors, JVM_ARGS, Magic.ini flags, RIA deployments..." style="flex:1; padding:12px 16px; border-radius:10px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:#fff; font-size:0.92rem; outline:none;">
-        <button type="submit" class="btn btn-primary" style="padding:12px 20px;">
-          <i data-lucide="send" style="width:16px; height:16px;"></i> Ask
-        </button>
-      </form>
     </div>
   </div>
 
-  <!-- 2. Author KB Article Modal (with 1-Click Templates) -->
-  <div id="modal-write-kb" class="modal-overlay hide">
-    <div class="modal-container" style="max-width:850px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid rgba(255,255,255,0.08);">
-        <h3 style="font-size:1.15rem; font-weight:700; color:#fff; display:flex; align-items:center; gap:8px;">
-          <i data-lucide="file-plus-2" style="width:18px; height:18px; color:#10b981;"></i> Author Knowledge Base Article
-        </h3>
-        <button id="btn-close-write-kb" style="background:none; border:none; color:#9ca3af; cursor:pointer;">
-          <i data-lucide="x" style="width:20px; height:20px;"></i>
+  <!-- 1b. 1-Click Publish AI Resolution to KB Modal -->
+  <div id="modal-publish-ai-kb" class="modal-overlay hide" style="z-index: 9999999;">
+    <div class="modal-container" style="max-width:650px; background:rgba(15,23,42,0.98); border:1px solid rgba(16,185,129,0.5); box-shadow:0 25px 60px rgba(0,0,0,0.8);">
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid rgba(255,255,255,0.08); background:rgba(16,185,129,0.1);">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="width:32px; height:32px; border-radius:8px; background:linear-gradient(135deg, #10b981, #06b6d4); display:flex; align-items:center; justify-content:center; color:#fff;">
+            <i data-lucide="file-check" style="width:18px; height:18px;"></i>
+          </div>
+          <div>
+            <h3 style="font-size:1.1rem; font-weight:800; color:#fff; margin:0;">Publish AI Resolution to Knowledge Base</h3>
+            <span style="font-size:0.72rem; color:#34d399;">Converts structured diagnosis into a permanent, searchable enterprise SOP</span>
+          </div>
+        </div>
+        <button id="btn-close-publish-ai-kb" type="button" style="background:none; border:none; color:#9ca3af; cursor:pointer;">
+          <i data-lucide="x" style="width:18px; height:18px;"></i>
         </button>
       </div>
 
-      <form id="form-write-kb" style="padding:20px; display:flex; flex-direction:column; gap:14px; overflow-y:auto; max-height:80vh;">
+      <form id="form-publish-ai-kb" style="padding:20px; display:flex; flex-direction:column; gap:14px;">
+        <input type="hidden" id="publish-ai-resolution-id">
         
-        <!-- Template Selection Bar -->
-        <div style="display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.03); padding:10px 14px; border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
-          <span style="font-size:0.75rem; color:#94a3b8; font-weight:700;">1-Click Templates:</span>
-          <button type="button" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="insertDocTemplate('connector')">🔌 Connector Setup</button>
-          <button type="button" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="insertDocTemplate('troubleshooting')">⚠️ Troubleshooting Guide</button>
-          <button type="button" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="insertDocTemplate('cloud_sop')">☁️ Cloud Native SOP</button>
-        </div>
-
         <div>
-          <label style="display:block; font-size:0.78rem; font-weight:600; color:#cbd5e1; margin-bottom:4px;">Article Title</label>
-          <input type="text" id="kb-input-title" placeholder="e.g. How to Configure SAP REST Connector OAuth2" required style="width:100%; padding:10px 12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none;">
+          <label style="display:block; font-size:0.75rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">Article Title *</label>
+          <input type="text" id="publish-ai-title" required style="width:100%; padding:10px 12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none; font-size:0.9rem; font-weight:600;">
         </div>
 
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
           <div>
-            <label style="display:block; font-size:0.78rem; font-weight:600; color:#cbd5e1; margin-bottom:4px;">Product Space</label>
-            <select id="kb-input-product" style="width:100%;">
-              <option value="xpi">🔗 Magic xpi (Integration Platform) - uploads/xpi/</option>
-              <option value="xpa">⚡ Magic xpa (Application Platform) - uploads/xpa/</option>
-              <option value="cloud_native">☁️ Cloud Native Products - uploads/cloud_native/</option>
-              <option value="general">🌐 General / Cross-Product - uploads/general/</option>
+            <label style="display:block; font-size:0.75rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">Target Product Space *</label>
+            <select id="publish-ai-product" style="width:100%;">
+              <option value="xpi">🔗 Magic xpi (Integration Platform)</option>
+              <option value="xpa">⚡ Magic xpa (Application Studio)</option>
+              <option value="cloud_native">☁️ Cloud Native & AOC</option>
+              <option value="general">🌐 General Architecture</option>
             </select>
           </div>
           <div>
-            <label style="display:block; font-size:0.78rem; font-weight:600; color:#cbd5e1; margin-bottom:4px;">Target Version</label>
-            <input type="text" id="kb-input-version" placeholder="e.g. 4.14.1 or Universal" value="Universal" style="width:100%; padding:10px 12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none;">
+            <label style="display:block; font-size:0.75rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">Target Version</label>
+            <input type="text" id="publish-ai-version" value="Universal" style="width:100%; padding:9px 12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none;">
           </div>
         </div>
 
         <div>
-          <label style="display:block; font-size:0.78rem; font-weight:600; color:#cbd5e1; margin-bottom:4px;">Article Body (Markdown Supported)</label>
-          <textarea id="kb-input-content" rows="12" placeholder="Write step-by-step troubleshooting instructions, code snippets, or configuration parameters..." required style="width:100%; padding:12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; font-family:monospace; outline:none; line-height:1.6;"></textarea>
+          <label style="display:block; font-size:0.75rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">Article Content (Markdown)</label>
+          <textarea id="publish-ai-content" rows="8" required style="width:100%; padding:10px 12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none; font-family:monospace; font-size:0.82rem; line-height:1.5;"></textarea>
         </div>
 
-        <button type="submit" class="btn btn-primary" style="padding:12px; font-weight:700;">
-          <i data-lucide="check" style="width:16px; height:16px;"></i> Publish & Index Article (<50ms)
-        </button>
+        <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-top:4px;">
+          <button id="btn-cancel-publish-ai" type="button" class="btn btn-secondary" style="padding:10px 16px;">Cancel</button>
+          <button type="submit" id="btn-submit-publish-ai" class="btn btn-primary" style="background:linear-gradient(135deg, #10b981, #06b6d4); padding:10px 22px; font-weight:700; gap:6px;">
+            <i data-lucide="check" style="width:16px; height:16px;"></i> Publish & Index to Knowledge Base
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. Advanced Author KB Studio Modal -->
+  <div id="modal-write-kb" class="modal-overlay hide" style="z-index: 999999;">
+    <div class="kb-studio-container">
+      
+      <!-- Studio Header -->
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 20px; border-bottom:1px solid rgba(255,255,255,0.08); background:rgba(15,23,42,0.95);">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button id="btn-back-write-kb" type="button" class="btn btn-secondary" style="padding:6px 12px; font-size:0.8rem; gap:6px; display:flex; align-items:center;" title="Go back to Knowledge Center">
+            <i data-lucide="arrow-left" style="width:15px; height:15px;"></i> Back
+          </button>
+          <div style="width:34px; height:34px; border-radius:8px; background:linear-gradient(135deg, #10b981, #008DC7); display:flex; align-items:center; justify-content:center; color:#fff;">
+            <i data-lucide="edit-3" style="width:18px; height:18px;"></i>
+          </div>
+          <div>
+            <h3 style="font-size:1.05rem; font-weight:800; color:#fff; margin:0;">Author Knowledge Base SOP</h3>
+            <span style="font-size:0.72rem; color:#38bdf8;">Rich Markdown Studio • Instant Search Indexing (&lt;50ms) • Image & Attachment Support</span>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:12px;">
+          <!-- View Mode Toggles -->
+          <div style="display:flex; align-items:center; background:rgba(255,255,255,0.04); padding:3px; border-radius:8px; border:1px solid rgba(255,255,255,0.08); gap:2px;">
+            <button id="kb-view-mode-edit" type="button" class="kb-tool-btn" style="padding:4px 10px;" title="Editor Only">
+              <i data-lucide="edit-2" style="width:13px; height:13px;"></i> Edit
+            </button>
+            <button id="kb-view-mode-split" type="button" class="kb-tool-btn active" style="padding:4px 10px;" title="Side-by-Side Live Preview">
+              <i data-lucide="columns" style="width:13px; height:13px;"></i> Split
+            </button>
+            <button id="kb-view-mode-preview" type="button" class="kb-tool-btn" style="padding:4px 10px;" title="Full Rendered Preview">
+              <i data-lucide="eye" style="width:13px; height:13px;"></i> Preview
+            </button>
+          </div>
+
+          <button id="btn-close-write-kb" type="button" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:8px; width:32px; height:32px; color:#9ca3af; display:flex; align-items:center; justify-content:center; cursor:pointer;" title="Close & Discard">
+            <i data-lucide="x" style="width:18px; height:18px;"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Draft Notification Banner -->
+      <div id="kb-draft-banner" class="hide" style="padding:8px 18px; background:rgba(56, 189, 248, 0.12); border-bottom:1px solid rgba(56, 189, 248, 0.25); display:flex; justify-content:space-between; align-items:center; font-size:0.82rem; color:#e0f2fe;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <i data-lucide="save" style="width:15px; height:15px; color:#38bdf8;"></i>
+          <span><strong>Unsaved Draft Available:</strong> Saved on <span id="kb-draft-timestamp">Recently</span></span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button type="button" id="btn-restore-kb-draft" class="btn btn-primary" style="padding:4px 12px; font-size:0.75rem; background:#0284c7;">Restore Draft</button>
+          <button type="button" id="btn-discard-kb-draft" class="btn btn-secondary" style="padding:4px 12px; font-size:0.75rem;">Discard Draft</button>
+        </div>
+      </div>
+
+      <form id="form-write-kb" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+        
+        <!-- Metadata Row: Title, Space, Version, Category -->
+        <div style="display:grid; grid-template-columns: 2.2fr 1.2fr 1fr 1fr; gap:10px; padding:12px 18px; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.06);">
+          <div>
+            <label style="display:block; font-size:0.72rem; font-weight:700; color:#cbd5e1; margin-bottom:3px; text-transform:uppercase;">Article Title *</label>
+            <input type="text" id="kb-input-title" placeholder="e.g. How to Configure Oracle Database in Magic.ini" required style="width:100%; padding:8px 12px; border-radius:6px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none; font-size:0.88rem; font-weight:600;">
+          </div>
+          <div>
+            <label style="display:block; font-size:0.72rem; font-weight:700; color:#cbd5e1; margin-bottom:3px; text-transform:uppercase;">Product Space *</label>
+            <select id="kb-input-product" style="width:100%; padding:8px 10px; font-size:0.84rem;">
+              <option value="xpi">🔗 Magic xpi (Integration Platform)</option>
+              <option value="xpa">⚡ Magic xpa (Application Platform)</option>
+              <option value="cloud_native">☁️ Cloud Native Products</option>
+              <option value="general">🌐 General / Cross-Product</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:0.72rem; font-weight:700; color:#cbd5e1; margin-bottom:3px; text-transform:uppercase;">Target Version</label>
+            <input type="text" id="kb-input-version" placeholder="e.g. 4.14.1 / Universal" value="Universal" style="width:100%; padding:8px 10px; border-radius:6px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none; font-size:0.84rem;">
+          </div>
+          <div>
+            <label style="display:block; font-size:0.72rem; font-weight:700; color:#cbd5e1; margin-bottom:3px; text-transform:uppercase;">Category / Type</label>
+            <select id="kb-input-doctype" style="width:100%; padding:8px 10px; font-size:0.84rem;">
+              <option value="troubleshooting">⚠️ Troubleshooting & RCA</option>
+              <option value="connector">🔌 Connector Setup Guide</option>
+              <option value="architecture">🏛️ Architecture & JVM SOP</option>
+              <option value="release_notes">📋 Release Notes & Changelog</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Formatting & Media Toolbar -->
+        <div class="kb-editor-toolbar">
+          
+          <!-- Heading Group -->
+          <div class="kb-tool-group">
+            <button type="button" class="kb-tool-btn" onclick="insertKbFormat('h1')" title="Heading 1"><strong>H1</strong></button>
+            <button type="button" class="kb-tool-btn" onclick="insertKbFormat('h2')" title="Heading 2"><strong>H2</strong></button>
+            <button type="button" class="kb-tool-btn" onclick="insertKbFormat('h3')" title="Heading 3"><strong>H3</strong></button>
+          </div>
+
+          <!-- Basic Formatting Group -->
+          <div class="kb-tool-group">
+            <button type="button" class="kb-tool-btn" onclick="insertKbFormat('bold')" title="Bold (Ctrl+B)"><strong>B</strong></button>
+            <button type="button" class="kb-tool-btn" onclick="insertKbFormat('italic')" title="Italic (Ctrl+I)"><em>I</em></button>
+            <button type="button" class="kb-tool-btn" onclick="insertKbFormat('underline')" title="Underline"><u>U</u></button>
+            <button type="button" class="kb-tool-btn" onclick="insertKbFormat('strike')" title="Strikethrough"><s>S</s></button>
+            <button type="button" class="kb-tool-btn" onclick="insertKbFormat('code')" title="Inline Monospace Code"><code>&lt;&gt;</code></button>
+          </div>
+
+          <!-- Text Color Picker -->
+          <div class="kb-tool-group">
+            <div class="kb-tool-dropdown">
+              <button type="button" class="kb-tool-btn" id="btn-toggle-color-menu" title="Text Color">
+                <i data-lucide="palette" style="width:13px; height:13px; color:#38bdf8;"></i> Color <i data-lucide="chevron-down" style="width:11px; height:11px;"></i>
+              </button>
+              <div id="kb-color-menu" class="kb-dropdown-menu hide">
+                <button type="button" class="kb-dropdown-item" onclick="insertKbColor('#ffffff')"><span style="width:12px; height:12px; border-radius:3px; background:#fff; display:inline-block; border:1px solid #94a3b8;"></span> Default White</button>
+                <button type="button" class="kb-dropdown-item" onclick="insertKbColor('#38bdf8')"><span style="width:12px; height:12px; border-radius:3px; background:#38bdf8; display:inline-block;"></span> Azure Blue</button>
+                <button type="button" class="kb-dropdown-item" onclick="insertKbColor('#34d399')"><span style="width:12px; height:12px; border-radius:3px; background:#34d399; display:inline-block;"></span> Emerald Green</button>
+                <button type="button" class="kb-dropdown-item" onclick="insertKbColor('#fbbf24')"><span style="width:12px; height:12px; border-radius:3px; background:#fbbf24; display:inline-block;"></span> Amber Warning</button>
+                <button type="button" class="kb-dropdown-item" onclick="insertKbColor('#f43f5e')"><span style="width:12px; height:12px; border-radius:3px; background:#f43f5e; display:inline-block;"></span> Rose Alert</button>
+                <button type="button" class="kb-dropdown-item" onclick="insertKbColor('#c084fc')"><span style="width:12px; height:12px; border-radius:3px; background:#c084fc; display:inline-block;"></span> Violet Purple</button>
+              </div>
+            </div>
+
+            <!-- Highlight Picker -->
+            <div class="kb-tool-dropdown">
+              <button type="button" class="kb-tool-btn" id="btn-toggle-highlight-menu" title="Highlight Text">
+                <i data-lucide="highlighter" style="width:13px; height:13px; color:#fbbf24;"></i> Highlight <i data-lucide="chevron-down" style="width:11px; height:11px;"></i>
+              </button>
+              <div id="kb-highlight-menu" class="kb-dropdown-menu hide">
+                <button type="button" class="kb-dropdown-item" onclick="insertKbHighlight('rgba(251,191,36,0.25)', '#fbbf24')"><span style="width:12px; height:12px; border-radius:3px; background:#fbbf24; display:inline-block;"></span> Yellow Alert</button>
+                <button type="button" class="kb-dropdown-item" onclick="insertKbHighlight('rgba(56,189,248,0.25)', '#38bdf8')"><span style="width:12px; height:12px; border-radius:3px; background:#38bdf8; display:inline-block;"></span> Cyan Note</button>
+                <button type="button" class="kb-dropdown-item" onclick="insertKbHighlight('rgba(52,211,153,0.25)', '#34d399')"><span style="width:12px; height:12px; border-radius:3px; background:#34d399; display:inline-block;"></span> Success Green</button>
+                <button type="button" class="kb-dropdown-item" onclick="insertKbHighlight('rgba(244,63,94,0.25)', '#f43f5e')"><span style="width:12px; height:12px; border-radius:3px; background:#f43f5e; display:inline-block;"></span> Danger Red</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Lists & Structural Elements -->
+          <div class="kb-tool-group">
+            <button type="button" class="kb-tool-btn" onclick="insertKbFormat('bullet')" title="Bulleted List"><i data-lucide="list" style="width:13px; height:13px;"></i></button>
+            <button type="button" class="kb-tool-btn" onclick="insertKbFormat('numbered')" title="Numbered List"><i data-lucide="list-ordered" style="width:13px; height:13px;"></i></button>
+            <button type="button" class="kb-tool-btn" onclick="insertKbFormat('checklist')" title="Task Checklist"><i data-lucide="check-square" style="width:13px; height:13px;"></i></button>
+            <button type="button" class="kb-tool-btn" onclick="insertKbFormat('quote')" title="Blockquote"><i data-lucide="quote" style="width:13px; height:13px;"></i></button>
+            <button type="button" class="kb-tool-btn" onclick="insertKbFormat('divider')" title="Horizontal Rule">―</button>
+          </div>
+
+          <!-- Code & Tables -->
+          <div class="kb-tool-group">
+            <button type="button" class="kb-tool-btn" onclick="insertKbTable()" title="Insert Table">
+              <i data-lucide="table" style="width:13px; height:13px;"></i> Table
+            </button>
+            <div class="kb-tool-dropdown">
+              <button type="button" class="kb-tool-btn" id="btn-toggle-code-menu" title="Syntax Code Block">
+                <i data-lucide="code" style="width:13px; height:13px;"></i> Code <i data-lucide="chevron-down" style="width:11px; height:11px;"></i>
+              </button>
+              <div id="kb-code-menu" class="kb-dropdown-menu hide">
+                <button type="button" class="kb-dropdown-item" onclick="insertKbCodeBlock('ini')">⚙️ Magic.ini / Config</button>
+                <button type="button" class="kb-dropdown-item" onclick="insertKbCodeBlock('xml')">📄 XML / SOAP Schema</button>
+                <button type="button" class="kb-dropdown-item" onclick="insertKbCodeBlock('sql')">🗄️ SQL / Oracle / Postgres</button>
+                <button type="button" class="kb-dropdown-item" onclick="insertKbCodeBlock('java')">☕ Java / GigaSpaces</button>
+                <button type="button" class="kb-dropdown-item" onclick="insertKbCodeBlock('json')">📦 JSON / REST API</button>
+                <button type="button" class="kb-dropdown-item" onclick="insertKbCodeBlock('bash')">💻 Bash / PowerShell / Docker</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Enterprise Callout Alerts -->
+          <div class="kb-tool-group">
+            <button type="button" class="kb-tool-btn" onclick="insertKbAlert('NOTE')" title="Informational Note" style="color:#38bdf8;">ℹ️ Note</button>
+            <button type="button" class="kb-tool-btn" onclick="insertKbAlert('TIP')" title="Performance / Best Practice Tip" style="color:#34d399;">💡 Tip</button>
+            <button type="button" class="kb-tool-btn" onclick="insertKbAlert('WARNING')" title="Warning Callout" style="color:#fbbf24;">⚠️ Warning</button>
+            <button type="button" class="kb-tool-btn" onclick="insertKbAlert('CAUTION')" title="Critical Danger Callout" style="color:#f43f5e;">🚨 Danger</button>
+          </div>
+
+          <!-- Image & File Attachments -->
+          <div class="kb-tool-group" style="border-right:none; margin-right:0;">
+            <input type="file" id="kb-hidden-image-input" accept="image/*" class="hide">
+            <button type="button" class="kb-tool-btn" id="btn-kb-insert-image" title="Upload or Paste Screenshot (Ctrl+V)" style="color:#38bdf8;">
+              <i data-lucide="image" style="width:13px; height:13px;"></i> Image
+            </button>
+
+            <input type="file" id="kb-hidden-attach-input" class="hide">
+            <button type="button" class="kb-tool-btn" id="btn-kb-insert-attach" title="Attach Config / Log / Script File" style="color:#34d399;">
+              <i data-lucide="paperclip" style="width:13px; height:13px;"></i> Attach File
+            </button>
+          </div>
+        </div>
+
+        <!-- Main Split Workspace -->
+        <div class="kb-split-container">
+          
+          <!-- Editor Pane -->
+          <div id="kb-editor-pane" class="kb-editor-pane">
+            <textarea id="kb-input-content" class="kb-editor-textarea" placeholder="Write step-by-step instructions, paste screenshots directly (Ctrl+V), or drag and drop images/config files..." required></textarea>
+            
+            <!-- Drag & Drop Overlay Indicator -->
+            <div id="kb-drop-overlay" class="kb-drop-overlay hide">
+              <div>📥 Drop Image or Attachment here to upload & embed</div>
+            </div>
+
+            <!-- Editor Status Bar -->
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 14px; background:rgba(0,0,0,0.4); border-top:1px solid rgba(255,255,255,0.06); font-size:0.72rem; color:#94a3b8;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span id="kb-word-count">0 words</span>
+                <span>•</span>
+                <span id="kb-char-count">0 characters</span>
+                <span id="kb-upload-status" style="color:#38bdf8; display:none;">• Uploading asset...</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span>💡 Tip: Press <strong>Ctrl+V</strong> to paste screenshots directly</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Real-Time Live Preview Pane -->
+          <div id="kb-preview-pane" class="kb-preview-pane">
+            <div style="font-size:0.75rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+              <span style="width:6px; height:6px; border-radius:50%; background:#10b981;"></span> Real-Time SOP Preview
+            </div>
+            <div id="kb-live-preview-content" class="markdown-body" style="font-size:0.9rem; line-height:1.6;">
+              <p style="color:#64748b; font-style:italic;">Live rendered article preview will appear here as you type...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Studio Footer Action Bar -->
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:rgba(15,23,42,0.95); border-top:1px solid rgba(255,255,255,0.08);">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.75rem; color:#94a3b8; font-weight:700;">Templates:</span>
+            <button type="button" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="insertDocTemplate('connector')">🔌 Connector Setup</button>
+            <button type="button" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="insertDocTemplate('troubleshooting')">⚠️ Troubleshooting & RCA</button>
+            <button type="button" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="insertDocTemplate('cloud_sop')">☁️ Cloud Native SOP</button>
+            <button type="button" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="insertDocTemplate('salesforce_case')">📋 Salesforce Case SOP</button>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span id="kb-draft-save-status" style="font-size:0.75rem; color:#34d399; font-weight:600; display:none;">✓ Draft Saved</span>
+            <button id="btn-discard-write-kb" type="button" class="btn btn-secondary" style="padding:8px 14px; font-size:0.82rem; color:#f87171; border-color:rgba(239,68,68,0.3);" title="Discard all unsaved edits">
+              <i data-lucide="trash-2" style="width:14px; height:14px;"></i> Discard Changes
+            </button>
+            <button id="btn-save-draft-write-kb" type="button" class="btn btn-secondary" style="padding:8px 16px; font-size:0.82rem; font-weight:600; color:#38bdf8; border-color:rgba(56,189,248,0.4);" title="Save draft to continue later">
+              <i data-lucide="save" style="width:14px; height:14px;"></i> Save as Draft
+            </button>
+            <button type="submit" id="btn-submit-write-kb" class="btn btn-primary" style="background:linear-gradient(135deg, #10b981, #008DC7); padding:8px 22px; font-size:0.84rem; font-weight:700; gap:6px;">
+              <i data-lucide="check" style="width:16px; height:16px;"></i> Publish & Index Article (&lt;50ms)
+            </button>
+          </div>
+        </div>
+
       </form>
     </div>
   </div>
@@ -1169,6 +1634,6 @@
       if (modal) modal.classList.add('hide');
     }
   </script>
-  <script src="app.js?v=2"></script>
+  <script src="app.js?v=9.7"></script>
 </body>
 </html>
