@@ -8,8 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <!-- Lucide Icons -->
+  <!-- Lucide Icons & Markdown Parser -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="styles.css?v=2">
   <script>
     function openAddUserModal() {
@@ -845,44 +846,277 @@
 
   <!-- ==================== MODALS ==================== -->
 
-  <!-- 1. Magic AI Assistant Modal -->
+  <!-- 1. Magic AI Assistant & Salesforce Case Analyzer Modal -->
   <div id="modal-copilot" class="modal-overlay hide">
-    <div class="modal-container">
-      <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px; background:linear-gradient(135deg, rgba(0,86,140,0.5), rgba(0,141,199,0.25)); border-bottom:1px solid rgba(0,141,199,0.3);">
-        <div style="display:flex; align-items:center; gap:10px;">
-          <div style="width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg, #008DC7, #2DBCEE); display:flex; align-items:center; justify-content:center; color:#fff;">
-            <i data-lucide="bot" style="width:20px; height:20px;"></i>
+    <div class="modal-container" style="max-width:1150px; width:95vw; height:88vh; max-height:880px; display:flex; flex-direction:column; padding:0; overflow:hidden; border:1px solid rgba(0,141,199,0.35); box-shadow:0 25px 60px rgba(0,0,0,0.85);">
+      
+      <!-- Top Header -->
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 20px; border-bottom:1px solid rgba(255,255,255,0.08); background:linear-gradient(90deg, #090d16, #0f172a);">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg, #008DC7, #2DBCEE); display:flex; align-items:center; gap:0; justify-content:center; box-shadow:0 0 15px rgba(0,141,199,0.5);">
+            <i data-lucide="bot" style="width:20px; height:20px; color:#fff;"></i>
           </div>
           <div>
-            <h3 style="font-size:1.1rem; font-weight:800; color:#fff; margin:0;">Magic AI Assistant</h3>
-            <span style="font-size:0.72rem; color:#38bdf8;">Enterprise Technical Resolution Engine</span>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <h3 style="font-size:1.1rem; font-weight:800; color:#fff; margin:0;">Magic AI Copilot & Analyzer</h3>
+              <span id="ai-engine-active-badge" style="font-size:0.7rem; font-weight:700; padding:2px 8px; border-radius:12px; background:rgba(0,141,199,0.2); border:1px solid rgba(45,188,238,0.4); color:#38bdf8;">GPT-TIER SUPPORT</span>
+            </div>
+            <p style="font-size:0.75rem; color:#94a3b8; margin:0;">Salesforce Case Diagnostic, Multi-Turn Chat, Attachments & Continuous Learning</p>
           </div>
         </div>
-        <button id="btn-close-copilot" style="background:none; border:none; color:#9ca3af; cursor:pointer;">
-          <i data-lucide="x" style="width:20px; height:20px;"></i>
-        </button>
+
+        <div style="display:flex; align-items:center; gap:10px;">
+          <!-- Product Scope -->
+          <div style="display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.04); padding:4px 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.08);">
+            <span style="font-size:0.74rem; color:#94a3b8;">Scope:</span>
+            <select id="copilot-product-scope" style="background:transparent !important; border:none !important; color:#38bdf8 !important; font-size:0.78rem !important; font-weight:700; padding:2px 4px !important; outline:none;">
+              <option value="all">🌐 All Products</option>
+              <option value="xpa">⚡ Magic xpa</option>
+              <option value="xpi">🔗 Magic xpi</option>
+              <option value="cloud_native">☁️ Cloud Native</option>
+            </select>
+          </div>
+
+          <!-- Mode Navigation Buttons -->
+          <div style="display:flex; gap:6px; background:rgba(0,0,0,0.3); padding:3px; border-radius:8px; border:1px solid rgba(255,255,255,0.08);">
+            <button id="copilot-tab-btn-chat" class="btn" style="padding:5px 12px; font-size:0.78rem; font-weight:700; border-radius:6px; background:rgba(0,141,199,0.25); border:1px solid rgba(45,188,238,0.4); color:#38bdf8;">
+              <i data-lucide="message-square" style="width:13px; height:13px; margin-right:4px;"></i> Chat
+            </button>
+            <button id="copilot-tab-btn-salesforce" class="btn" style="padding:5px 12px; font-size:0.78rem; font-weight:600; border-radius:6px; background:transparent; border:1px solid transparent; color:#94a3b8;">
+              <i data-lucide="cloud" style="width:13px; height:13px; margin-right:4px;"></i> Case Analyzer
+            </button>
+            <button id="copilot-tab-btn-settings" class="btn" style="padding:5px 12px; font-size:0.78rem; font-weight:600; border-radius:6px; background:transparent; border:1px solid transparent; color:#94a3b8;">
+              <i data-lucide="settings" style="width:13px; height:13px; margin-right:4px;"></i> Settings
+            </button>
+          </div>
+
+          <button id="btn-close-copilot" style="background:none; border:none; color:#9ca3af; cursor:pointer; padding:6px;">
+            <i data-lucide="x" style="width:20px; height:20px;"></i>
+          </button>
+        </div>
       </div>
 
-      <div style="padding:10px 20px; background:rgba(0,0,0,0.2); border-bottom:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; gap:10px;">
-        <span style="font-size:0.75rem; color:#94a3b8; font-weight:600;">Scoping Knowledge To:</span>
-        <select id="copilot-product-scope">
-          <option value="all">🌐 All Products</option>
-          <option value="xpa">⚡ Magic xpa</option>
-          <option value="xpi">🔗 Magic xpi</option>
-          <option value="cloud_native">☁️ Cloud Native</option>
-        </select>
+      <!-- Main Body Container with Sidebar + Chat Area -->
+      <div style="display:flex; flex:1; overflow:hidden; background:#080d1a;">
+        
+        <!-- Left Sidebar: Recent Chats & New Chat -->
+        <div id="copilot-sidebar" style="width:240px; background:#060a14; border-right:1px solid rgba(255,255,255,0.06); display:flex; flex-direction:column; padding:14px; gap:12px; flex-shrink:0;">
+          <button id="btn-new-chat" class="btn btn-primary" style="width:100%; padding:10px 14px; font-size:0.82rem; font-weight:700; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:8px;">
+            <i data-lucide="plus" style="width:15px; height:15px;"></i> New Chat
+          </button>
+
+          <div style="font-size:0.72rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.05em; margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
+            <span>Recent Chats</span>
+            <button id="btn-clear-chats" style="background:none; border:none; color:#64748b; font-size:0.7rem; cursor:pointer;" title="Clear History">Clear</button>
+          </div>
+
+          <!-- Sessions List Container -->
+          <div id="copilot-sessions-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:4px;">
+            <!-- Rendered by JS -->
+          </div>
+
+          <div style="border-top:1px solid rgba(255,255,255,0.06); padding-top:10px; font-size:0.72rem; color:#64748b; display:flex; align-items:center; justify-content:space-between;">
+            <span>Engine: <strong id="sidebar-engine-name" style="color:#38bdf8;">Deep Reasoning</strong></span>
+            <span id="sidebar-key-status" style="color:#10b981;">● Active</span>
+          </div>
+        </div>
+
+        <!-- Center Main Workspace -->
+        <div style="flex:1; display:flex; flex-direction:column; overflow:hidden; background:#090e1d;">
+          
+          <!-- TAB 1: INTERACTIVE COPILOT CHAT (ChatGPT Style) -->
+          <div id="copilot-tab-chat" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+            <!-- Quick Prompt Chips -->
+            <div style="display:flex; gap:8px; padding:10px 20px; background:rgba(0,0,0,0.3); border-bottom:1px solid rgba(255,255,255,0.04); overflow-x:auto;">
+              <button class="copilot-chip" onclick="applyCopilotPrompt('How to bind .NET Radio Button and when to use .NET Data Source declaration in Magic xpa?', 'xpa')" style="white-space:nowrap; padding:4px 10px; border-radius:14px; font-size:0.74rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#cbd5e1; cursor:pointer;">
+                📻 .NET Radio Button Binding
+              </button>
+              <button class="copilot-chip" onclick="applyCopilotPrompt('How to fix SQLite database migration schema update failure on Android and iOS in Magic xpa?', 'xpa')" style="white-space:nowrap; padding:4px 10px; border-radius:14px; font-size:0.74rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#cbd5e1; cursor:pointer;">
+                📱 SQLite Schema Migration
+              </button>
+              <button class="copilot-chip" onclick="applyCopilotPrompt('How to preserve UTF-8 encoding when embedding XML into JSON in Magic xpi Data Mapper?', 'xpi')" style="white-space:nowrap; padding:4px 10px; border-radius:14px; font-size:0.74rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#cbd5e1; cursor:pointer;">
+                🔤 XML in JSON UTF-8 Encoding
+              </button>
+              <button class="copilot-chip" onclick="applyCopilotPrompt('GigaSpaces Grid OutOfMemoryError in 50MB XML Data Mapper. How to tune JVM_ARGS heap space?', 'xpi')" style="white-space:nowrap; padding:4px 10px; border-radius:14px; font-size:0.74rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#cbd5e1; cursor:pointer;">
+                📊 GigaSpaces JVM Tuning
+              </button>
+            </div>
+
+            <!-- Messages Thread -->
+            <div id="copilot-messages-thread" style="flex:1; padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:16px;"></div>
+
+            <!-- Attached Files Preview Container -->
+            <div id="copilot-attachments-preview" class="hide" style="padding:6px 20px; background:rgba(0,141,199,0.1); border-top:1px solid rgba(0,141,199,0.2); display:flex; flex-wrap:wrap; gap:8px;"></div>
+
+            <!-- Input Form (ChatGPT Style) -->
+            <form id="copilot-form" style="padding:14px 20px; border-top:1px solid rgba(255,255,255,0.08); background:rgba(11,17,32,0.95); display:flex; gap:10px; align-items:flex-end;">
+              <!-- Attachment Input (Hidden) -->
+              <input type="file" id="copilot-file-input" multiple accept=".log,.txt,.ini,.xml,.properties,.csv,.json,.sql,.pdf,.png,.jpg" style="display:none;">
+              <button type="button" id="btn-copilot-attach" class="btn" style="padding:10px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#94a3b8; border-radius:8px;" title="Attach logs, config files, or error screenshots">
+                <i data-lucide="paperclip" style="width:18px; height:18px;"></i>
+              </button>
+
+              <textarea id="copilot-input" rows="2" placeholder="Ask anything across Magic xpa, xpi, or Cloud Native... Attach logs, paste error traces, or describe issues." style="flex:1; padding:10px 14px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.14); color:#fff; font-size:0.88rem; outline:none; resize:none; font-family:inherit; line-height:1.5;"></textarea>
+
+              <button type="submit" id="btn-copilot-send" class="btn btn-primary" style="padding:10px 18px; font-weight:700; display:flex; align-items:center; gap:6px; border-radius:8px; height:42px;">
+                <i data-lucide="send" style="width:16px; height:16px;"></i> Send
+              </button>
+            </form>
+          </div>
+
+          <!-- TAB 2: SALESFORCE CASE ANALYZER -->
+          <div id="copilot-tab-salesforce" class="hide" style="display:flex; flex-direction:column; flex:1; overflow-y:auto; padding:20px; gap:14px;">
+            <div style="padding:12px 16px; border-radius:8px; background:linear-gradient(135deg, rgba(0,141,199,0.12), rgba(45,188,238,0.06)); border:1px solid rgba(45,188,238,0.25); display:flex; gap:10px; align-items:flex-start;">
+              <i data-lucide="file-search" style="width:20px; height:20px; color:#38bdf8; flex-shrink:0; margin-top:2px;"></i>
+              <div style="font-size:0.84rem; color:#cbd5e1; line-height:1.5;">
+                <strong style="color:#fff;">Salesforce Case Diagnostic:</strong> Paste full case threads, error logs, or customer reproduction steps. The AI outputs Problem Summary, Root Cause, Action Steps, Finding Matrix, and a <strong>Ready Customer Response Draft</strong>.
+              </div>
+            </div>
+
+            <form id="form-salesforce-case-analyzer" style="display:flex; flex-direction:column; gap:12px;">
+              <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
+                <div>
+                  <label style="font-size:0.75rem; font-weight:700; color:#94a3b8; margin-bottom:3px; display:block;">Salesforce Case #</label>
+                  <input type="text" id="sf-case-number" placeholder="e.g. 00491024" style="width:100%; padding:8px 12px; border-radius:6px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; font-size:0.85rem; outline:none;">
+                </div>
+                <div>
+                  <label style="font-size:0.75rem; font-weight:700; color:#94a3b8; margin-bottom:3px; display:block;">Account / Customer</label>
+                  <input type="text" id="sf-case-customer" placeholder="e.g. Enterprise Client" style="width:100%; padding:8px 12px; border-radius:6px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; font-size:0.85rem; outline:none;">
+                </div>
+                <div>
+                  <label style="font-size:0.75rem; font-weight:700; color:#94a3b8; margin-bottom:3px; display:block;">Target Product</label>
+                  <select id="sf-case-product" style="width:100%; padding:8px 12px; border-radius:6px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; font-size:0.85rem; outline:none;">
+                    <option value="xpa">⚡ Magic xpa Application Platform</option>
+                    <option value="xpi">🔗 Magic xpi Integration Platform</option>
+                    <option value="cloud_native">☁️ Cloud Native / Kubernetes</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style="font-size:0.75rem; font-weight:700; color:#94a3b8; margin-bottom:3px; display:flex; justify-content:space-between;">
+                  <span>Case History, Error Logs & Customer Description</span>
+                  <span style="color:#64748b; font-weight:400;">Full thread from Salesforce</span>
+                </label>
+                <textarea id="sf-case-history" rows="5" placeholder="Paste full Salesforce Case Description, Error Stack Traces, mgreq.log / GSC log snippets, Magic.ini settings..." style="width:100%; padding:10px 14px; border-radius:6px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; font-size:0.85rem; outline:none; resize:vertical; font-family:monospace; line-height:1.4;"></textarea>
+              </div>
+
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span id="sf-analysis-status" style="font-size:0.8rem; color:#94a3b8;"></span>
+                <button type="submit" id="btn-run-sf-analysis" class="btn btn-primary" style="padding:10px 20px; font-weight:700; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="sparkles" style="width:15px; height:15px;"></i> Diagnose & Generate Solution
+                </button>
+              </div>
+            </form>
+
+            <!-- Salesforce Analysis Output Container -->
+            <div id="sf-analysis-result-box" class="hide" style="margin-top:8px; display:flex; flex-direction:column; gap:12px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid rgba(0,141,199,0.3); padding:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:10px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span style="padding:3px 8px; border-radius:6px; background:#10b981; color:#fff; font-size:0.72rem; font-weight:700;">AI RCA & DIAGNOSIS COMPLETE</span>
+                  <span id="sf-res-case-tag" style="font-size:0.78rem; color:#94a3b8;"></span>
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                  <button id="btn-sf-copy-reply" class="btn" style="padding:5px 10px; font-size:0.75rem; background:rgba(255,255,255,0.08); color:#e2e8f0;">
+                    <i data-lucide="copy" style="width:12px; height:12px; margin-right:4px;"></i> Copy Full
+                  </button>
+                  <button id="btn-sf-copy-customer-email" class="btn" style="padding:5px 10px; font-size:0.75rem; background:rgba(0,141,199,0.25); border:1px solid rgba(45,188,238,0.4); color:#38bdf8; font-weight:700;">
+                    <i data-lucide="mail" style="width:12px; height:12px; margin-right:4px;"></i> ✉️ Copy Customer Draft
+                  </button>
+                  <button id="btn-sf-mark-verified" class="btn" style="padding:5px 10px; font-size:0.75rem; background:rgba(16,185,129,0.2); border:1px solid rgba(16,185,129,0.4); color:#34d399;">
+                    <i data-lucide="check-circle-2" style="width:12px; height:12px; margin-right:4px;"></i> Mark Verified
+                  </button>
+                  <button id="btn-sf-publish-kb" class="btn" style="padding:5px 10px; font-size:0.75rem; background:linear-gradient(135deg, #008DC7, #2DBCEE); color:#fff; font-weight:700;">
+                    <i data-lucide="book-plus" style="width:12px; height:12px; margin-right:4px;"></i> ✨ 1-Click Publish
+                  </button>
+                </div>
+              </div>
+
+              <div id="sf-analysis-rendered-content" style="color:#e2e8f0; font-size:0.88rem; line-height:1.7;"></div>
+            </div>
+          </div>
+
+          <!-- TAB 3: AI ENGINE SETTINGS -->
+          <div id="copilot-tab-settings" class="hide" style="display:flex; flex-direction:column; flex:1; overflow-y:auto; padding:20px; gap:14px;">
+            <div style="padding:12px 16px; border-radius:8px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);">
+              <h4 style="font-size:0.92rem; font-weight:700; color:#fff; margin:0 0 4px 0;">LLM Intelligence Engine Settings</h4>
+              <p style="font-size:0.8rem; color:#94a3b8; margin:0; line-height:1.5;">
+                Configure Google Gemini, OpenAI, or Local LLM. Use the <strong>Test Connection</strong> button to verify live API reachability.
+              </p>
+            </div>
+
+            <form id="form-ai-settings" style="display:flex; flex-direction:column; gap:12px;">
+              <div>
+                <label style="font-size:0.75rem; font-weight:700; color:#94a3b8; margin-bottom:3px; display:block;">LLM Provider</label>
+                <select id="ai-setting-provider" style="width:100%; padding:8px 12px; border-radius:6px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; font-size:0.85rem; outline:none;">
+                  <option value="expert_synthesizer" selected>⚡ Built-in Deep-Reasoning Diagnostic Engine [100% Free & Offline - Zero Setup]</option>
+                  <option value="groq">🚀 Groq Cloud AI [100% Free Tier - Ultra Fast LLaMA 3.3 70B & DeepSeek R1 - Recommended]</option>
+                  <option value="ollama">💻 Local Ollama / LM Studio [100% Free & Private / On-Premise - No Key Needed]</option>
+                  <option value="openrouter">🌐 OpenRouter Free AI [100% Free Tier Models - LLaMA 3.2 / DeepSeek R1]</option>
+                  <option value="gemini">✨ Google Gemini (Gemini 1.5 / 2.0 Flash)</option>
+                  <option value="openai">🤖 OpenAI (GPT-4o / GPT-4o-mini)</option>
+                  <option value="azure">☁️ Azure OpenAI Service</option>
+                  <option value="anthropic">🧠 Anthropic Claude (Claude 3.5 Sonnet)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style="font-size:0.75rem; font-weight:700; color:#94a3b8; margin-bottom:3px; display:block;">API Key (Leave blank for Built-in Engine or Local Ollama)</label>
+                <input type="password" id="ai-setting-apikey" placeholder="Enter Groq (gsk_...), Gemini, or OpenAI API Key" value="" style="width:100%; padding:8px 12px; border-radius:6px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; font-size:0.85rem; outline:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:3px;">
+                  <span id="ai-setting-key-status" style="font-size:0.72rem; color:#38bdf8; display:block;">Current key loaded</span>
+                  <span id="ai-setting-free-hint" style="font-size:0.7rem; color:#10b981;">💡 Tip: Free Groq key at console.groq.com (No CC)</span>
+                </div>
+              </div>
+
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <div>
+                  <label style="font-size:0.75rem; font-weight:700; color:#94a3b8; margin-bottom:3px; display:block;">Model Name</label>
+                  <input type="text" id="ai-setting-model" list="model-preset-list" placeholder="llama-3.3-70b-versatile" value="llama-3.3-70b-versatile" style="width:100%; padding:8px 12px; border-radius:6px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; font-size:0.85rem; outline:none;">
+                  <datalist id="model-preset-list">
+                    <option value="llama-3.3-70b-versatile">Groq: LLaMA 3.3 70B (GPT-4 Quality, Free & Ultra Fast)</option>
+                    <option value="deepseek-r1-distill-llama-70b">Groq: DeepSeek R1 70B (Deep Reasoning, Free)</option>
+                    <option value="llama-3.1-8b-instant">Groq: LLaMA 3.1 8B Instant (Lightweight, Free)</option>
+                    <option value="llama3">Ollama: LLaMA 3 (Local, Free)</option>
+                    <option value="deepseek-r1">Ollama: DeepSeek R1 (Local, Free)</option>
+                    <option value="meta-llama/llama-3.2-3b-instruct:free">OpenRouter: LLaMA 3.2 Free</option>
+                    <option value="gemini-1.5-flash">Google Gemini 1.5 Flash</option>
+                    <option value="gemini-2.0-flash">Google Gemini 2.0 Flash</option>
+                    <option value="gpt-4o">OpenAI GPT-4o</option>
+                    <option value="gpt-4o-mini">OpenAI GPT-4o Mini</option>
+                  </datalist>
+                  <div id="model-quick-chips" style="display:flex; gap:4px; margin-top:4px; flex-wrap:wrap;">
+                    <span class="badge badge-subtle" style="font-size:0.68rem; cursor:pointer; background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.3); border-radius:4px; padding:2px 6px;" onclick="document.getElementById('ai-setting-model').value='llama-3.3-70b-versatile'">⚡ llama-3.3-70b (Free)</span>
+                    <span class="badge badge-subtle" style="font-size:0.68rem; cursor:pointer; background:rgba(168,85,247,0.15); color:#c084fc; border:1px solid rgba(168,85,247,0.3); border-radius:4px; padding:2px 6px;" onclick="document.getElementById('ai-setting-model').value='deepseek-r1-distill-llama-70b'">🧠 deepseek-r1 (Free)</span>
+                    <span class="badge badge-subtle" style="font-size:0.68rem; cursor:pointer; background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); border-radius:4px; padding:2px 6px;" onclick="document.getElementById('ai-setting-model').value='gemini-1.5-flash'">⚡ gemini-1.5-flash</span>
+                  </div>
+                </div>
+                <div>
+                  <label style="font-size:0.75rem; font-weight:700; color:#94a3b8; margin-bottom:3px; display:block;">Custom Base URL (Groq / Ollama / OpenRouter)</label>
+                  <input type="text" id="ai-setting-baseurl" placeholder="https://api.groq.com/openai/v1 or http://localhost:11434" style="width:100%; padding:8px 12px; border-radius:6px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; font-size:0.85rem; outline:none;">
+                </div>
+              </div>
+
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+                <button type="button" id="btn-test-ai-connection" class="btn" style="padding:8px 14px; font-size:0.8rem; background:rgba(0,141,199,0.2); border:1px solid rgba(45,188,238,0.4); color:#38bdf8; font-weight:700;">
+                  ⚡ Test Connection
+                </button>
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <span id="ai-settings-save-msg" style="font-size:0.8rem; color:#10b981;"></span>
+                  <button type="submit" class="btn btn-primary" style="padding:8px 16px; font-size:0.82rem; font-weight:700;">
+                    Save Settings
+                  </button>
+                </div>
+              </div>
+              <div id="ai-connection-test-result" style="font-size:0.8rem; padding:8px 12px; border-radius:6px; background:rgba(0,0,0,0.3);" class="hide"></div>
+            </form>
+          </div>
+
+        </div>
       </div>
-
-      <div id="copilot-messages-thread" style="flex:1; padding:20px; overflow-y:auto; min-height:300px; display:flex; flex-direction:column; gap:14px;"></div>
-
-      <form id="copilot-form" style="padding:16px 20px; border-top:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); display:flex; gap:10px;">
-        <input type="text" id="copilot-input" placeholder="Ask about SAP connector errors, JVM_ARGS, Magic.ini flags, RIA deployments..." style="flex:1; padding:12px 16px; border-radius:10px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:#fff; font-size:0.92rem; outline:none;">
-        <button type="submit" class="btn btn-primary" style="padding:12px 20px;">
-          <i data-lucide="send" style="width:16px; height:16px;"></i> Ask
-        </button>
-      </form>
     </div>
   </div>
+
 
   <!-- 2. Author KB Article Modal (with 1-Click Templates) -->
   <div id="modal-write-kb" class="modal-overlay hide">
@@ -1169,6 +1403,6 @@
       if (modal) modal.classList.add('hide');
     }
   </script>
-  <script src="app.js?v=2"></script>
+  <script src="app.js?v=4.0"></script>
 </body>
 </html>

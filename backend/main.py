@@ -5,7 +5,7 @@ import re
 from typing import List, Optional
 from datetime import datetime
 
-from fastapi import FastAPI, Depends, HTTPException, status, File, UploadFile, Form, BackgroundTasks
+from fastapi import FastAPI, Depends, HTTPException, status, File, UploadFile, Form, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordRequestForm
@@ -23,7 +23,12 @@ from backend.database import (
     Comment, 
     Favorite, 
     Notification, 
-    SearchAnalytic
+    SearchAnalytic,
+    SalesforceCase,
+    AIResolution,
+    AISetting,
+    AIChatSession,
+    AIChatMessage
 )
 from backend.auth import (
     get_password_hash,
@@ -51,6 +56,17 @@ from backend.emailer import (
     send_superadmin_alert,
     SUPER_ADMIN_EMAIL
 )
+from backend.ai_engine import (
+    process_ai_query,
+    get_active_ai_config,
+    test_ai_provider_connection,
+    DEFAULT_MAGIC_SYSTEM_PROMPT
+)
+from backend.salesforce_service import (
+    seed_initial_cases_if_empty,
+    import_salesforce_cases_from_csv,
+    create_kb_article_from_ai
+)
 
 app = FastAPI(title="Magic Software Enterprises Knowledge Center API")
 
@@ -63,7 +79,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize DB tables, seed default admin user, and synchronize repository index
+# Initialize DB tables, seed default admin user, benchmark cases, and synchronize repository index
 init_db()
 db = SessionLocal()
 try:
@@ -79,6 +95,9 @@ try:
         admin_user.role = "Admin"
         admin_user.is_active = True
         db.commit()
+
+    # Seed benchmark historical Salesforce cases if empty
+    seed_initial_cases_if_empty(db)
 
     # Auto-index repository files on startup (including docx, pdf, html)
     scan_and_index(db)
@@ -377,120 +396,387 @@ def search(
         
     return results
 
-# ----------------- AI Copilot (ROVO Assistant) -----------------
+# ----------------- Magic AI Assistant & Salesforce Case Analyzer -----------------
 
 @app.post("/api/copilot/ask")
-def copilot_ask(
-    question: str = Form(...),
-    product: Optional[str] = Form(None),
+@app.post("/api/ai/chat")
+async def ai_chat_ask(
+    request: Request,
     db: Session = Depends(get_db)
 ):
-    if not question or not question.strip():
-        return {"answer": "Please provide a valid question."}
-        
-    question_terms = [t.lower().strip() for t in question.split() if len(t.strip()) > 2]
-    if not question_terms:
-        return {"answer": "Your question is too short or doesn't contain searchable keywords.", "citations": []}
-        
-    # Filter documents by target product if specified
-    doc_query = db.query(Document)
-    if product and product.lower() not in ["all", "global", ""]:
-        doc_query = doc_query.filter(Document.product == product.lower())
-    docs = doc_query.all()
-    
-    # Fallback to all docs if product-scoped search returned very few
-    if len(docs) < 3:
-        docs = db.query(Document).all()
-        
-    # Expand search terms for typo tolerance
-    try:
-        vocab = set()
-        for doc in docs:
-            words = re.findall(r'\b[a-zA-Z]{3,}\b', doc.content + " " + doc.title)
-            vocab.update(w.lower() for w in words)
-            
-        expanded_terms = list(question_terms)
-        for term in question_terms:
-            if term not in vocab and term.isalpha():
-                for word in vocab:
-                    dist = levenshtein_distance(term, word)
-                    if (len(term) <= 4 and dist <= 1) or (len(term) > 4 and dist <= 2):
-                        expanded_terms.append(word)
-        question_terms = list(set(expanded_terms))
-    except Exception as e:
-        print(f"Error expanding copilot terms: {e}")
-        
-    scored_docs = []
-    for doc in docs:
-        score = 0
-        content_lower = doc.content.lower()
-        title_lower = doc.title.lower()
-        
-        for term in question_terms:
-            if term in title_lower:
-                score += 50
-            if term in content_lower:
-                score += content_lower.count(term) * 4
-                
-        # Product relevance boost
-        if product and doc.product == product.lower():
-            score += 20
-            
-        if score > 0:
-            scored_docs.append((doc, score))
-            
-    scored_docs.sort(key=lambda x: x[1], reverse=True)
-    
-    if not scored_docs:
-        return {
-            "answer": "I searched the entire Magic Software Enterprises Knowledge Center but couldn't find exact matches. Try rephrasing your question or checking connector names.",
-            "citations": []
-        }
-        
-    top_docs = [item[0] for item in scored_docs[:3]]
-    citations = [{
-        "id": d.id, 
-        "title": d.title, 
-        "product": d.product or "xpi",
-        "file_type": d.file_type,
-        "version": d.version or "Universal"
-    } for d in top_docs]
-    
-    # Extract resolution sentences & snippets
-    extracted_insights = []
-    for doc in top_docs:
-        sentences = re.split(r'(?<=[.!?])\s+', doc.content)
-        matched_sentences = []
-        for s in sentences:
-            s_clean = s.strip()
-            if not s_clean or len(s_clean) < 15:
-                continue
-            matches_count = sum(1 for term in question_terms if term in s_clean.lower())
-            if matches_count > 0:
-                matched_sentences.append((s_clean, matches_count))
-                
-        matched_sentences.sort(key=lambda x: x[1], reverse=True)
-        extracted_insights.extend([s[0] for s in matched_sentences[:2]])
-        
-    unique_insights = []
-    seen = set()
-    for insight in extracted_insights:
-        norm = insight.lower().strip()
-        if norm not in seen and len(insight) > 25:
-            seen.add(norm)
-            unique_insights.append(insight)
-            
-    if not unique_insights:
-        summary = top_docs[0].content[:350] + "..."
-        answer = f"Based on **{top_docs[0].title}** ({top_docs[0].product.upper()}):\n\n{summary}"
+    """
+    Main conversational endpoint for Magic AI Assistant.
+    Supports JSON body or Form data gracefully.
+    """
+    prompt = ""
+    product = "all"
+    case_number = None
+    attachments = []
+    session_id = None
+
+    # Handle both JSON body and Form data
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        try:
+            body = await request.json()
+            prompt = body.get("prompt") or body.get("question") or ""
+            product = body.get("product") or "all"
+            case_number = body.get("case_number")
+            session_id = body.get("session_id")
+            attachments = body.get("attachments") or []
+        except Exception:
+            pass
     else:
-        bullets = "\n".join([f"• {insight}" for insight in unique_insights[:5]])
-        answer = f"Here is the recommended technical resolution from Magic Software Knowledge Base (**{', '.join([d.title for d in top_docs])}**):\n\n{bullets}\n\n*Click on any of the cited reference cards below for complete step-by-step documentation and configuration diagrams.*"
-        
+        try:
+            form = await request.form()
+            prompt = form.get("prompt") or form.get("question") or ""
+            product = form.get("product") or "all"
+            case_number = form.get("case_number")
+        except Exception:
+            pass
+
+    if not prompt or not str(prompt).strip():
+        return {
+            "answer": "Please provide a technical question, error message, or Salesforce case details.",
+            "citations": [],
+            "salesforce_cases": []
+        }
+
+    print(f"[AI Chat Request] Prompt: {prompt[:60]} | Product: {product}")
+    result = process_ai_query(
+        prompt=str(prompt).strip(),
+        product=str(product).lower() if product else "all",
+        case_number=case_number,
+        attachments=attachments,
+        db=db
+    )
+    print(f"[AI Chat Response] Provider returned: {result.get('provider')}")
+
+    # Persist in AIChatMessage if session_id is active
+    if session_id:
+        try:
+            user_msg = AIChatMessage(
+                session_id=session_id,
+                role="user",
+                content=str(prompt).strip(),
+                attachments_json=json.dumps(attachments)
+            )
+            bot_msg = AIChatMessage(
+                session_id=session_id,
+                role="assistant",
+                content=result.get("answer", ""),
+                citations_json=json.dumps(result.get("citations", []))
+            )
+            db.add(user_msg)
+            db.add(bot_msg)
+            # Update session timestamp
+            sess = db.query(AIChatSession).filter(AIChatSession.id == session_id).first()
+            if sess:
+                sess.updated_at = datetime.utcnow()
+                if sess.title == "New Troubleshooting Session":
+                    sess.title = str(prompt).strip()[:40] + "..."
+            db.commit()
+        except Exception as e:
+            print(f"[AI Session] Error persisting chat: {e}")
+
+    return result
+
+@app.post("/api/ai/analyze-case")
+async def ai_analyze_case(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    Specialized Salesforce Case Analyzer.
+    Parses case subject, customer description, environment, and error logs,
+    then generates a structured RCA, resolution steps, and auto-draft for KB publication.
+    """
+    body = await request.json()
+    case_history = body.get("case_history") or body.get("prompt") or ""
+    case_number = body.get("case_number") or ""
+    product = body.get("product") or "xpi"
+    customer_name = body.get("customer_name") or ""
+    attachments = body.get("attachments") or []
+
+    if not case_history.strip():
+        raise HTTPException(status_code=400, detail="Case history or issue details are required.")
+
+    composed_prompt = f"""SALESFORCE CASE #{case_number if case_number else 'NEW'}
+Customer / Account: {customer_name if customer_name else 'Enterprise Customer'}
+Target Product: Magic {product.upper()}
+
+CASE HISTORY & LOG DETAILS:
+{case_history}
+"""
+    result = process_ai_query(
+        prompt=composed_prompt,
+        product=product.lower(),
+        case_number=case_number if case_number else None,
+        attachments=attachments,
+        db=db
+    )
+    return result
+
+@app.post("/api/ai/create-kb")
+def ai_create_kb(
+    data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Publish AI generated resolution directly as a verified KB SOP article."""
+    title = data.get("title")
+    product = data.get("product", "xpi")
+    content = data.get("content")
+    resolution_id = data.get("resolution_id")
+
+    if not title or not content:
+        raise HTTPException(status_code=400, detail="Title and content are required to create a KB article.")
+
+    doc = create_kb_article_from_ai(
+        title=title,
+        product=product,
+        markdown_content=content,
+        created_by_user=current_user.username,
+        db=db,
+        resolution_id=resolution_id
+    )
+
     return {
-        "answer": answer,
-        "citations": citations
+        "status": "success",
+        "doc_id": doc.id,
+        "title": doc.title,
+        "message": f"Successfully published article '{doc.title}' to Knowledge Center."
     }
+
+@app.post("/api/ai/mark-verified")
+def ai_mark_verified(
+    data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Mark an AI resolution as verified to train future copilot responses."""
+    res_id = data.get("resolution_id")
+    if not res_id:
+        raise HTTPException(status_code=400, detail="resolution_id required")
+        
+    res = db.query(AIResolution).filter(AIResolution.id == res_id).first()
+    if not res:
+        raise HTTPException(status_code=404, detail="Resolution not found")
+        
+    res.is_verified = True
+    db.commit()
+    return {"status": "success", "message": "Resolution marked as verified institutional knowledge."}
+
+# ----------------- AI Sessions & History -----------------
+
+@app.get("/api/ai/sessions")
+def list_ai_sessions(db: Session = Depends(get_db)):
+    """List recent AI chat sessions."""
+    sessions = db.query(AIChatSession).order_by(AIChatSession.updated_at.desc()).limit(30).all()
+    return [
+        {
+            "id": s.id,
+            "title": s.title,
+            "product": s.product,
+            "updated_at": s.updated_at.isoformat() if s.updated_at else ""
+        }
+        for s in sessions
+    ]
+
+@app.post("/api/ai/sessions")
+async def create_ai_session(request: Request, db: Session = Depends(get_db)):
+    """Create a new AI chat session."""
+    body = await request.json()
+    s_id = body.get("id") or f"session_{int(datetime.utcnow().timestamp())}"
+    title = body.get("title") or "New Troubleshooting Session"
+    prod = body.get("product") or "all"
+    
+    sess = AIChatSession(id=s_id, title=title, product=prod)
+    db.add(sess)
+    db.commit()
+    return {"id": sess.id, "title": sess.title, "product": sess.product}
+
+@app.delete("/api/ai/sessions/{session_id}")
+def delete_ai_session(session_id: str, db: Session = Depends(get_db)):
+    """Delete an AI chat session and its messages."""
+    db.query(AIChatMessage).filter(AIChatMessage.session_id == session_id).delete()
+    db.query(AIChatSession).filter(AIChatSession.id == session_id).delete()
+    db.commit()
+    return {"status": "success"}
+
+@app.get("/api/ai/sessions/{session_id}/messages")
+def get_ai_session_messages(session_id: str, db: Session = Depends(get_db)):
+    """Get all messages for a specific session."""
+    msgs = db.query(AIChatMessage).filter(AIChatMessage.session_id == session_id).order_by(AIChatMessage.id.asc()).all()
+    return [
+        {
+            "id": m.id,
+            "role": m.role,
+            "content": m.content,
+            "attachments": json.loads(m.attachments_json or "[]"),
+            "citations": json.loads(m.citations_json or "[]"),
+            "created_at": m.created_at.isoformat() if m.created_at else ""
+        }
+        for m in msgs
+    ]
+
+# ----------------- AI Settings & Test Connection -----------------
+
+@app.post("/api/ai/test-connection")
+async def test_ai_connection(request: Request, db: Session = Depends(get_db)):
+    """Test AI LLM provider connection in real-time."""
+    try:
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+            
+        provider = body.get("provider") or "gemini"
+        api_key = (body.get("api_key") or "").strip()
+        model_name = body.get("model_name") or "gemini-1.5-flash"
+        api_base_url = body.get("api_base_url") or ""
+        
+        # If user passed masked dots or left blank, use the actual active key from DB
+        if not api_key or "•" in api_key or "*" in api_key or "..." in api_key:
+            try:
+                setting = db.query(AISetting).first()
+                if setting and setting.api_key:
+                    api_key = setting.api_key
+            except Exception as dbe:
+                print(f"[AI Setting DB Warning] {dbe}")
+                
+        res = test_ai_provider_connection(provider, api_key, model_name, api_base_url)
+        return res
+    except Exception as e:
+        return {"success": False, "message": f"Connection test error: {str(e)}"}
+
+@app.get("/api/ai/settings")
+def get_ai_settings(db: Session = Depends(get_db)):
+    """Retrieve current AI provider configuration."""
+    config = get_active_ai_config(db)
+    masked_key = ""
+    if config["api_key"]:
+        masked_key = config["api_key"][:6] + "..." + config["api_key"][-4:] if len(config["api_key"]) > 10 else "****"
+    
+    return {
+        "provider": config["provider"],
+        "model_name": config["model_name"],
+        "api_base_url": config["api_base_url"],
+        "has_api_key": bool(config["api_key"]),
+        "masked_api_key": masked_key,
+        "temperature": config["temperature"]
+    }
+
+@app.post("/api/ai/settings")
+def update_ai_settings(data: dict, db: Session = Depends(get_db)):
+    """Update AI provider and API configurations."""
+    setting = db.query(AISetting).first()
+    if not setting:
+        setting = AISetting()
+        db.add(setting)
+
+    if "provider" in data and data["provider"]:
+        setting.provider = data["provider"]
+    if "api_key" in data and data["api_key"]:
+        key_val = data["api_key"].strip()
+        if "•" not in key_val and "*" not in key_val and "..." not in key_val:
+            setting.api_key = key_val
+    if "api_base_url" in data:
+        setting.api_base_url = data["api_base_url"].strip()
+    if "model_name" in data and data["model_name"]:
+        m_name = data["model_name"].strip()
+        if setting.provider == "gemini" and ("built-in" in m_name.lower() or not m_name):
+            setting.model_name = "gemini-1.5-flash"
+        else:
+            setting.model_name = m_name
+    elif setting.provider == "gemini" and (not setting.model_name or "built-in" in (setting.model_name or "").lower()):
+        setting.model_name = "gemini-1.5-flash"
+    if "temperature" in data:
+        setting.temperature = str(data["temperature"])
+
+    setting.updated_at = datetime.utcnow()
+    db.commit()
+
+    return {"status": "success", "message": "AI settings updated successfully."}
+
+@app.get("/api/ai/resolutions")
+def ai_list_resolutions(
+    product: Optional[str] = None,
+    limit: int = 20,
+    db: Session = Depends(get_db)
+):
+    """List recent AI resolutions and institutional memory."""
+    query = db.query(AIResolution)
+    if product and product.lower() not in ["all", "global", ""]:
+        query = query.filter(AIResolution.product == product.lower())
+    resolutions = query.order_by(AIResolution.created_at.desc()).limit(limit).all()
+    
+    return [
+        {
+            "id": r.id,
+            "case_number": r.case_number,
+            "product": r.product,
+            "problem_summary": r.problem_summary,
+            "is_verified": r.is_verified,
+            "kb_doc_id": r.kb_doc_id,
+            "created_at": r.created_at.isoformat()
+        }
+        for r in resolutions
+    ]
+
+# ----------------- Salesforce Cases Endpoints -----------------
+
+@app.get("/api/salesforce/cases")
+def list_salesforce_cases(
+    q: Optional[str] = None,
+    product: Optional[str] = None,
+    limit: int = 50,
+    db: Session = Depends(get_db)
+):
+    """Search and list historical Salesforce cases."""
+    query = db.query(SalesforceCase)
+    if product and product.lower() not in ["all", "global", ""]:
+        query = query.filter(SalesforceCase.product == product.lower())
+    if q and q.strip():
+        term = f"%{q.strip().lower()}%"
+        query = query.filter(
+            func.lower(SalesforceCase.case_number).like(term) |
+            func.lower(SalesforceCase.subject).like(term) |
+            func.lower(SalesforceCase.description).like(term) |
+            func.lower(SalesforceCase.error_codes).like(term) |
+            func.lower(SalesforceCase.resolution).like(term)
+        )
+    cases = query.order_by(SalesforceCase.created_date.desc()).limit(limit).all()
+    return [
+        {
+            "id": c.id,
+            "case_number": c.case_number,
+            "subject": c.subject,
+            "product": c.product,
+            "version": c.version,
+            "status": c.status,
+            "customer_name": c.customer_name,
+            "error_codes": c.error_codes,
+            "description": c.description,
+            "root_cause": c.root_cause,
+            "resolution": c.resolution
+        }
+        for c in cases
+    ]
+
+@app.post("/api/salesforce/upload-csv")
+async def upload_salesforce_csv(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["Admin", "Editor"]))
+):
+    """Bulk import Salesforce case history export report in CSV format."""
+    try:
+        content = (await file.read()).decode("utf-8", errors="ignore")
+        result = import_salesforce_cases_from_csv(content, db)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"CSV processing failed: {str(e)}")
 
 # ----------------- Document View & Raw Serving -----------------
 
@@ -658,6 +944,11 @@ def get_document(doc_id: int, q: Optional[str] = None, db: Session = Depends(get
                 if content_div:
                     for element in content_div(["script", "style"]):
                         element.decompose()
+                    # Fix relative image paths to point to mounted static endpoints
+                    for img in content_div.find_all("img"):
+                        src = img.get("src", "")
+                        if src and not src.startswith("http") and not src.startswith("/") and not src.startswith("data:"):
+                            img["src"] = "/" + src
                     if query_terms:
                         highlight_html_text_nodes(content_div, query_terms)
                     html_content = str(content_div)
@@ -670,6 +961,12 @@ def get_document(doc_id: int, q: Optional[str] = None, db: Session = Depends(get
                 html_content = f'<div class="wiki-content group">{html_val}</div>'
         except Exception as e:
             print(f"Error reading generated DOCX HTML: {e}")
+    elif doc.file_type == "md":
+        try:
+            import markdown
+            html_content = f'<div class="wiki-content group">{markdown.markdown(doc.content, extensions=["tables", "fenced_code"])}</div>'
+        except Exception as e:
+            print(f"Error parsing Markdown: {e}")
             
     display_content = doc.content
     if not html_content:
@@ -678,37 +975,7 @@ def get_document(doc_id: int, q: Optional[str] = None, db: Session = Depends(get
             display_content = highlight_plain_text(doc.content, query_terms)
         else:
             display_content = doc.content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            
-        # Scan for dynamically extracted images
-        try:
-            doc_filename = os.path.basename(doc.file_path)
-            doc_dir_name = re.sub(r'\W+', '_', doc_filename)
-            attachments_dir = os.path.join(CONFLUENCE_DIR, "attachments", doc_dir_name)
-            if os.path.exists(attachments_dir):
-                files = os.listdir(attachments_dir)
-                img_files = [f for f in files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif'))]
-                if img_files:
-                    gallery_html = f"""
-                    <div class="sop-attachments-gallery" style="margin-top: 3rem; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 24px;">
-                        <h4 style="color:#fff; font-size:1.15rem; font-weight:600; margin-bottom:16px;">
-                            Embedded Screenshots & Figures ({len(img_files)})
-                        </h4>
-                        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px;">
-                    """
-                    for img in sorted(img_files):
-                        img_url = f"/attachments/{doc_dir_name}/{img}"
-                        gallery_html += f"""
-                        <div class="glass-panel" style="padding: 10px; border-radius: 12px; background: rgba(255,255,255,0.02); text-align: center;">
-                            <a href="{img_url}" target="_blank" style="display:block; overflow:hidden; border-radius:8px; height:160px; display:flex; align-items:center; justify-content:center;">
-                                <img src="{img_url}" style="max-width:100%; max-height:100%; object-fit:contain;" />
-                            </a>
-                            <p style="font-size:0.75rem; color:#9ca3af; margin-top:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{img}</p>
-                        </div>
-                        """
-                    gallery_html += "</div></div>"
-                    html_content += gallery_html
-        except Exception as e:
-            print(f"Error loading attachments: {e}")
+
             
     return {
         "id": doc.id,
