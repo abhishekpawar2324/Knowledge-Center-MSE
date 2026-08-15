@@ -831,7 +831,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Render content
       const bodyContainer = document.getElementById('reader-doc-body')
-      if (currentDoc.html_content) {
+      if (currentDoc.file_type === 'pdf') {
+        bodyContainer.innerHTML = `
+          <div style="margin-bottom:14px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:10px; background:rgba(255,255,255,0.03); padding:10px 16px; border-radius:10px; border:1px solid rgba(255,255,255,0.08);">
+            <div style="display:flex; gap:8px;">
+              <button id="btn-toggle-pdf-view" class="btn" style="padding:6px 14px; font-size:0.8rem; font-weight:700; background:rgba(0,141,199,0.25); border:1px solid rgba(45,188,238,0.4); color:#38bdf8; border-radius:6px;">
+                📄 Original PDF Document
+              </button>
+              <button id="btn-toggle-text-view" class="btn" style="padding:6px 14px; font-size:0.8rem; font-weight:600; background:transparent; border:1px solid transparent; color:#94a3b8; border-radius:6px;">
+                📝 Search Text View
+              </button>
+            </div>
+            <a href="/api/document/raw/${currentDoc.id}" target="_blank" class="btn btn-secondary" style="padding:6px 12px; font-size:0.78rem; text-decoration:none; display:flex; align-items:center; gap:6px;">
+              📥 Open Fullscreen / Download
+            </a>
+          </div>
+          <div id="pdf-view-frame-container">
+            <iframe src="/api/document/raw/${currentDoc.id}#toolbar=1&navpanes=1" style="width:100%; height:820px; border:none; border-radius:10px; background:#0f172a; box-shadow:0 10px 30px rgba(0,0,0,0.5);"></iframe>
+          </div>
+          <div id="pdf-view-text-container" class="hide" style="padding:20px; border-radius:10px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.05); color:#cbd5e1; line-height:1.8;">
+            ${currentDoc.html_content || `<pre style="white-space:pre-wrap; font-family:inherit;">${currentDoc.content}</pre>`}
+          </div>
+        `
+        document.getElementById('btn-toggle-pdf-view').onclick = () => {
+          document.getElementById('pdf-view-frame-container').classList.remove('hide')
+          document.getElementById('pdf-view-text-container').classList.add('hide')
+          document.getElementById('btn-toggle-pdf-view').style.background = 'rgba(0,141,199,0.25)'
+          document.getElementById('btn-toggle-pdf-view').style.color = '#38bdf8'
+          document.getElementById('btn-toggle-pdf-view').style.borderColor = 'rgba(45,188,238,0.4)'
+          document.getElementById('btn-toggle-text-view').style.background = 'transparent'
+          document.getElementById('btn-toggle-text-view').style.color = '#94a3b8'
+          document.getElementById('btn-toggle-text-view').style.borderColor = 'transparent'
+        }
+        document.getElementById('btn-toggle-text-view').onclick = () => {
+          document.getElementById('pdf-view-frame-container').classList.add('hide')
+          document.getElementById('pdf-view-text-container').classList.remove('hide')
+          document.getElementById('btn-toggle-text-view').style.background = 'rgba(0,141,199,0.25)'
+          document.getElementById('btn-toggle-text-view').style.color = '#38bdf8'
+          document.getElementById('btn-toggle-text-view').style.borderColor = 'rgba(45,188,238,0.4)'
+          document.getElementById('btn-toggle-pdf-view').style.background = 'transparent'
+          document.getElementById('btn-toggle-pdf-view').style.color = '#94a3b8'
+          document.getElementById('btn-toggle-pdf-view').style.borderColor = 'transparent'
+        }
+      } else if (currentDoc.html_content) {
         bodyContainer.innerHTML = currentDoc.html_content
       } else {
         bodyContainer.innerHTML = `<pre style="white-space:pre-wrap; font-family:inherit;">${currentDoc.content}</pre>`
@@ -938,79 +980,654 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {}
   })
 
-  // ==================== 14. MAGIC AI ASSISTANT MODAL ====================
-  window.openCopilotWithQuery = function(initialQ = '') {
+  // ==================== 14. MAGIC AI ASSISTANT, CHATGPT SESSIONS & SALESFORCE COPILOT ====================
+
+  let currentChatSessionId = null
+  let currentAttachments = []
+
+  function renderMarkdownSafe(rawText) {
+    if (!rawText) return ''
+    if (window.marked && typeof window.marked.parse === 'function') {
+      try {
+        return window.marked.parse(rawText)
+      } catch (e) {
+        console.error('Marked parse error:', e)
+      }
+    }
+    // Fallback basic formatter
+    return rawText
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/^### (.*$)/gim, '<h3 style="font-size:1.05rem; font-weight:700; color:#fff; margin-top:14px; margin-bottom:6px;">$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2 style="font-size:1.15rem; font-weight:800; color:#38bdf8; margin-top:16px; margin-bottom:8px;">$1</h2>')
+      .replace(/\*\*(.*?)\*\*/gim, '<strong style="color:#fff;">$1</strong>')
+      .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+      .replace(/```([\s\S]*?)```/gim, '<pre style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); padding:12px; border-radius:8px; overflow-x:auto; color:#38bdf8; font-family:monospace; font-size:0.85rem; margin:10px 0;"><code>$1</code></pre>')
+      .replace(/`([^`]+)`/gim, '<code style="background:rgba(255,255,255,0.08); padding:2px 6px; border-radius:4px; color:#38bdf8; font-family:monospace; font-size:0.85rem;">$1</code>')
+      .replace(/\n/gim, '<br>')
+  }
+
+  window.copyToClipboard = function(text, btnEl) {
+    navigator.clipboard.writeText(text).then(() => {
+      const originalHtml = btnEl ? btnEl.innerHTML : ''
+      if (btnEl) {
+        btnEl.innerHTML = '✓ Copied!'
+        btnEl.style.color = '#34d399'
+        setTimeout(() => {
+          btnEl.innerHTML = originalHtml
+          btnEl.style.color = ''
+        }, 2000)
+      }
+    }).catch(err => alert('Copied to clipboard'))
+  }
+
+  window.markResolutionVerified = async function(resolutionId, btnEl) {
+    if (!resolutionId) return
+    try {
+      const res = await fetch('/api/ai/mark-verified', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ resolution_id: resolutionId })
+      })
+      if (!res.ok) throw new Error('Verification failed')
+      if (btnEl) {
+        btnEl.innerHTML = '✓ Verified & Learned'
+        btnEl.disabled = true
+        btnEl.style.background = 'rgba(16,185,129,0.3)'
+      }
+    } catch (e) {
+      alert('Could not mark as verified: ' + e.message)
+    }
+  }
+
+  window.createKbFromAI = async function(title, product, content, resolutionId, btnEl) {
+    if (!content) return
+    const defaultTitle = title || `Magic ${product.toUpperCase()} Resolution: ${new Date().toLocaleDateString()}`
+    const articleTitle = prompt('Publish as Knowledge Base Article Title:', defaultTitle)
+    if (!articleTitle) return
+
+    try {
+      if (btnEl) btnEl.innerHTML = 'Publishing...'
+      const res = await fetch('/api/ai/create-kb', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          title: articleTitle,
+          product: product || 'xpi',
+          content: content,
+          resolution_id: resolutionId
+        })
+      })
+      if (!res.ok) throw new Error('Could not publish article')
+      const data = await res.json()
+      alert(`Success! Published KB Article: "${data.title}"`)
+      if (btnEl) {
+        btnEl.innerHTML = '✓ Published to KC'
+        btnEl.disabled = true
+      }
+      fetchNotifications()
+      if (data.doc_id) {
+        document.getElementById('modal-copilot').classList.add('hide')
+        openDocument(data.doc_id)
+      }
+    } catch (e) {
+      alert('Error publishing KB: ' + e.message)
+      if (btnEl) btnEl.innerHTML = '✨ 1-Click Publish'
+    }
+  }
+
+  window.applyCopilotPrompt = function(promptText, product) {
+    const input = document.getElementById('copilot-input')
+    const scope = document.getElementById('copilot-product-scope')
+    if (input) input.value = promptText
+    if (scope && product) scope.value = product
+    document.getElementById('copilot-form').dispatchEvent(new Event('submit'))
+  }
+
+  // Session Management & History
+  async function loadRecentSessions() {
+    const listEl = document.getElementById('copilot-sessions-list')
+    if (!listEl) return
+    try {
+      const res = await fetch('/api/ai/sessions')
+      if (!res.ok) return
+      const sessions = await res.json()
+      if (sessions.length === 0) {
+        listEl.innerHTML = '<div style="font-size:0.75rem; color:#64748b; padding:8px;">No past sessions</div>'
+        return
+      }
+      listEl.innerHTML = sessions.map(s => `
+        <div onclick="switchChatSession('${s.id}')" style="display:flex; justify-content:space-between; align-items:center; padding:7px 10px; border-radius:6px; background:${s.id === currentChatSessionId ? 'rgba(0,141,199,0.25)' : 'rgba(255,255,255,0.03)'}; border:1px solid ${s.id === currentChatSessionId ? 'rgba(45,188,238,0.3)' : 'transparent'}; cursor:pointer; transition:all 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='${s.id === currentChatSessionId ? 'rgba(0,141,199,0.25)' : 'rgba(255,255,255,0.03)'}'">
+          <div style="display:flex; align-items:center; gap:6px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">
+            <span style="font-size:0.75rem; color:${s.id === currentChatSessionId ? '#38bdf8' : '#94a3b8'};">💬</span>
+            <span style="font-size:0.75rem; color:#cbd5e1; overflow:hidden; text-overflow:ellipsis;">${s.title}</span>
+          </div>
+          <button onclick="deleteChatSession('${s.id}', event)" style="background:none; border:none; color:#64748b; padding:2px 4px; cursor:pointer;" title="Delete Chat">×</button>
+        </div>
+      `).join('')
+    } catch (e) {}
+  }
+
+  window.createNewChatSession = async function() {
+    currentChatSessionId = `session_${Date.now()}`
+    currentAttachments = []
+    renderAttachmentPreviews()
+    const thread = document.getElementById('copilot-messages-thread')
+    thread.innerHTML = `
+      <div style="padding:16px; border-radius:12px; background:linear-gradient(135deg, rgba(0,141,199,0.15), rgba(45,188,238,0.08)); border:1px solid rgba(45,188,238,0.3); color:#e2e8f0; font-size:0.9rem; line-height:1.6;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+          <span style="font-size:1.1rem;">👋</span>
+          <strong style="color:#fff;">New Magic AI Troubleshooting Session Started</strong>
+        </div>
+        Ask any configuration question, attach logs/config files with <strong>📎</strong>, or switch to <strong>Salesforce Case Analyzer</strong>.
+      </div>
+    `
+    try {
+      await fetch('/api/ai/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: currentChatSessionId, title: 'New Troubleshooting Session' })
+      })
+      loadRecentSessions()
+    } catch (e) {}
+  }
+
+  window.switchChatSession = async function(sessionId) {
+    currentChatSessionId = sessionId
+    currentAttachments = []
+    renderAttachmentPreviews()
+    loadRecentSessions()
+    const thread = document.getElementById('copilot-messages-thread')
+    thread.innerHTML = '<div style="padding:10px; text-align:center; color:#94a3b8;">Loading chat history...</div>'
+
+    try {
+      const res = await fetch(`/api/ai/sessions/${sessionId}/messages`)
+      if (!res.ok) throw new Error('Could not load history')
+      const msgs = await res.json()
+      thread.innerHTML = ''
+      if (msgs.length === 0) {
+        thread.innerHTML = '<div style="padding:10px; text-align:center; color:#64748b;">Empty chat session. Type a message below.</div>'
+        return
+      }
+      for (const m of msgs) {
+        if (m.role === 'user') {
+          const userMsg = document.createElement('div')
+          userMsg.style.cssText = 'align-self:flex-end; max-width:85%; padding:12px 18px; border-radius:14px 14px 4px 14px; background:linear-gradient(135deg,#008DC7,#2DBCEE); color:#fff; font-size:0.9rem;'
+          userMsg.textContent = m.content
+          thread.appendChild(userMsg)
+        } else {
+          const botMsg = document.createElement('div')
+          botMsg.style.cssText = 'align-self:flex-start; max-width:92%; width:92%; padding:18px 20px; border-radius:14px 14px 14px 4px; background:rgba(15,23,42,0.9); border:1px solid rgba(0,141,199,0.25); color:#cbd5e1; font-size:0.9rem;'
+          botMsg.innerHTML = `
+            <div class="ai-response-rendered" style="color:#e2e8f0; font-size:0.92rem; line-height:1.75;">
+              ${renderMarkdownSafe(m.content)}
+            </div>
+          `
+          thread.appendChild(botMsg)
+        }
+      }
+      thread.scrollTop = thread.scrollHeight
+    } catch (e) {
+      thread.innerHTML = '<div style="color:#f43f5e;">Could not load session messages.</div>'
+    }
+  }
+
+  window.deleteChatSession = async function(sessionId, event) {
+    if (event) event.stopPropagation()
+    try {
+      await fetch(`/api/ai/sessions/${sessionId}`, { method: 'DELETE' })
+      if (currentChatSessionId === sessionId) {
+        createNewChatSession()
+      } else {
+        loadRecentSessions()
+      }
+    } catch (e) {}
+  }
+
+  // Attachment Handling (File Picker & FileReader)
+  function renderAttachmentPreviews() {
+    const box = document.getElementById('copilot-attachments-preview')
+    if (!box) return
+    if (currentAttachments.length === 0) {
+      box.classList.add('hide')
+      box.innerHTML = ''
+      return
+    }
+    box.classList.remove('hide')
+    box.innerHTML = currentAttachments.map((att, idx) => `
+      <div style="display:flex; align-items:center; gap:6px; padding:4px 10px; border-radius:6px; background:rgba(0,141,199,0.25); border:1px solid rgba(45,188,238,0.4); color:#38bdf8; font-size:0.75rem;">
+        <span>📄 ${att.name}</span>
+        <span onclick="removeAttachment(${idx})" style="cursor:pointer; font-weight:bold; margin-left:4px;">×</span>
+      </div>
+    `).join('')
+  }
+
+  window.removeAttachment = function(idx) {
+    currentAttachments.splice(idx, 1)
+    renderAttachmentPreviews()
+  }
+
+  const fileInput = document.getElementById('copilot-file-input')
+  const attachBtn = document.getElementById('btn-copilot-attach')
+  if (attachBtn && fileInput) {
+    attachBtn.addEventListener('click', () => fileInput.click())
+    fileInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files)
+      for (const file of files) {
+        try {
+          const text = await file.text()
+          currentAttachments.push({ name: file.name, content: text })
+        } catch (err) {
+          console.error('Error reading file:', err)
+        }
+      }
+      renderAttachmentPreviews()
+      fileInput.value = ''
+    })
+  }
+
+  window.openCopilotWithQuery = function(initialQ = '', product = '') {
     const modal = document.getElementById('modal-copilot')
     modal.classList.remove('hide')
-    const thread = document.getElementById('copilot-messages-thread')
-    if (thread.children.length === 0) {
-      thread.innerHTML = `
-        <div style="padding:14px; border-radius:10px; background:rgba(0,141,199,0.12); border:1px solid rgba(0,141,199,0.25); color:#e2e8f0; font-size:0.88rem; line-height:1.6;">
-          👋 Hello! I am your <strong>Magic AI Assistant</strong>. Ask me any configuration question, error code diagnosis, or step-by-step SOP across Magic xpa, Magic xpi, or Cloud Native.
-        </div>
-      `
+    if (window.lucide) lucide.createIcons()
+
+    if (!currentChatSessionId) {
+      createNewChatSession()
+    } else {
+      loadRecentSessions()
     }
+
+    if (product) {
+      const scope = document.getElementById('copilot-product-scope')
+      if (scope) scope.value = product
+    }
+
     if (initialQ) {
       document.getElementById('copilot-input').value = initialQ
       document.getElementById('copilot-form').dispatchEvent(new Event('submit'))
     }
   }
 
+  document.getElementById('btn-new-chat').addEventListener('click', () => createNewChatSession())
+  document.getElementById('btn-clear-chats').addEventListener('click', () => {
+    if (confirm('Clear all chat history?')) {
+      createNewChatSession()
+    }
+  })
+
+  // Modal open & close
   document.getElementById('btn-open-copilot').addEventListener('click', () => openCopilotWithQuery())
   document.getElementById('btn-close-copilot').addEventListener('click', () => {
     document.getElementById('modal-copilot').classList.add('hide')
   })
 
+  // Mode Tabs Switching
+  const tabBtnChat = document.getElementById('copilot-tab-btn-chat')
+  const tabBtnSF = document.getElementById('copilot-tab-btn-salesforce')
+  const tabBtnSettings = document.getElementById('copilot-tab-btn-settings')
+
+  const tabChat = document.getElementById('copilot-tab-chat')
+  const tabSF = document.getElementById('copilot-tab-salesforce')
+  const tabSettings = document.getElementById('copilot-tab-settings')
+
+  function switchCopilotTab(activeTab) {
+    [tabChat, tabSF, tabSettings].forEach(t => t.classList.add('hide'))
+    ;[tabBtnChat, tabBtnSF, tabBtnSettings].forEach(b => {
+      b.style.background = 'transparent'
+      b.style.borderColor = 'transparent'
+      b.style.color = '#94a3b8'
+    })
+
+    if (activeTab === 'chat') {
+      tabChat.classList.remove('hide')
+      tabBtnChat.style.background = 'rgba(0,141,199,0.25)'
+      tabBtnChat.style.borderColor = 'rgba(45,188,238,0.4)'
+      tabBtnChat.style.color = '#38bdf8'
+    } else if (activeTab === 'salesforce') {
+      tabSF.classList.remove('hide')
+      tabBtnSF.style.background = 'rgba(0,141,199,0.25)'
+      tabBtnSF.style.borderColor = 'rgba(45,188,238,0.4)'
+      tabBtnSF.style.color = '#38bdf8'
+    } else if (activeTab === 'settings') {
+      tabSettings.classList.remove('hide')
+      tabBtnSettings.style.background = 'rgba(0,141,199,0.25)'
+      tabBtnSettings.style.borderColor = 'rgba(45,188,238,0.4)'
+      tabBtnSettings.style.color = '#38bdf8'
+      loadAISettings()
+    }
+    if (window.lucide) lucide.createIcons()
+  }
+
+  tabBtnChat.addEventListener('click', () => switchCopilotTab('chat'))
+  tabBtnSF.addEventListener('click', () => switchCopilotTab('salesforce'))
+  tabBtnSettings.addEventListener('click', () => switchCopilotTab('settings'))
+
+  // 1. Copilot Interactive Chat Form Submission
   document.getElementById('copilot-form').addEventListener('submit', async (e) => {
     e.preventDefault()
     const input = document.getElementById('copilot-input')
     const prompt = input.value.trim()
-    if (!prompt) return
+    if (!prompt && currentAttachments.length === 0) return
 
     const thread = document.getElementById('copilot-messages-thread')
     const scope = document.getElementById('copilot-product-scope').value
 
+    // Append User Message with Attachment chips if present
     const userMsg = document.createElement('div')
-    userMsg.style.cssText = 'align-self:flex-end; max-width:80%; padding:10px 14px; border-radius:10px; background:linear-gradient(135deg,#008DC7,#2DBCEE); color:#fff; font-size:0.88rem;'
-    userMsg.textContent = prompt
+    userMsg.style.cssText = 'align-self:flex-end; max-width:85%; padding:12px 18px; border-radius:14px 14px 4px 14px; background:linear-gradient(135deg,#008DC7,#2DBCEE); color:#fff; font-size:0.9rem; box-shadow:0 4px 15px rgba(0,141,199,0.3);'
+    
+    let userHtml = prompt
+    if (currentAttachments.length > 0) {
+      userHtml += `<div style="margin-top:6px; display:flex; flex-wrap:wrap; gap:4px;">${currentAttachments.map(a => `<span style="font-size:0.72rem; padding:2px 6px; border-radius:4px; background:rgba(0,0,0,0.2);">📎 ${a.name}</span>`).join('')}</div>`
+    }
+    userMsg.innerHTML = userHtml
     thread.appendChild(userMsg)
     input.value = ''
 
-    const botLoading = document.createElement('div')
-    botLoading.style.cssText = 'align-self:flex-start; max-width:85%; padding:12px; border-radius:10px; background:rgba(255,255,255,0.04); color:#94a3b8; font-size:0.85rem;'
-    botLoading.textContent = 'Synthesizing verified documentation...'
-    thread.appendChild(botLoading)
+    const sentAttachments = [...currentAttachments]
+    currentAttachments = []
+    renderAttachmentPreviews()
+
+    // Append Bot Loading State
+    const botMsg = document.createElement('div')
+    botMsg.style.cssText = 'align-self:flex-start; max-width:92%; width:92%; padding:18px 20px; border-radius:14px 14px 14px 4px; background:rgba(15,23,42,0.9); border:1px solid rgba(0,141,199,0.25); color:#cbd5e1; font-size:0.9rem; box-shadow:0 4px 20px rgba(0,0,0,0.4);'
+    botMsg.innerHTML = `
+      <div style="display:flex; align-items:center; gap:10px; color:#38bdf8; font-size:0.85rem;">
+        <span class="animate-spin" style="display:inline-block;">⚡</span>
+        <span>Reasoning with Magic AI Engine & cross-referencing knowledge base...</span>
+      </div>
+    `
+    thread.appendChild(botMsg)
     thread.scrollTop = thread.scrollHeight
 
     try {
-      const res = await fetch('/api/copilot/ask', {
+      let res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, product: scope })
+        body: JSON.stringify({
+          prompt,
+          product: scope,
+          session_id: currentChatSessionId,
+          attachments: sentAttachments
+        })
       })
-      if (!res.ok) throw new Error('Assistant response error')
+      if (!res.ok) throw new Error('AI Engine response status ' + res.status)
       const data = await res.json()
 
-      botLoading.innerHTML = `
-        <div style="color:#e2e8f0; font-size:0.9rem; line-height:1.7; white-space:pre-wrap;">${data.answer}</div>
-        ${data.sources && data.sources.length > 0 ? `
-          <div style="margin-top:14px; border-top:1px solid rgba(255,255,255,0.08); padding-top:10px;">
-            <span style="font-size:0.75rem; color:#94a3b8; font-weight:700;">Verified Knowledge Citations:</span>
-            <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">
-              ${data.sources.map(s => `
-                <div onclick="openDocument(${s.id})" style="padding:6px 10px; border-radius:6px; background:rgba(0,141,199,0.15); color:#38bdf8; font-size:0.78rem; cursor:pointer;">
-                  📖 ${s.title}
+      const renderedAnswer = renderMarkdownSafe(data.answer)
+      const resId = data.resolution_id
+
+      let citationsHtml = ''
+      if (data.citations && data.citations.length > 0) {
+        citationsHtml = `
+          <div style="margin-top:16px; border-top:1px solid rgba(255,255,255,0.08); padding-top:12px;">
+            <span style="font-size:0.75rem; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">Verified Knowledge Base References:</span>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
+              ${data.citations.map(s => `
+                <div onclick="openDocument(${s.id})" style="padding:6px 12px; border-radius:6px; background:rgba(0,141,199,0.18); border:1px solid rgba(45,188,238,0.3); color:#38bdf8; font-size:0.8rem; cursor:pointer; display:flex; align-items:center; gap:6px; transition:all 0.2s;" onmouseover="this.style.background='rgba(0,141,199,0.35)'" onmouseout="this.style.background='rgba(0,141,199,0.18)'">
+                  <span>📖</span> <span style="font-weight:600;">${s.title}</span>
                 </div>
               `).join('')}
             </div>
           </div>
-        ` : ''}
+        `
+      }
+
+      botMsg.innerHTML = `
+        <div class="ai-response-rendered" style="color:#e2e8f0; font-size:0.92rem; line-height:1.75;">
+          ${renderedAnswer}
+        </div>
+        ${citationsHtml}
+        <div style="margin-top:16px; border-top:1px solid rgba(255,255,255,0.08); padding-top:12px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px;">
+          <span style="font-size:0.72rem; color:#64748b;">Engine: <strong style="color:#38bdf8;">${data.provider || 'Magic AI'}</strong></span>
+          <div style="display:flex; gap:8px;">
+            <button onclick="copyToClipboard(\`${data.answer.replace(/[`\\]/g, '\\$&')}\`, this)" class="btn" style="padding:5px 10px; font-size:0.75rem; background:rgba(255,255,255,0.06); color:#cbd5e1; border-radius:6px;">
+              📋 Copy
+            </button>
+            <button onclick="markResolutionVerified(${resId}, this)" class="btn" style="padding:5px 10px; font-size:0.75rem; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); color:#34d399; border-radius:6px;">
+              ✅ Mark Verified
+            </button>
+            <button onclick="createKbFromAI(\`Magic ${scope.toUpperCase()} Resolution\`, '${scope}', \`${data.answer.replace(/[`\\]/g, '\\$&')}\`, ${resId}, this)" class="btn" style="padding:5px 12px; font-size:0.75rem; background:linear-gradient(135deg, #008DC7, #2DBCEE); color:#fff; font-weight:700; border-radius:6px;">
+              ✨ Publish as KB
+            </button>
+          </div>
+        </div>
       `
+      loadRecentSessions()
     } catch (err) {
-      botLoading.textContent = 'Sorry, could not process request.'
+      botMsg.innerHTML = `<span style="color:#f43f5e;">⚠️ Error communicating with Magic AI Engine: ${err.message}. Please check AI Settings or run 'Test Connection'.</span>`
     }
     thread.scrollTop = thread.scrollHeight
+    if (window.lucide) lucide.createIcons()
   })
+
+  // 2. Salesforce Case Analyzer Form
+  document.getElementById('form-salesforce-case-analyzer').addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const caseNum = document.getElementById('sf-case-number').value.trim()
+    const cust = document.getElementById('sf-case-customer').value.trim()
+    const prod = document.getElementById('sf-case-product').value
+    const history = document.getElementById('sf-case-history').value.trim()
+
+    if (!history) {
+      alert('Please paste the customer case description or error logs.')
+      return
+    }
+
+    const statusEl = document.getElementById('sf-analysis-status')
+    const resultBox = document.getElementById('sf-analysis-result-box')
+    const contentEl = document.getElementById('sf-analysis-rendered-content')
+    const caseTag = document.getElementById('sf-res-case-tag')
+
+    statusEl.innerHTML = '<span style="color:#38bdf8;">⚡ Analyzing case history & searching Salesforce repository...</span>'
+    resultBox.classList.remove('hide')
+    contentEl.innerHTML = '<div style="padding:20px; text-align:center; color:#94a3b8;">Synthesizing diagnostic resolution...</div>'
+
+    try {
+      const res = await fetch('/api/ai/analyze-case', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          case_number: caseNum,
+          customer_name: cust,
+          product: prod,
+          case_history: history
+        })
+      })
+      if (!res.ok) throw new Error('Case analysis error')
+      const data = await res.json()
+
+      statusEl.innerHTML = '<span style="color:#10b981;">✓ Diagnostic resolution generated successfully!</span>'
+      caseTag.textContent = caseNum ? `Case #${caseNum}` : ''
+      contentEl.innerHTML = renderMarkdownSafe(data.answer)
+
+      // Wire action buttons
+      document.getElementById('btn-sf-copy-reply').onclick = (evt) => copyToClipboard(data.answer, evt.currentTarget)
+      
+      const copyEmailBtn = document.getElementById('btn-sf-copy-customer-email')
+      if (copyEmailBtn) {
+        copyEmailBtn.onclick = (evt) => {
+          let emailText = data.answer
+          const emailMatch = data.answer.match(/### 📝 5\. Ready-to-Send Customer Response Draft[\s\S]*?```(?:text)?\n([\s\S]*?)```/) ||
+                             data.answer.match(/### 📝 4\. Ready-to-Send Customer Response Draft[\s\S]*?```(?:text)?\n([\s\S]*?)```/) ||
+                             data.answer.match(/### 📝.*?Customer Response Draft[\s\S]*?```(?:text)?\n([\s\S]*?)```/)
+          if (emailMatch && emailMatch[1]) {
+            emailText = emailMatch[1].trim()
+          }
+          copyToClipboard(emailText, evt.currentTarget)
+        }
+      }
+
+      document.getElementById('btn-sf-mark-verified').onclick = (evt) => markResolutionVerified(data.resolution_id, evt.currentTarget)
+      document.getElementById('btn-sf-publish-kb').onclick = (evt) => {
+        createKbFromAI(
+          caseNum ? `Case ${caseNum} Solution: ${cust || prod.toUpperCase()}` : `Magic ${prod.toUpperCase()} Solution`,
+          prod,
+          data.answer,
+          data.resolution_id,
+          evt.currentTarget
+        )
+      }
+    } catch (err) {
+      statusEl.innerHTML = `<span style="color:#f43f5e;">⚠️ Error analyzing case: ${err.message}</span>`
+      contentEl.innerHTML = `<span style="color:#f43f5e;">Could not generate diagnosis. Please verify input and retry.</span>`
+    }
+    if (window.lucide) lucide.createIcons()
+  })
+
+  // 3. AI Settings Load & Save & Live Test Connection
+  async function loadAISettings() {
+    try {
+      const res = await fetch('/api/ai/settings')
+      if (!res.ok) return
+      const data = await res.json()
+      const provider = data.provider || 'expert_synthesizer'
+      document.getElementById('ai-setting-provider').value = provider
+      
+      let mName = data.model_name || ''
+      if (provider === 'groq' && (!mName || mName.toLowerCase().includes('built-in'))) {
+        mName = 'llama-3.3-70b-versatile'
+      } else if (provider === 'openrouter' && (!mName || mName.toLowerCase().includes('built-in'))) {
+        mName = 'meta-llama/llama-3.2-3b-instruct:free'
+      } else if (provider === 'gemini' && (!mName || mName.toLowerCase().includes('built-in'))) {
+        mName = 'gemini-1.5-flash'
+      } else if (provider === 'openai' && (!mName || mName.toLowerCase().includes('built-in'))) {
+        mName = 'gpt-4o'
+      } else if (provider === 'ollama' && (!mName || mName.toLowerCase().includes('built-in'))) {
+        mName = 'llama3'
+      } else if (!mName) {
+        mName = 'Built-in Deep-Reasoning Diagnostic Engine'
+      }
+      document.getElementById('ai-setting-model').value = mName
+      document.getElementById('ai-setting-baseurl').value = data.api_base_url || ''
+      const keyInput = document.getElementById('ai-setting-apikey')
+      if (data.masked_api_key) {
+        keyInput.placeholder = `Active (${data.masked_api_key}) - leave blank to keep`
+        keyInput.value = ''
+        document.getElementById('ai-setting-key-status').textContent = `Current Key Active: ${data.masked_api_key}`
+      } else if (provider === 'expert_synthesizer' || provider === 'ollama') {
+        document.getElementById('ai-setting-key-status').textContent = `✓ No external key required for ${provider === 'ollama' ? 'Local Ollama' : 'Built-in Engine'}`
+      } else {
+        document.getElementById('ai-setting-key-status').textContent = `No API key configured`
+      }
+      const sidebarName = document.getElementById('sidebar-engine-name')
+      if (sidebarName) {
+        if (data.provider === 'groq') sidebarName.textContent = 'Groq LLaMA 3.3'
+        else if (data.provider === 'openrouter') sidebarName.textContent = 'OpenRouter Free'
+        else if (data.provider === 'gemini') sidebarName.textContent = 'Gemini 1.5'
+        else if (data.provider === 'openai') sidebarName.textContent = 'OpenAI GPT-4o'
+        else if (data.provider === 'ollama') sidebarName.textContent = 'Local Ollama'
+        else sidebarName.textContent = 'Deep Reasoning'
+      }
+    } catch (e) {}
+  }
+
+  const providerDropdown = document.getElementById('ai-setting-provider')
+  if (providerDropdown) {
+    providerDropdown.addEventListener('change', () => {
+      const p = providerDropdown.value
+      const modelInput = document.getElementById('ai-setting-model')
+      const baseUrlInput = document.getElementById('ai-setting-baseurl')
+      const keyInput = document.getElementById('ai-setting-apikey')
+      const keyStatus = document.getElementById('ai-setting-key-status')
+
+      if (p === 'groq') {
+        modelInput.value = 'llama-3.3-70b-versatile'
+        baseUrlInput.value = 'https://api.groq.com/openai/v1'
+        keyInput.placeholder = 'Paste Groq Free API Key (gsk_...)'
+        keyStatus.textContent = 'Get free key at console.groq.com (No credit card needed)'
+      } else if (p === 'openrouter') {
+        modelInput.value = 'meta-llama/llama-3.2-3b-instruct:free'
+        baseUrlInput.value = 'https://openrouter.ai/api/v1'
+        keyInput.placeholder = 'Paste OpenRouter Key (sk-or-v1-...)'
+        keyStatus.textContent = 'Get free key at openrouter.ai'
+      } else if (p === 'ollama') {
+        modelInput.value = 'llama3'
+        baseUrlInput.value = 'http://localhost:11434'
+        keyInput.placeholder = 'No API key needed for local Ollama'
+        keyStatus.textContent = '✓ Runs 100% locally on your computer with zero keys'
+      } else if (p === 'gemini') {
+        modelInput.value = 'gemini-1.5-flash'
+        baseUrlInput.value = ''
+        keyInput.placeholder = 'Enter Google Gemini API Key'
+        keyStatus.textContent = 'Google Gemini AI Studio'
+      } else if (p === 'openai') {
+        modelInput.value = 'gpt-4o'
+        baseUrlInput.value = ''
+        keyInput.placeholder = 'Enter OpenAI API Key (sk-...)'
+        keyStatus.textContent = 'OpenAI Platform'
+      } else if (p === 'expert_synthesizer') {
+        modelInput.value = 'Built-in Deep-Reasoning Diagnostic Engine'
+        baseUrlInput.value = ''
+        keyInput.placeholder = 'No key needed (100% Offline & Free)'
+        keyStatus.textContent = '✓ Zero configuration required (Active, offline & ready)'
+      }
+    })
+  }
+
+  document.getElementById('form-ai-settings').addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const provider = document.getElementById('ai-setting-provider').value
+    const apiKey = document.getElementById('ai-setting-apikey').value.trim()
+    const model = document.getElementById('ai-setting-model').value.trim()
+    const baseUrl = document.getElementById('ai-setting-baseurl').value.trim()
+    const msgEl = document.getElementById('ai-settings-save-msg')
+
+    try {
+      const res = await fetch('/api/ai/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider,
+          api_key: apiKey,
+          model_name: model,
+          api_base_url: baseUrl
+        })
+      })
+      if (!res.ok) throw new Error('Failed to update AI settings')
+      msgEl.textContent = '✓ Saved successfully!'
+      setTimeout(() => { msgEl.textContent = '' }, 3000)
+      loadAISettings()
+    } catch (err) {
+      alert('Error saving settings: ' + err.message)
+    }
+  })
+
+  const testBtn = document.getElementById('btn-test-ai-connection')
+  if (testBtn) {
+    testBtn.addEventListener('click', async () => {
+      const resultBox = document.getElementById('ai-connection-test-result')
+      resultBox.classList.remove('hide')
+      resultBox.innerHTML = '<span style="color:#38bdf8;">⚡ Testing live connection...</span>'
+      
+      const provider = document.getElementById('ai-setting-provider').value
+      const apiKey = document.getElementById('ai-setting-apikey').value.trim()
+      const model = document.getElementById('ai-setting-model').value.trim()
+      const baseUrl = document.getElementById('ai-setting-baseurl').value.trim()
+
+      try {
+        const res = await fetch('/api/ai/test-connection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider, api_key: apiKey, model_name: model, api_base_url: baseUrl })
+        })
+        const rawText = await res.text()
+        let data
+        try {
+          data = JSON.parse(rawText)
+        } catch (e) {
+          resultBox.innerHTML = `<div style="color:#f43f5e; padding:6px 0;">⚠️ Server Response (${res.status}): ${rawText.substring(0, 180)}</div>`
+          return
+        }
+        if (data.success) {
+          resultBox.innerHTML = `<div style="color:#10b981; font-weight:700; padding:6px 0;">✓ ${data.message}</div>`
+        } else {
+          resultBox.innerHTML = `<div style="color:#f43f5e; font-weight:600; padding:6px 0;">⚠️ ${data.message}</div>`
+        }
+      } catch (err) {
+        resultBox.innerHTML = `<div style="color:#f43f5e; padding:6px 0;">⚠️ Connection Error: ${err.message}</div>`
+      }
+    })
+  }
 
   // ==================== 15. IN-APP KB AUTHORING & TEMPLATES ====================
   window.insertDocTemplate = function(type) {
