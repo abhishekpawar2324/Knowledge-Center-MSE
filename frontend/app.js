@@ -844,7 +844,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Render content
       const bodyContainer = document.getElementById('reader-doc-body')
-      if (currentDoc.html_content) {
+      if (currentDoc.file_type === 'pdf') {
+        bodyContainer.innerHTML = `
+          <div style="margin-bottom:14px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:10px; background:rgba(255,255,255,0.03); padding:10px 16px; border-radius:10px; border:1px solid rgba(255,255,255,0.08);">
+            <div style="display:flex; gap:8px;">
+              <button id="btn-toggle-pdf-view" class="btn" style="padding:6px 14px; font-size:0.8rem; font-weight:700; background:rgba(0,141,199,0.25); border:1px solid rgba(45,188,238,0.4); color:#38bdf8; border-radius:6px;">
+                📄 Original PDF Document
+              </button>
+              <button id="btn-toggle-text-view" class="btn" style="padding:6px 14px; font-size:0.8rem; font-weight:600; background:transparent; border:1px solid transparent; color:#94a3b8; border-radius:6px;">
+                📝 Search Text View
+              </button>
+            </div>
+            <a href="/api/document/raw/${currentDoc.id}" target="_blank" class="btn btn-secondary" style="padding:6px 12px; font-size:0.78rem; text-decoration:none; display:flex; align-items:center; gap:6px;">
+              📥 Open Fullscreen / Download
+            </a>
+          </div>
+          <div id="pdf-view-frame-container">
+            <iframe src="/api/document/raw/${currentDoc.id}#toolbar=1&navpanes=1" style="width:100%; height:820px; border:none; border-radius:10px; background:#0f172a; box-shadow:0 10px 30px rgba(0,0,0,0.5);"></iframe>
+          </div>
+          <div id="pdf-view-text-container" class="hide" style="padding:20px; border-radius:10px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.05); color:#cbd5e1; line-height:1.8;">
+            ${currentDoc.html_content || `<pre style="white-space:pre-wrap; font-family:inherit;">${currentDoc.content}</pre>`}
+          </div>
+        `
+        document.getElementById('btn-toggle-pdf-view').onclick = () => {
+          document.getElementById('pdf-view-frame-container').classList.remove('hide')
+          document.getElementById('pdf-view-text-container').classList.add('hide')
+          document.getElementById('btn-toggle-pdf-view').style.background = 'rgba(0,141,199,0.25)'
+          document.getElementById('btn-toggle-pdf-view').style.color = '#38bdf8'
+          document.getElementById('btn-toggle-pdf-view').style.borderColor = 'rgba(45,188,238,0.4)'
+          document.getElementById('btn-toggle-text-view').style.background = 'transparent'
+          document.getElementById('btn-toggle-text-view').style.color = '#94a3b8'
+          document.getElementById('btn-toggle-text-view').style.borderColor = 'transparent'
+        }
+        document.getElementById('btn-toggle-text-view').onclick = () => {
+          document.getElementById('pdf-view-frame-container').classList.add('hide')
+          document.getElementById('pdf-view-text-container').classList.remove('hide')
+          document.getElementById('btn-toggle-text-view').style.background = 'rgba(0,141,199,0.25)'
+          document.getElementById('btn-toggle-text-view').style.color = '#38bdf8'
+          document.getElementById('btn-toggle-text-view').style.borderColor = 'rgba(45,188,238,0.4)'
+          document.getElementById('btn-toggle-pdf-view').style.background = 'transparent'
+          document.getElementById('btn-toggle-pdf-view').style.color = '#94a3b8'
+          document.getElementById('btn-toggle-pdf-view').style.borderColor = 'transparent'
+        }
+      } else if (currentDoc.html_content) {
         bodyContainer.innerHTML = currentDoc.html_content
       } else {
         bodyContainer.innerHTML = `<pre style="white-space:pre-wrap; font-family:inherit;">${currentDoc.content}</pre>`
@@ -953,8 +995,252 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {}
   })
 
-  // ==================== 14. MAGIC AI ASSISTANT MODAL ====================
-  window.openCopilotWithQuery = function(initialQ = '') {
+  // ==================== 14. MAGIC AI ASSISTANT, CHATGPT SESSIONS & SALESFORCE COPILOT ====================
+
+  let currentChatSessionId = null
+  let currentAttachments = []
+
+  function renderMarkdownSafe(rawText) {
+    if (!rawText) return ''
+    if (window.marked && typeof window.marked.parse === 'function') {
+      try {
+        return window.marked.parse(rawText)
+      } catch (e) {
+        console.error('Marked parse error:', e)
+      }
+    }
+    // Fallback basic formatter
+    return rawText
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/^### (.*$)/gim, '<h3 style="font-size:1.05rem; font-weight:700; color:#fff; margin-top:14px; margin-bottom:6px;">$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2 style="font-size:1.15rem; font-weight:800; color:#38bdf8; margin-top:16px; margin-bottom:8px;">$1</h2>')
+      .replace(/\*\*(.*?)\*\*/gim, '<strong style="color:#fff;">$1</strong>')
+      .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+      .replace(/```([\s\S]*?)```/gim, '<pre style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); padding:12px; border-radius:8px; overflow-x:auto; color:#38bdf8; font-family:monospace; font-size:0.85rem; margin:10px 0;"><code>$1</code></pre>')
+      .replace(/`([^`]+)`/gim, '<code style="background:rgba(255,255,255,0.08); padding:2px 6px; border-radius:4px; color:#38bdf8; font-family:monospace; font-size:0.85rem;">$1</code>')
+      .replace(/\n/gim, '<br>')
+  }
+
+  window.copyToClipboard = function(text, btnEl) {
+    navigator.clipboard.writeText(text).then(() => {
+      const originalHtml = btnEl ? btnEl.innerHTML : ''
+      if (btnEl) {
+        btnEl.innerHTML = '✓ Copied!'
+        btnEl.style.color = '#34d399'
+        setTimeout(() => {
+          btnEl.innerHTML = originalHtml
+          btnEl.style.color = ''
+        }, 2000)
+      }
+    }).catch(err => alert('Copied to clipboard'))
+  }
+
+  window.markResolutionVerified = async function(resolutionId, btnEl) {
+    if (!resolutionId) return
+    try {
+      const res = await fetch('/api/ai/mark-verified', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ resolution_id: resolutionId })
+      })
+      if (!res.ok) throw new Error('Verification failed')
+      if (btnEl) {
+        btnEl.innerHTML = '✓ Verified & Learned'
+        btnEl.disabled = true
+        btnEl.style.background = 'rgba(16,185,129,0.3)'
+      }
+    } catch (e) {
+      alert('Could not mark as verified: ' + e.message)
+    }
+  }
+
+  window.createKbFromAI = async function(title, product, content, resolutionId, btnEl) {
+    if (!content) return
+    const defaultTitle = title || `Magic ${product.toUpperCase()} Resolution: ${new Date().toLocaleDateString()}`
+    const articleTitle = prompt('Publish as Knowledge Base Article Title:', defaultTitle)
+    if (!articleTitle) return
+
+    try {
+      if (btnEl) btnEl.innerHTML = 'Publishing...'
+      const res = await fetch('/api/ai/create-kb', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          title: articleTitle,
+          product: product || 'xpi',
+          content: content,
+          resolution_id: resolutionId
+        })
+      })
+      if (!res.ok) throw new Error('Could not publish article')
+      const data = await res.json()
+      alert(`Success! Published KB Article: "${data.title}"`)
+      if (btnEl) {
+        btnEl.innerHTML = '✓ Published to KC'
+        btnEl.disabled = true
+      }
+      fetchNotifications()
+      if (data.doc_id) {
+        document.getElementById('modal-copilot').classList.add('hide')
+        openDocument(data.doc_id)
+      }
+    } catch (e) {
+      alert('Error publishing KB: ' + e.message)
+      if (btnEl) btnEl.innerHTML = '✨ 1-Click Publish'
+    }
+  }
+
+  window.applyCopilotPrompt = function(promptText, product) {
+    const input = document.getElementById('copilot-input')
+    const scope = document.getElementById('copilot-product-scope')
+    if (input) input.value = promptText
+    if (scope && product) scope.value = product
+    document.getElementById('copilot-form').dispatchEvent(new Event('submit'))
+  }
+
+  // Session Management & History
+  async function loadRecentSessions() {
+    const listEl = document.getElementById('copilot-sessions-list')
+    if (!listEl) return
+    try {
+      const res = await fetch('/api/ai/sessions')
+      if (!res.ok) return
+      const sessions = await res.json()
+      if (sessions.length === 0) {
+        listEl.innerHTML = '<div style="font-size:0.75rem; color:#64748b; padding:8px;">No past sessions</div>'
+        return
+      }
+      listEl.innerHTML = sessions.map(s => `
+        <div onclick="switchChatSession('${s.id}')" style="display:flex; justify-content:space-between; align-items:center; padding:7px 10px; border-radius:6px; background:${s.id === currentChatSessionId ? 'rgba(0,141,199,0.25)' : 'rgba(255,255,255,0.03)'}; border:1px solid ${s.id === currentChatSessionId ? 'rgba(45,188,238,0.3)' : 'transparent'}; cursor:pointer; transition:all 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='${s.id === currentChatSessionId ? 'rgba(0,141,199,0.25)' : 'rgba(255,255,255,0.03)'}'">
+          <div style="display:flex; align-items:center; gap:6px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">
+            <span style="font-size:0.75rem; color:${s.id === currentChatSessionId ? '#38bdf8' : '#94a3b8'};">💬</span>
+            <span style="font-size:0.75rem; color:#cbd5e1; overflow:hidden; text-overflow:ellipsis;">${s.title}</span>
+          </div>
+          <button onclick="deleteChatSession('${s.id}', event)" style="background:none; border:none; color:#64748b; padding:2px 4px; cursor:pointer;" title="Delete Chat">×</button>
+        </div>
+      `).join('')
+    } catch (e) {}
+  }
+
+  window.createNewChatSession = async function() {
+    currentChatSessionId = `session_${Date.now()}`
+    currentAttachments = []
+    renderAttachmentPreviews()
+    const thread = document.getElementById('copilot-messages-thread')
+    thread.innerHTML = `
+      <div style="padding:16px; border-radius:12px; background:linear-gradient(135deg, rgba(0,141,199,0.15), rgba(45,188,238,0.08)); border:1px solid rgba(45,188,238,0.3); color:#e2e8f0; font-size:0.9rem; line-height:1.6;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+          <span style="font-size:1.1rem;">👋</span>
+          <strong style="color:#fff;">New Magic AI Troubleshooting Session Started</strong>
+        </div>
+        Ask any configuration question, attach logs/config files with <strong>📎</strong>, or switch to <strong>Salesforce Case Analyzer</strong>.
+      </div>
+    `
+    try {
+      await fetch('/api/ai/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: currentChatSessionId, title: 'New Troubleshooting Session' })
+      })
+      loadRecentSessions()
+    } catch (e) {}
+  }
+
+  window.switchChatSession = async function(sessionId) {
+    currentChatSessionId = sessionId
+    currentAttachments = []
+    renderAttachmentPreviews()
+    loadRecentSessions()
+    const thread = document.getElementById('copilot-messages-thread')
+    thread.innerHTML = '<div style="padding:10px; text-align:center; color:#94a3b8;">Loading chat history...</div>'
+
+    try {
+      const res = await fetch(`/api/ai/sessions/${sessionId}/messages`)
+      if (!res.ok) throw new Error('Could not load history')
+      const msgs = await res.json()
+      thread.innerHTML = ''
+      if (msgs.length === 0) {
+        thread.innerHTML = '<div style="padding:10px; text-align:center; color:#64748b;">Empty chat session. Type a message below.</div>'
+        return
+      }
+      for (const m of msgs) {
+        if (m.role === 'user') {
+          const userMsg = document.createElement('div')
+          userMsg.style.cssText = 'align-self:flex-end; max-width:85%; padding:12px 18px; border-radius:14px 14px 4px 14px; background:linear-gradient(135deg,#008DC7,#2DBCEE); color:#fff; font-size:0.9rem;'
+          userMsg.textContent = m.content
+          thread.appendChild(userMsg)
+        } else {
+          const botMsg = document.createElement('div')
+          botMsg.style.cssText = 'align-self:flex-start; max-width:92%; width:92%; padding:18px 20px; border-radius:14px 14px 14px 4px; background:rgba(15,23,42,0.9); border:1px solid rgba(0,141,199,0.25); color:#cbd5e1; font-size:0.9rem;'
+          botMsg.innerHTML = `
+            <div class="ai-response-rendered" style="color:#e2e8f0; font-size:0.92rem; line-height:1.75;">
+              ${renderMarkdownSafe(m.content)}
+            </div>
+          `
+          thread.appendChild(botMsg)
+        }
+      }
+      thread.scrollTop = thread.scrollHeight
+    } catch (e) {
+      thread.innerHTML = '<div style="color:#f43f5e;">Could not load session messages.</div>'
+    }
+  }
+
+  window.deleteChatSession = async function(sessionId, event) {
+    if (event) event.stopPropagation()
+    try {
+      await fetch(`/api/ai/sessions/${sessionId}`, { method: 'DELETE' })
+      if (currentChatSessionId === sessionId) {
+        createNewChatSession()
+      } else {
+        loadRecentSessions()
+      }
+    } catch (e) {}
+  }
+
+  // Attachment Handling (File Picker & FileReader)
+  function renderAttachmentPreviews() {
+    const box = document.getElementById('copilot-attachments-preview')
+    if (!box) return
+    if (currentAttachments.length === 0) {
+      box.classList.add('hide')
+      box.innerHTML = ''
+      return
+    }
+    box.classList.remove('hide')
+    box.innerHTML = currentAttachments.map((att, idx) => `
+      <div style="display:flex; align-items:center; gap:6px; padding:4px 10px; border-radius:6px; background:rgba(0,141,199,0.25); border:1px solid rgba(45,188,238,0.4); color:#38bdf8; font-size:0.75rem;">
+        <span>📄 ${att.name}</span>
+        <span onclick="removeAttachment(${idx})" style="cursor:pointer; font-weight:bold; margin-left:4px;">×</span>
+      </div>
+    `).join('')
+  }
+
+  window.removeAttachment = function(idx) {
+    currentAttachments.splice(idx, 1)
+    renderAttachmentPreviews()
+  }
+
+  const fileInput = document.getElementById('copilot-file-input')
+  const attachBtn = document.getElementById('btn-copilot-attach')
+  if (attachBtn && fileInput) {
+    attachBtn.addEventListener('click', () => fileInput.click())
+    fileInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files)
+      for (const file of files) {
+        try {
+          const text = await file.text()
+          currentAttachments.push({ name: file.name, content: text })
+        } catch (err) {
+          console.error('Error reading file:', err)
+        }
+      }
+      renderAttachmentPreviews()
+      fileInput.value = ''
+    })
+  }
+
+  window.openCopilotWithQuery = function(initialQ = '', product = '') {
     const modal = document.getElementById('modal-copilot')
     modal.classList.remove('hide')
     const thread = document.getElementById('copilot-messages-thread')

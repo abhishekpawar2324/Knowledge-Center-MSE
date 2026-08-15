@@ -431,8 +431,6 @@ async def ai_chat_ask(
             case_number = body.get("case_number")
             session_id = body.get("session_id")
             attachments = body.get("attachments") or []
-            if body.get("client_id"):
-                client_id = body.get("client_id")
         except Exception:
             pass
     else:
@@ -441,6 +439,7 @@ async def ai_chat_ask(
             prompt = form.get("prompt") or form.get("question") or ""
             product = form.get("product") or "all"
             case_number = form.get("case_number")
+            session_id = form.get("session_id")
         except Exception:
             pass
 
@@ -567,22 +566,6 @@ CASE HISTORY & LOG DETAILS:
         except Exception as e:
             print(f"[Salesforce Case Persistence] Note: {e}")
 
-    return result
-
-@app.post("/api/ai/create-kb")
-def ai_create_kb(
-    data: dict,
-    db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
-):
-    """Publish AI generated resolution directly as a verified KB SOP article."""
-    title = data.get("title")
-    product = (data.get("product") or "xpi").lower().strip()
-    content = data.get("content")
-    resolution_id = data.get("resolution_id")
-    category = data.get("category") or data.get("doc_type") or "troubleshooting"
-    version = data.get("version") or "Universal"
-    author_name = current_user.username if current_user else "Support Specialist"
 
     if not title or not content:
         raise HTTPException(status_code=400, detail="Title and content are required to create a KB article.")
