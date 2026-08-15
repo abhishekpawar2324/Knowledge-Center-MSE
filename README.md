@@ -94,4 +94,3 @@ npm run dev:frontend
 Open your browser at:
 - **Frontend Portal**: `http://localhost:5173`
 - **Backend API Docs**: `http://localhost:8000/docs`
-- **Default Administrator**: `superadmin` / `admin@123`
