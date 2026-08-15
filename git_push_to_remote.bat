@@ -8,44 +8,52 @@ echo.
 set SCRIPT_DIR=%~dp0
 cd /d "%SCRIPT_DIR%"
 
-git --version >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
+set "GIT_CMD="
+if exist "%SCRIPT_DIR%git_tools\portable_git\cmd\git.exe" (
+    set "GIT_CMD=%SCRIPT_DIR%git_tools\portable_git\cmd\git.exe"
+) else if exist "C:\Program Files\Git\cmd\git.exe" (
+    set "GIT_CMD=C:\Program Files\Git\cmd\git.exe"
+) else if exist "C:\Program Files\Git\bin\git.exe" (
+    set "GIT_CMD=C:\Program Files\Git\bin\git.exe"
+) else if exist "%LocalAppData%\Programs\Git\cmd\git.exe" (
+    set "GIT_CMD=%LocalAppData%\Programs\Git\cmd\git.exe"
+) else if exist "C:\Program Files (x86)\Git\cmd\git.exe" (
+    set "GIT_CMD=C:\Program Files (x86)\Git\cmd\git.exe"
+) else (
+    where git >nul 2>&1
+    if %ERRORLEVEL% EQU 0 set "GIT_CMD=git"
+)
+
+if "%GIT_CMD%"=="" (
     echo [ERROR] Git is not installed or not in PATH.
     pause
     exit /b 1
 )
 
-:: Check if remote origin is configured
-git remote get-url origin >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo [INFO] No remote repository URL is configured yet.
-    echo Please paste your remote repository URL (e.g. https://github.com/your-org/knowledge-center.git):
-    set /p REMOTE_URL="Repository URL: "
-    if not "%REMOTE_URL%"=="" (
-        git remote add origin %REMOTE_URL%
-        echo Remote 'origin' configured to: %REMOTE_URL%
-    ) else (
-        echo [ERROR] No URL provided. Push cancelled.
-        pause
-        exit /b 1
-    )
-)
+:: Ensure on Dev-Abhishek branch
+"%GIT_CMD%" checkout Dev-Abhishek >nul 2>&1
+
+echo Target Branch: Dev-Abhishek
+echo.
+echo Staging and committing any uncommitted changes...
+"%GIT_CMD%" add .
+"%GIT_CMD%" commit -m "Update Knowledge Center codebase" >nul 2>&1
 
 echo.
-echo Pushing latest commits to remote repository...
-git push -u origin main
+echo Pushing latest commits to GitHub (Dev-Abhishek)...
+"%GIT_CMD%" push origin Dev-Abhishek
 
 if %ERRORLEVEL% EQU 0 (
     echo.
     echo ======================================================================
-    echo [SUCCESS] Code successfully pushed to remote repository!
+    echo [SUCCESS] Code successfully pushed to 'Dev-Abhishek' on GitHub!
     echo You can now go to your Office VM and run 'git_pull_updates.bat' to update.
     echo ======================================================================
 ) else (
     echo.
-    echo [NOTICE] If this is your first push and the remote has files, you may need to run:
-    echo git pull origin main --rebase
-    echo before pushing.
+    echo [NOTICE] Push failed or was rejected. Trying to reconcile...
+    "%GIT_CMD%" pull origin Dev-Abhishek --rebase
+    "%GIT_CMD%" push origin Dev-Abhishek
 )
 
 echo.

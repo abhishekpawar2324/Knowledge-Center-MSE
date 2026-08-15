@@ -8,30 +8,36 @@ echo.
 set SCRIPT_DIR=%~dp0
 cd /d "%SCRIPT_DIR%"
 
-git --version >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
+set "GIT_CMD="
+if exist "%SCRIPT_DIR%git_tools\portable_git\cmd\git.exe" (
+    set "GIT_CMD=%SCRIPT_DIR%git_tools\portable_git\cmd\git.exe"
+) else if exist "C:\Program Files\Git\cmd\git.exe" (
+    set "GIT_CMD=C:\Program Files\Git\cmd\git.exe"
+) else if exist "C:\Program Files\Git\bin\git.exe" (
+    set "GIT_CMD=C:\Program Files\Git\bin\git.exe"
+) else if exist "%LocalAppData%\Programs\Git\cmd\git.exe" (
+    set "GIT_CMD=%LocalAppData%\Programs\Git\cmd\git.exe"
+) else if exist "C:\Program Files (x86)\Git\cmd\git.exe" (
+    set "GIT_CMD=C:\Program Files (x86)\Git\cmd\git.exe"
+) else (
+    where git >nul 2>&1
+    if %ERRORLEVEL% EQU 0 set "GIT_CMD=git"
+)
+
+if "%GIT_CMD%"=="" (
     echo [ERROR] Git is not installed or not in PATH on this VM.
     pause
     exit /b 1
 )
 
-echo [1/2] Fetching and applying latest code changes from remote...
-git pull origin main
+echo [1/2] Fetching and applying latest code changes from 'Dev-Abhishek'...
+"%GIT_CMD%" pull origin Dev-Abhishek
 
 if %ERRORLEVEL% EQU 0 (
     echo.
-    echo [2/2] Checking if new dependencies exist...
-    if exist ".venv\Scripts\python.exe" (
-        if exist "vendor\wheels" (
-            .venv\Scripts\python.exe -m pip install --no-index --find-links=vendor\wheels -r requirements.txt --quiet
-        ) else (
-            .venv\Scripts\python.exe -m pip install -r requirements.txt --quiet
-        )
-    )
-    echo.
     echo ======================================================================
     echo [SUCCESS] Knowledge Center has been updated with the latest code!
-    echo If running as a Windows Service, restart it with 'start_service.bat'
+    echo If running as a Windows Service, restart it with 'restart_service.bat'
     echo ======================================================================
 ) else (
     echo.
