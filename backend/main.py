@@ -126,7 +126,7 @@ UPLOADS_ASSETS = os.path.join(UPLOADS_DIR, "assets")
 os.makedirs(UPLOADS_ASSETS, exist_ok=True)
 app.mount("/api/kb/assets", StaticFiles(directory=UPLOADS_ASSETS), name="kb_assets")
 
-# ----------------- Auth Endpoints -----------------
+# ----------------- Auth Endpoints (Case-Insensitive) -----------------
 
 @app.post("/api/auth/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
