@@ -43,6 +43,9 @@ if "%PY_CMD%"=="" (
 )
 
 echo [1/2] Using Python Runtime: %PY_CMD%
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8000 ^| findstr LISTENING') do (
+    taskkill /F /PID %%a >nul 2>&1
+)
 echo [2/2] Starting Magic Knowledge Center Server on Port 8000...
 echo.
 echo ======================================================================
