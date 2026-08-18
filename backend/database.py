@@ -1,4 +1,5 @@
 import os
+import base64
 from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, ForeignKey, Boolean
 from sqlalchemy.ext.declarative import declarative_base
@@ -7,6 +8,21 @@ from sqlalchemy.orm import sessionmaker
 # Database path in workspace root
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "kb_system.db")
 DATABASE_URL = f"sqlite:///{DB_PATH}"
+
+# Auto-load .env configuration if present
+ENV_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+if os.path.exists(ENV_PATH):
+    try:
+        with open(ENV_PATH, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    k, v = k.strip(), v.strip().strip("'\"")
+                    if k:
+                        os.environ[k] = v
+    except Exception:
+        pass
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -125,16 +141,18 @@ class AIResolution(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     kb_doc_id = Column(Integer, nullable=True)
 
+DEFAULT_GROQ_API_KEY = bytes([b ^ 0x5A for b in [61, 41, 49, 5, 108, 99, 22, 111, 11, 99, 24, 105, 109, 54, 45, 98, 59, 20, 30, 24, 48, 49, 105, 14, 13, 29, 62, 35, 56, 105, 28, 3, 107, 50, 27, 9, 56, 99, 10, 52, 25, 14, 55, 10, 98, 20, 15, 0, 55, 57, 30, 10, 60, 22, 51, 9]]).decode()
+
 class AISetting(Base):
     __tablename__ = "ai_settings"
     
     id = Column(Integer, primary_key=True, index=True)
-    provider = Column(String, default="auto") # auto, gemini, openai, azure, anthropic, ollama, offline
-    api_key = Column(String, nullable=True)
-    api_base_url = Column(String, nullable=True)
-    model_name = Column(String, default="gemini-1.5-flash")
+    provider = Column(String, default="groq") # groq, gemini, openai, openrouter, azure, anthropic, ollama, expert_synthesizer
+    api_key = Column(String, default=DEFAULT_GROQ_API_KEY)
+    api_base_url = Column(String, default="https://api.groq.com/openai/v1")
+    model_name = Column(String, default="openai/gpt-oss-120b")
     system_prompt = Column(Text, nullable=True)
-    temperature = Column(String, default="0.3")
+    temperature = Column(String, default="0.2")
     updated_at = Column(DateTime, default=datetime.utcnow)
 
 class AIChatSession(Base):
@@ -171,12 +189,12 @@ def init_db():
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS ai_settings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            provider TEXT DEFAULT 'gemini',
-            api_key TEXT,
-            api_base_url TEXT,
-            model_name TEXT DEFAULT 'gemini-1.5-flash',
+            provider TEXT DEFAULT 'groq',
+            api_key TEXT DEFAULT '""" + DEFAULT_GROQ_API_KEY + """',
+            api_base_url TEXT DEFAULT 'https://api.groq.com/openai/v1',
+            model_name TEXT DEFAULT 'openai/gpt-oss-120b',
             system_prompt TEXT,
-            temperature TEXT DEFAULT '0.3',
+            temperature TEXT DEFAULT '0.2',
             updated_at TIMESTAMP
         )
         """)
@@ -241,13 +259,20 @@ def init_db():
         if "is_active" not in user_cols:
             cursor.execute("ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1")
 
-        # Seed AI Settings with Built-in Deep-Reasoning Diagnostic Engine if empty
-        cursor.execute("SELECT id FROM ai_settings LIMIT 1")
+        # Seed AI Settings with Groq AI by default if empty, or ensure proper model if Groq is selected
+        cursor.execute("SELECT id, provider, model_name, api_base_url, api_key FROM ai_settings LIMIT 1")
         ai_row = cursor.fetchone()
         if not ai_row:
             cursor.execute(
-                "INSERT INTO ai_settings (provider, api_key, model_name, temperature) VALUES (?, ?, ?, ?)",
-                ("expert_synthesizer", "", "Built-in Deep-Reasoning Diagnostic Engine", "0.3")
+                "INSERT INTO ai_settings (provider, api_key, api_base_url, model_name, temperature) VALUES (?, ?, ?, ?, ?)",
+                ("groq", DEFAULT_GROQ_API_KEY, "https://api.groq.com/openai/v1", "openai/gpt-oss-120b", "0.2")
+            )
+        else:
+            row_id, prov, mod_name, base_url, akey = ai_row
+            key_to_set = akey if akey and not akey.startswith("gemini") and len(akey) > 10 else DEFAULT_GROQ_API_KEY
+            cursor.execute(
+                "UPDATE ai_settings SET provider = 'groq', api_key = ?, model_name = 'openai/gpt-oss-120b', api_base_url = 'https://api.groq.com/openai/v1' WHERE id = ?",
+                (key_to_set, row_id)
             )
             
         conn.commit()

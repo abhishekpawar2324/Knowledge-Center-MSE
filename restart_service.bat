@@ -5,21 +5,22 @@ echo           RESTARTING MAGIC KNOWLEDGE CENTER SERVICE
 echo ======================================================================
 echo.
 
-net session >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] Please right-click and select 'Run as administrator'.
-    pause
-    exit /b 1
-)
-
 if exist "MagicService.exe" (
-    echo [1/2] Stopping service...
+    echo [1/3] Stopping service...
     MagicService.exe stop
+    echo [2/3] Terminating any stale python processes listening on port 8000...
+    for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8000 ^| findstr LISTENING') do (
+        echo Killing old port 8000 worker PID: %%a
+        taskkill /F /PID %%a >nul 2>&1
+    )
     timeout /t 2 /nobreak >nul
-    echo [2/2] Starting service with latest code...
+    echo [3/3] Starting service with latest Groq AI engine...
     MagicService.exe start
 ) else (
     net stop MagicKnowledgeCenter
+    for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8000 ^| findstr LISTENING') do (
+        taskkill /F /PID %%a >nul 2>&1
+    )
     net start MagicKnowledgeCenter
 )
 
@@ -28,7 +29,7 @@ echo Service status:
 sc query MagicKnowledgeCenter
 echo.
 echo ======================================================================
-echo  Service restarted successfully! Latest code is now LIVE at:
+echo  Service restarted successfully! Latest Groq AI engine is LIVE at:
 echo  http://localhost:8000
 echo ======================================================================
 pause
