@@ -6,6 +6,7 @@ import os
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from backend.database import get_db, User
 
 SECRET_KEY = "magic-software-super-secret-key-change-in-prod"
@@ -54,7 +55,7 @@ def get_current_user(token: Optional[str] = Depends(oauth2_scheme), db: Session 
     except JWTError:
         raise credentials_exception
         
-    user = db.query(User).filter(User.username == username).first()
+    user = db.query(User).filter(func.lower(User.username) == username.lower().strip()).first()
     if user is None:
         raise credentials_exception
     return user
@@ -67,7 +68,7 @@ def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme), db:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if username:
-            return db.query(User).filter(User.username == username).first()
+            return db.query(User).filter(func.lower(User.username) == username.lower().strip()).first()
     except Exception:
         pass
     return None

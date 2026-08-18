@@ -87,7 +87,7 @@ db = SessionLocal()
 try:
     admin_username = os.getenv("ADMIN_USERNAME", "admin")
     admin_password = os.getenv("ADMIN_PASSWORD", "admin")
-    admin_user = db.query(User).filter(User.username == admin_username).first()
+    admin_user = db.query(User).filter(func.lower(User.username) == admin_username.lower().strip()).first()
     if not admin_user:
         hashed_pw = get_password_hash(admin_password)
         db.add(User(username=admin_username, hashed_password=hashed_pw, role="Admin", product_space="all", is_active=True))
@@ -131,7 +131,7 @@ app.mount("/api/kb/assets", StaticFiles(directory=UPLOADS_ASSETS), name="kb_asse
 @app.post("/api/auth/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     uname = form_data.username.strip()
-    user = db.query(User).filter(User.username == uname).first()
+    user = db.query(User).filter(func.lower(User.username) == uname.lower()).first()
     is_valid = False
     
     if user:
@@ -2170,7 +2170,7 @@ def create_user(
 ):
     if current_user.role != "Admin":
         raise HTTPException(status_code=403, detail="Admin permission required")
-    existing = db.query(User).filter(User.username == username).first()
+    existing = db.query(User).filter(func.lower(User.username) == username.lower().strip()).first()
     if existing:
         raise HTTPException(status_code=400, detail="User already exists")
     hashed_pw = get_password_hash(password)
@@ -2219,7 +2219,7 @@ def delete_user(user_id: int, current_user: User = Depends(get_current_user), db
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    if user.username == "admin":
+    if user.username.lower() == "admin":
         raise HTTPException(status_code=400, detail="Cannot delete default administrator account")
     db.delete(user)
     db.commit()
