@@ -576,6 +576,21 @@ CASE HISTORY & LOG DETAILS:
         except Exception as e:
             print(f"[Salesforce Case Persistence] Note: {e}")
 
+    return result
+
+@app.post("/api/ai/publish-kb")
+async def ai_publish_kb(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    body = await request.json()
+    title = body.get("title")
+    product = (body.get("product") or "xpi").lower().strip()
+    content = body.get("content")
+    version = body.get("version") or "Universal"
+    category = body.get("category") or "troubleshooting"
+    author_name = body.get("author") or "Magic AI Copilot"
+    resolution_id = body.get("resolution_id")
 
     if not title or not content:
         raise HTTPException(status_code=400, detail="Title and content are required to create a KB article.")
