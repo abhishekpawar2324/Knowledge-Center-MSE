@@ -11,7 +11,7 @@
   <!-- Lucide Icons & Markdown Parser -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <link rel="stylesheet" href="styles.css?v=9.7">
+  <link rel="stylesheet" href="styles.css?v=10.2">
   <script>
     function openAddUserModal() {
       var modal = document.getElementById('modal-admin-add-user');
@@ -918,10 +918,10 @@
 
           <!-- Active AI Engine Pill -->
           <div id="copilot-engine-indicator" style="padding:8px 10px; border-radius:8px; background:rgba(0,141,199,0.12); border:1px solid rgba(0,141,199,0.25); display:flex; align-items:center; gap:8px;">
-            <div style="width:8px; height:8px; border-radius:50%; background:#10b981; box-shadow:0 0 8px #10b981;"></div>
+            <div style="width:8px; height:8px; border-radius:50%; background:#10b981; box-shadow:0 0 8px #10b981; flex-shrink:0;"></div>
             <div style="flex:1; min-width:0;">
-              <div style="font-size:0.68rem; color:#94a3b8; text-transform:uppercase; font-weight:700;">Engine: Groq LLaMA 3.3</div>
-              <div style="font-size:0.75rem; color:#38bdf8; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">● Active</div>
+              <div style="font-size:0.68rem; color:#94a3b8; text-transform:uppercase; font-weight:700;">ENGINE: GROQ</div>
+              <div style="font-size:0.75rem; color:#38bdf8; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="openai/gpt-oss-120b">● Active (openai/gpt-oss-120b)</div>
             </div>
           </div>
         </div>
@@ -1048,7 +1048,7 @@
               <div>
                 <label style="display:block; font-size:0.75rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">AI Provider</label>
                 <select id="ai-setting-provider" style="width:100%;">
-                  <option value="groq" selected>⚡ Groq Cloud AI (LLaMA 3.3 70B - Ultra Fast & Accurate)</option>
+                  <option value="groq" selected>⚡ Groq Cloud AI (OpenAI GPT-OSS 120B / Fast Inference)</option>
                   <option value="openrouter">🌐 OpenRouter (Multi-Model & Free Tiers)</option>
                   <option value="gemini">✨ Google Gemini (1.5 Flash / 2.0 Flash)</option>
                   <option value="openai">🧠 OpenAI (GPT-4o / GPT-4o-mini)</option>
@@ -1059,19 +1059,25 @@
 
               <div>
                 <label style="display:block; font-size:0.75rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">Model Identifier</label>
-                <input type="text" id="ai-setting-model" placeholder="e.g. llama-3.3-70b-versatile, gpt-4o, gemini-1.5-flash" style="width:100%; padding:9px 12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none;">
+                <input type="text" id="ai-setting-model" value="openai/gpt-oss-120b" placeholder="e.g. openai/gpt-oss-120b" style="width:100%; padding:9px 12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none;">
+                <div id="ai-model-chips" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;">
+                  <button type="button" class="ai-model-chip" data-model="openai/gpt-oss-120b" style="background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.35); color:#38bdf8; font-size:0.7rem; padding:2px 8px; border-radius:4px; cursor:pointer;">⚡ openai/gpt-oss-120b (Recommended)</button>
+                  <button type="button" class="ai-model-chip" data-model="openai/gpt-oss-20b" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#cbd5e1; font-size:0.7rem; padding:2px 8px; border-radius:4px; cursor:pointer;">openai/gpt-oss-20b</button>
+                  <button type="button" class="ai-model-chip" data-model="qwen/qwen3.6-27b" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#cbd5e1; font-size:0.7rem; padding:2px 8px; border-radius:4px; cursor:pointer;">qwen/qwen3.6-27b</button>
+                  <button type="button" class="ai-model-chip" data-model="groq/compound-mini" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#cbd5e1; font-size:0.7rem; padding:2px 8px; border-radius:4px; cursor:pointer;">groq/compound-mini</button>
+                </div>
               </div>
             </div>
 
             <div>
               <label style="display:block; font-size:0.75rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">API Key / Secret Token</label>
-              <input type="password" id="ai-setting-apikey" placeholder="Enter provider API key (e.g. gsk_... or sk-or-...)" style="width:100%; padding:10px 12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none; font-family:monospace;">
+              <input type="password" id="ai-setting-apikey" value="••••••••••••••••••••••••••••••••••••••••••••••••" placeholder="Enter provider API key (e.g. gsk_...)" style="width:100%; padding:10px 12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none; font-family:monospace;">
             </div>
 
             <div style="display:grid; grid-template-columns:2fr 1fr; gap:14px;">
               <div>
                 <label style="display:block; font-size:0.75rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">Custom Base URL (Optional for OpenAI / OpenRouter / Ollama)</label>
-                <input type="text" id="ai-setting-baseurl" placeholder="e.g. https://api.groq.com/openai/v1 or http://localhost:11434" style="width:100%; padding:9px 12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none;">
+                <input type="text" id="ai-setting-baseurl" value="https://api.groq.com/openai/v1" placeholder="e.g. https://api.groq.com/openai/v1" style="width:100%; padding:9px 12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none;">
               </div>
               <div>
                 <label style="display:block; font-size:0.75rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">Temperature</label>
@@ -1634,6 +1640,6 @@
       if (modal) modal.classList.add('hide');
     }
   </script>
-  <script src="app.js?v=9.7"></script>
+  <script src="app.js?v=10.2"></script>
 </body>
 </html>

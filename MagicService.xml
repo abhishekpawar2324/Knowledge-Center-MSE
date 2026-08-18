@@ -2,8 +2,8 @@
   <id>MagicKnowledgeCenter</id>
   <name>Magic Software Enterprise Knowledge Center</name>
   <description>Centralized Technical Knowledge Base, Master SOPs, and AI Copilot Resolution Portal for Magic Software Enterprises.</description>
-  <executable>%BASE%\.venv\Scripts\python.exe</executable>
-  <arguments>-m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --workers 4</arguments>
+  <executable>cmd.exe</executable>
+  <arguments>/c "%BASE%\service_worker.bat"</arguments>
   <workingdirectory>%BASE%</workingdirectory>
   <logpath>%BASE%\logs</logpath>
   <log mode="roll-by-size">
