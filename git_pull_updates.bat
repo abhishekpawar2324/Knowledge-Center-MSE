@@ -30,7 +30,10 @@ if "%GIT_CMD%"=="" (
     exit /b 1
 )
 
-echo [1/2] Fetching and applying latest code changes from 'Dev-Abhishek'...
+echo [1/2] Stashing any local server modifications...
+"%GIT_CMD%" stash --include-untracked >nul 2>&1
+
+echo [2/2] Fetching and applying latest code changes from 'Dev-Abhishek'...
 "%GIT_CMD%" pull origin Dev-Abhishek
 
 if %ERRORLEVEL% EQU 0 (

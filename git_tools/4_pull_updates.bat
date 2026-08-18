@@ -32,7 +32,10 @@ if "%GIT_CMD%"=="" (
 
 "%GIT_CMD%" checkout Dev-Abhishek >nul 2>&1
 
-echo Pulling latest updates from GitHub (Dev-Abhishek)...
+echo [1/2] Stashing any local server modifications...
+"%GIT_CMD%" stash --include-untracked >nul 2>&1
+
+echo [2/2] Pulling latest updates from GitHub (Dev-Abhishek)...
 echo.
 
 "%GIT_CMD%" pull origin Dev-Abhishek
