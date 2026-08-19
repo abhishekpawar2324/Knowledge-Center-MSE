@@ -282,25 +282,8 @@ def search(
     if not query_terms:
         return []
 
-    # Expand query terms with spelling variants for typo tolerance
-    try:
-        all_docs = db.query(Document).all()
-        vocab = set()
-        for doc in all_docs:
-            words = re.findall(r'\b[a-zA-Z]{3,}\b', doc.content + " " + doc.title)
-            vocab.update(w.lower() for w in words)
-            
-        expanded_terms = list(query_terms)
-        for term in query_terms:
-            if term not in vocab and term.isalpha() and len(term) > 3:
-                for word in vocab:
-                    dist = levenshtein_distance(term, word)
-                    if (len(term) <= 4 and dist <= 1) or (len(term) > 4 and dist <= 2):
-                        expanded_terms.append(word)
-        query_terms = list(set(expanded_terms))
-    except Exception as e:
-        print(f"Error executing search expansions: {e}")
-        
+    from sqlalchemy import or_
+    
     query = db.query(Document)
     
     # Product filter
@@ -322,7 +305,43 @@ def search(
     if author:
         query = query.filter(Document.author == author)
         
-    docs = query.all()
+    # SQL level candidate filtering for lightning sub-15ms speed
+    term_filters = []
+    for term in query_terms:
+        term_filters.append(Document.title.ilike(f"%{term}%"))
+        term_filters.append(Document.file_path.ilike(f"%{term}%"))
+        term_filters.append(Document.breadcrumbs.ilike(f"%{term}%"))
+        term_filters.append(Document.tags.ilike(f"%{term}%"))
+        term_filters.append(Document.content.ilike(f"%{term}%"))
+        
+    docs = query.filter(or_(*term_filters)).all()
+    
+    # Typo tolerance fallback only if 0 candidates matched
+    if not docs and any(len(t) > 3 for t in query_terms):
+        try:
+            sample_docs = db.query(Document.title, Document.content).limit(200).all()
+            vocab = set()
+            for d_title, d_content in sample_docs:
+                words = re.findall(r'\b[a-zA-Z]{3,}\b', (d_title or "") + " " + (d_content or "")[:2000])
+                vocab.update(w.lower() for w in words)
+            expanded_terms = list(query_terms)
+            for term in query_terms:
+                if term not in vocab and term.isalpha() and len(term) > 3:
+                    for word in vocab:
+                        dist = levenshtein_distance(term, word)
+                        if (len(term) <= 4 and dist <= 1) or (len(term) > 4 and dist <= 2):
+                            expanded_terms.append(word)
+            new_terms = [t for t in set(expanded_terms) if t not in query_terms]
+            if new_terms:
+                query_terms.extend(new_terms)
+                new_filters = []
+                for term in new_terms:
+                    new_filters.append(Document.title.ilike(f"%{term}%"))
+                    new_filters.append(Document.content.ilike(f"%{term}%"))
+                docs = query.filter(or_(*new_filters)).all()
+        except Exception as e:
+            print(f"Typo fallback warning: {e}")
+
     results = []
     
     for doc in docs:
