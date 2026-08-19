@@ -81,7 +81,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize DB tables, seed default admin user, benchmark cases, and synchronize repository index
+# Initialize DB tables, seed default admin user, and benchmark cases
 init_db()
 db = SessionLocal()
 try:
@@ -100,13 +100,27 @@ try:
 
     # Seed benchmark historical Salesforce cases if empty
     seed_initial_cases_if_empty(db)
-
-    # Auto-index repository files on startup (including docx, pdf, html)
-    scan_and_index(db)
 except Exception as e:
-    print(f"Startup index warning: {e}")
+    print(f"Startup initialization warning: {e}")
 finally:
     db.close()
+
+# Run repository background indexing non-blockingly so the server opens port 8000 instantly
+import threading
+
+def _background_startup_index():
+    try:
+        startup_db = SessionLocal()
+        try:
+            scan_and_index(startup_db)
+        finally:
+            startup_db.close()
+    except Exception as e:
+        print(f"Background startup index warning: {e}")
+
+@app.on_event("startup")
+def on_startup():
+    threading.Thread(target=_background_startup_index, daemon=True).start()
 
 # Static mounts with existence checks
 if os.path.exists(CONFLUENCE_DIR):
