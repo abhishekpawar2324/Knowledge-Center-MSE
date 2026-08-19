@@ -745,6 +745,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  window.performSearch = performSearch
+  window.searchWithKeyword = function(keyword) {
+    if (!keyword) return
+    const input = document.getElementById('omnibox-search-input')
+    if (input) {
+      input.value = keyword
+      document.getElementById('btn-clear-search')?.classList.remove('hide')
+      document.getElementById('page-product-workspace')?.classList.remove('hide')
+      document.getElementById('page-home-spaces')?.classList.add('hide')
+      document.getElementById('view-document-reader')?.classList.add('hide')
+      document.getElementById('view-product-doc-listing')?.classList.add('hide')
+      document.getElementById('view-search-results')?.classList.remove('hide')
+      performSearch()
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
   function renderSearchResults(results, query) {
     document.getElementById('view-product-doc-listing').classList.add('hide')
     document.getElementById('view-document-reader').classList.add('hide')
@@ -769,16 +786,76 @@ document.addEventListener('DOMContentLoaded', () => {
       return
     }
 
-    results.forEach(doc => {
+    const trimmedQ = (query || '').trim().toLowerCase()
+    const top = results[0]
+    const hasHero = top && (top.doc_type === 'function' || top.syntax || top.title.toLowerCase().trim() === trimmedQ)
+
+    if (hasHero) {
+      const heroCard = document.createElement('div')
+      heroCard.className = 'glass-panel'
+      heroCard.style.cssText = 'padding:22px 24px; border:1.5px solid rgba(0, 141, 199, 0.45); background:linear-gradient(135deg, rgba(0,141,199,0.12), rgba(15,23,42,0.7)); border-radius:14px; margin-bottom:20px; box-shadow:0 8px 24px rgba(0,0,0,0.3); cursor:pointer;'
+      
+      const crumbsHtml = (top.breadcrumbs && top.breadcrumbs.length) 
+        ? `<div style="font-size:0.75rem; color:#94a3b8; margin-bottom:8px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <i data-lucide="folder" style="width:13px; height:13px;"></i>
+            ${top.breadcrumbs.map(b => `<span>${b}</span>`).join('<span style="color:#64748b;">›</span>')}
+           </div>`
+        : ''
+
+      heroCard.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
+              <span style="font-size:0.75rem; font-weight:800; padding:3px 10px; border-radius:6px; background:#008DC7; color:#fff; text-transform:uppercase; letter-spacing:0.5px; display:inline-flex; align-items:center; gap:4px;">
+                <i data-lucide="zap" style="width:12px; height:12px;"></i> ${top.doc_type === 'function' ? 'Official Function Reference' : 'Top Official Match'}
+              </span>
+              <span style="font-size:0.72rem; font-weight:700; padding:3px 8px; border-radius:6px; background:rgba(255,255,255,0.08); color:#38bdf8; text-transform:uppercase;">
+                ${top.product.toUpperCase()}
+              </span>
+              ${top.version && top.version !== 'Universal' ? `<span style="font-size:0.72rem; color:#94a3b8;">${top.version}</span>` : ''}
+            </div>
+            ${crumbsHtml}
+            <h2 style="font-size:1.45rem; font-weight:800; color:#fff; margin-bottom:6px;">${top.title}</h2>
+          </div>
+        </div>
+
+        ${top.syntax ? `
+          <div style="margin:12px 0 14px 0; background:#06090e; border:1px solid rgba(0,141,199,0.35); border-radius:8px; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
+            <div style="font-family:'Fira Code', monospace, Consolas; font-size:0.95rem; color:#38bdf8; overflow-x:auto; white-space:nowrap;">
+              <span style="color:#94a3b8; user-select:none;">Syntax: </span><strong>${top.syntax}</strong>
+            </div>
+            <button class="btn btn-secondary btn-sm" style="padding:4px 10px; font-size:0.75rem; white-space:nowrap;" onclick="event.stopPropagation(); navigator.clipboard.writeText('${top.syntax.replace(/'/g, "\\'")}'); showToast('Syntax copied to clipboard!', 'success');">
+              <i data-lucide="copy" style="width:13px; height:13px;"></i> Copy
+            </button>
+          </div>
+        ` : ''}
+
+        ${top.snippet ? `<p style="font-size:0.9rem; color:#cbd5e1; line-height:1.6; margin-bottom:14px;">${top.snippet}</p>` : ''}
+
+        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.06); padding-top:12px;">
+          <span style="font-size:0.8rem; color:#94a3b8;">By ${top.author || 'Magic Documentation'} • ${top.created_at}</span>
+          <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openDocument(${top.id});">
+            Open Function Guide & Examples →
+          </button>
+        </div>
+      `
+      heroCard.onclick = () => openDocument(top.id)
+      container.appendChild(heroCard)
+    }
+
+    const otherResults = hasHero ? results.slice(1) : results
+
+    otherResults.forEach(doc => {
       const card = document.createElement('div')
       card.className = 'glass-panel glass-panel-hover'
       card.style.cssText = 'padding:18px 20px; cursor:pointer; display:flex; flex-direction:column; gap:8px;'
       card.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
           <div>
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
               <span style="font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:6px; background:rgba(0,141,199,0.15); color:#38bdf8; text-transform:uppercase;">${doc.product}</span>
               <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:rgba(255,255,255,0.06); color:#9ca3af; text-transform:uppercase;">${doc.file_type}</span>
+              ${doc.doc_type === 'function' ? `<span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:rgba(16,185,129,0.15); color:#34d399; font-weight:700;">FUNCTION</span>` : ''}
               ${doc.version && doc.version !== 'Universal' ? `<span style="font-size:0.72rem; color:#cbd5e1;">${doc.version}</span>` : ''}
               ${doc.is_pinned ? `<span style="font-size:0.72rem; color:#f59e0b; font-weight:700;">★ Pinned SOP</span>` : ''}
             </div>
@@ -786,10 +863,11 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <span style="font-size:0.75rem; color:#64748b;">${doc.views || 0} views</span>
         </div>
+        ${doc.syntax ? `<div style="font-family:monospace; font-size:0.84rem; color:#38bdf8; background:rgba(0,0,0,0.3); padding:4px 10px; border-radius:6px; border:1px solid rgba(0,141,199,0.2); margin-bottom:4px; display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><span style="color:#94a3b8;">Syntax: </span>${doc.syntax}</div>` : ''}
         ${doc.snippet ? `<p style="font-size:0.88rem; color:#cbd5e1; line-height:1.6;">${doc.snippet}</p>` : ''}
         <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.04); padding-top:8px; font-size:0.78rem; color:#64748b;">
           <span>By ${doc.author || 'Engineering'} • ${doc.created_at}</span>
-          <span style="color:#008DC7; font-weight:600;">Read SOP →</span>
+          <span style="color:#008DC7; font-weight:600;">Read Document →</span>
         </div>
       `
       card.onclick = () => openDocument(doc.id)
@@ -842,6 +920,24 @@ document.addEventListener('DOMContentLoaded', () => {
       updateBookmarkButtonState(currentDoc.id)
       updatePinButtonState(currentDoc.is_pinned)
 
+      // Render Breadcrumbs
+      const bcContainer = document.getElementById('reader-breadcrumbs')
+      if (bcContainer) {
+        if (currentDoc.breadcrumbs && currentDoc.breadcrumbs.length > 0) {
+          const bcItems = ['Home', ...currentDoc.breadcrumbs, currentDoc.title]
+          bcContainer.innerHTML = bcItems.map((item, idx) => {
+            const isLast = idx === bcItems.length - 1
+            if (isLast) {
+              return `<span style="color:#ffffff; font-weight:700;">${item}</span>`
+            }
+            const escaped = item.replace(/'/g, "\\'")
+            return `<span style="cursor:pointer; color:#38bdf8; transition:color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#38bdf8'" onclick="searchWithKeyword('${escaped}');">${item}</span> <span style="color:#64748b;">›</span>`
+          }).join(' ')
+        } else {
+          bcContainer.innerHTML = `<span style="color:#94a3b8;">Home</span> <span style="color:#64748b;">›</span> <span style="color:#38bdf8; text-transform:uppercase;">${(currentDoc.product || 'xpi').toUpperCase()}</span> <span style="color:#64748b;">›</span> <span style="color:#ffffff; font-weight:700;">${currentDoc.title}</span>`
+        }
+      }
+
       // Render content
       const bodyContainer = document.getElementById('reader-doc-body')
       if (currentDoc.file_type === 'pdf') {
@@ -892,6 +988,7 @@ document.addEventListener('DOMContentLoaded', () => {
         bodyContainer.innerHTML = `<pre style="white-space:pre-wrap; font-family:inherit;">${currentDoc.content}</pre>`
       }
 
+      if (window.lucide) lucide.createIcons()
       window.scrollTo({ top: 0, behavior: 'smooth' })
       fetchComments(docId)
     } catch (e) {

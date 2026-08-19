@@ -92,9 +92,16 @@ def detect_version(title: str = "", content: str = "") -> str:
         return match.group(0)
     return "Universal"
 
-def detect_doc_type(title: str = "", content: str = "") -> str:
-    """Categorizes document into troubleshooting, how_to, connector, architecture, release_note."""
-    text = (title + " " + content[:400]).lower()
+def detect_doc_type(title: str = "", content: str = "", breadcrumbs: list = None) -> str:
+    """Categorizes document into function, syntax, error_code, troubleshooting, how_to, connector, architecture, release_note."""
+    crumbs_str = " ".join(breadcrumbs or []).lower()
+    text = (title + " " + crumbs_str + " " + content[:500]).lower()
+    if any(w in crumbs_str for w in ["function directory", "expression editor", "functions", "function list"]):
+        return "function"
+    if "syntax:" in text[:300] and any(w in text[:300] for w in ["parameters:", "returns:", "example:"]):
+        return "function"
+    if any(w in crumbs_str for w in ["error code", "error codes", "error messages"]) or "error code" in title.lower():
+        return "error_code"
     if any(w in text for w in ["error", "issue", "problem", "fail", "leak", "warning", "fix", "troubleshoot", "crash", "bug"]):
         return "troubleshooting"
     if any(w in text for w in ["how to", "how-to", "guide", "setup", "configure", "installation", "steps"]):
@@ -109,77 +116,125 @@ def detect_doc_type(title: str = "", content: str = "") -> str:
 
 def parse_html_file(file_path):
     """
-    Parses a Confluence-exported HTML file.
-    Extracts: title, breadcrumbs, author, date, and clean body text.
+    Parses Confluence HTML and RoboHelp/WebHelp topic files.
+    Extracts: title, breadcrumbs, syntax signature, author, date, and clean body text.
     """
     try:
+        norm_path = file_path.lower().replace("\\", "/")
+        # Filter out JavaScript/CSS template and navigation internal assets
+        if any(part in norm_path for part in ["/whxdata/", "/template/", "/scripts/", "/template_scripts/"]):
+            return None
+        # Filter out root frameset index files that contain no body content
+        base_name = os.path.basename(file_path).lower()
+        if base_name in ["index.htm", "index.html"]:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                content_sample = f.read(4000).lower()
+                if "gtopicframename" in content_sample or "modernlayoutcontroller" in content_sample or "frameset" in content_sample:
+                    return None
+
         with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
             soup = BeautifulSoup(f.read(), "html.parser")
-        
-        # 1. Title
-        title = "Untitled Document"
-        title_tag = soup.find(id="title-text")
-        if title_tag:
-            title = title_tag.get_text().strip()
+
+        # 1. Breadcrumbs
+        breadcrumbs = []
+        meta_bc = soup.find("meta", attrs={"name": re.compile(r'topic-breadcrumbs|breadcrumbs', re.I)})
+        if meta_bc and meta_bc.get("content"):
+            breadcrumbs = [b.strip() for b in meta_bc["content"].split(">") if b.strip()]
         else:
-            title_tag = soup.find("title")
+            bc_section = soup.find(id="breadcrumbs") or soup.find(class_="breadcrumbs")
+            if bc_section:
+                breadcrumbs = [li.get_text().strip() for li in bc_section.find_all(["li", "a"]) if li.get_text().strip()]
+
+        # 2. Title
+        title = ""
+        # Check H1 first (RoboHelp topics place clean function/topic names in H1)
+        h1_tag = soup.find("h1")
+        if h1_tag:
+            title = h1_tag.get_text().strip()
+        
+        if not title:
+            title_tag = soup.find(id="title-text")
             if title_tag:
                 title = title_tag.get_text().strip()
-                # Clean confluence prefix
-                if "Magic Global Support : " in title:
-                    title = title.replace("Magic Global Support : ", "")
+            else:
+                title_tag = soup.find("title")
+                if title_tag:
+                    title = title_tag.get_text().strip()
         
-        # 2. Breadcrumbs
-        breadcrumbs = []
-        bc_section = soup.find(id="breadcrumbs")
-        if bc_section:
-            breadcrumbs = [li.get_text().strip() for li in bc_section.find_all("li") if li.get_text().strip()]
-        
-        # 3. Author and Date
-        author = "System"
+        if not title or title.lower() in ["untitled document", "magic xpa help", "magic xpi help", "help"]:
+            title = os.path.splitext(os.path.basename(file_path))[0].replace("_", " ")
+
+        # Clean confluence/help prefix
+        if "Magic Global Support : " in title:
+            title = title.replace("Magic Global Support : ", "")
+        title = re.sub(r'^(Magic\s+(xpa|xpi)\s+[\d\.]*\s*Help\s*-\s*)', '', title, flags=re.I).strip()
+
+        # 3. Syntax Extraction (for function reference topics)
+        syntax_str = ""
+        syntax_cell = soup.find(lambda e: e.name in ["td", "th", "p", "dt", "b", "strong"] and "syntax:" in e.get_text().lower())
+        if syntax_cell:
+            if syntax_cell.name in ["td", "th"]:
+                sibling = syntax_cell.find_next_sibling(["td", "th"])
+                if sibling:
+                    syntax_str = sibling.get_text().strip()
+            if not syntax_str:
+                cell_text = syntax_cell.get_text().strip()
+                match = re.search(r'syntax:\s*([^\n\r]+)', cell_text, re.I)
+                if match:
+                    syntax_str = match.group(1).strip()
+            if not syntax_str:
+                next_p = syntax_cell.find_next(["p", "div", "pre", "code"])
+                if next_p:
+                    syntax_str = next_p.get_text().strip()
+
+        # 4. Author and Date
+        author = "Magic Documentation"
         doc_date = None
         meta_div = soup.find(class_="page-metadata")
         if meta_div:
             author_span = meta_div.find(class_="author")
             if author_span:
                 author = author_span.get_text().strip()
-            
-            # Extract date (e.g. "on 31,May, 2023")
             meta_text = meta_div.get_text()
             date_match = re.search(r"on\s+([0-9a-zA-Z,\s]+)", meta_text)
             if date_match:
                 date_str = date_match.group(1).strip()
                 try:
-                    # Clean and parse date
-                    date_cleaned = date_str.replace(" ", "").replace(",", "") # "31May2023"
+                    date_cleaned = date_str.replace(" ", "").replace(",", "")
                     doc_date = datetime.strptime(date_cleaned, "%d%b%Y")
                 except Exception:
                     pass
-        
-        # 4. Content (wiki-content is confluence body container)
-        content_div = soup.find(id="main-content")
-        if not content_div:
-            content_div = soup.find(class_="wiki-content")
-        if not content_div:
-            content_div = soup.find("body")
-            
-        # Clean script/styles
+
+        # 5. Content
+        content_div = soup.find(id="main-content") or soup.find(class_="wiki-content") or soup.find("body")
         if content_div:
-            for element in content_div(["script", "style"]):
+            for element in content_div(["script", "style", "nav", "header", "footer"]):
                 element.decompose()
             content = content_div.get_text(separator=" ").strip()
         else:
             content = ""
-            
-        # Standardize whitespace
+
         content = re.sub(r"\s+", " ", content)
-        
+        if len(content) < 15 and not syntax_str:
+            return None
+
+        tags_list = []
+        if syntax_str:
+            tags_list.append(f"syntax:{syntax_str}")
+        crumbs_str = " ".join(breadcrumbs).lower()
+        if any(w in crumbs_str for w in ["function directory", "expression editor", "functions"]) or syntax_str:
+            tags_list.extend(["function", "syntax", "reference", title.lower()])
+        elif any(w in crumbs_str for w in ["error code", "error codes"]):
+            tags_list.extend(["error_code", title.lower()])
+
         return {
             "title": title,
             "breadcrumbs": json.dumps(breadcrumbs),
             "author": author,
             "created_at": doc_date or datetime.fromtimestamp(os.path.getmtime(file_path)),
-            "content": content
+            "content": content,
+            "tags": ";".join(tags_list) if tags_list else None,
+            "syntax": syntax_str
         }
     except Exception as e:
         print(f"Error parsing HTML {file_path}: {e}")
@@ -411,14 +466,14 @@ def scan_and_index(db: Session):
     # 1. Scan for files
     all_files = []
     
-    # Confluence folder (discover all supported file types: html, docx, pdf, txt, md)
+    # Confluence folder (discover all supported file types: html, htm, docx, pdf, txt, md)
     if os.path.exists(CONFLUENCE_DIR):
         for root, _, files in os.walk(CONFLUENCE_DIR):
             for file in files:
-                if file == "index.html":
+                if file in ["index.html", "index.htm"]:
                     continue
                 ext = file.split(".")[-1].lower()
-                if ext in ["html", "pdf", "docx", "txt", "md"]:
+                if ext in ["html", "htm", "pdf", "docx", "txt", "md"]:
                     all_files.append((os.path.join(root, file), ext))
                     
     # Uploads folder (and all product subdirectories)
@@ -426,7 +481,7 @@ def scan_and_index(db: Session):
         for root, _, files in os.walk(UPLOADS_DIR):
             for file in files:
                 ext = file.split(".")[-1].lower()
-                if ext in ["html", "pdf", "docx", "txt", "md"]:
+                if ext in ["html", "htm", "pdf", "docx", "txt", "md"]:
                     all_files.append((os.path.join(root, file), ext))
 
     log_msg.append(f"Discovered {len(all_files)} total files on disk.")
@@ -459,7 +514,7 @@ def scan_and_index(db: Session):
             
         # Parse based on file type
         parsed_data = None
-        if file_type == "html":
+        if file_type in ["html", "htm"]:
             parsed_data = parse_html_file(file_path)
         elif file_type == "pdf":
             parsed_data = parse_pdf_file(file_path)
@@ -472,13 +527,15 @@ def scan_and_index(db: Session):
             breadcrumbs_list = json.loads(parsed_data["breadcrumbs"]) if parsed_data["breadcrumbs"] else []
             product_tag = detect_product(file_path, parsed_data["title"], parsed_data["content"], breadcrumbs_list)
             version_tag = detect_version(parsed_data["title"], parsed_data["content"])
-            doc_type_tag = detect_doc_type(parsed_data["title"], parsed_data["content"])
+            doc_type_tag = detect_doc_type(parsed_data["title"], parsed_data["content"], breadcrumbs_list)
             
             if existing_doc:
                 existing_doc.title = parsed_data["title"]
                 existing_doc.breadcrumbs = parsed_data["breadcrumbs"]
                 existing_doc.content = parsed_data["content"]
-                if parsed_data.get("author") and parsed_data["author"] not in ["Editor", "System"] or not existing_doc.author:
+                if parsed_data.get("tags"):
+                    existing_doc.tags = parsed_data["tags"]
+                if parsed_data.get("author") and parsed_data["author"] not in ["Editor", "System", "Magic Documentation"] or not existing_doc.author:
                     existing_doc.author = parsed_data["author"]
                 existing_doc.created_at = parsed_data["created_at"]
                 if not existing_doc.product or existing_doc.product == "xpi":
@@ -499,6 +556,7 @@ def scan_and_index(db: Session):
                     product=product_tag,
                     version=version_tag,
                     doc_type=doc_type_tag,
+                    tags=parsed_data.get("tags"),
                     status="published",
                     created_at=parsed_data["created_at"]
                 )
@@ -519,7 +577,10 @@ def scan_and_index(db: Session):
         db.commit()
         log_msg.append(f"Removed {deleted_count} stale documents from search index.")
         
+    end_time = datetime.utcnow()
+    duration = (end_time - start_time).total_seconds()
     log_msg.append(f"Successfully processed search index. Total documents indexed: {indexed_count}.")
+    log_msg.append(f"Indexing completed in {duration:.2f} seconds.")
     
     # 4. Log indexing run
     final_message = "\n".join(log_msg)
@@ -543,7 +604,7 @@ def index_single_file(file_path: str, file_type: str, db: Session, explicit_prod
     
     parsed_data = None
     file_type = file_type.lower()
-    if file_type == "html":
+    if file_type in ["html", "htm"]:
         parsed_data = parse_html_file(file_path)
     elif file_type == "pdf":
         parsed_data = parse_pdf_file(file_path)
@@ -558,7 +619,7 @@ def index_single_file(file_path: str, file_type: str, db: Session, explicit_prod
     breadcrumbs_list = json.loads(parsed_data["breadcrumbs"]) if parsed_data["breadcrumbs"] else []
     product_tag = explicit_product or detect_product(file_path, parsed_data["title"], parsed_data["content"], breadcrumbs_list)
     version_tag = explicit_version or detect_version(parsed_data["title"], parsed_data["content"])
-    doc_type_tag = explicit_doc_type or detect_doc_type(parsed_data["title"], parsed_data["content"])
+    doc_type_tag = explicit_doc_type or detect_doc_type(parsed_data["title"], parsed_data["content"], breadcrumbs_list)
 
     existing_doc = db.query(Document).filter(Document.file_path == normalized_path).first()
     if existing_doc:
@@ -569,6 +630,8 @@ def index_single_file(file_path: str, file_type: str, db: Session, explicit_prod
         existing_doc.product = product_tag
         existing_doc.version = version_tag
         existing_doc.doc_type = doc_type_tag
+        if parsed_data.get("tags"):
+            existing_doc.tags = parsed_data["tags"]
         existing_doc.created_at = parsed_data["created_at"]
         doc = existing_doc
     else:
@@ -582,6 +645,7 @@ def index_single_file(file_path: str, file_type: str, db: Session, explicit_prod
             product=product_tag,
             version=version_tag,
             doc_type=doc_type_tag,
+            tags=parsed_data.get("tags"),
             status="published",
             created_at=parsed_data["created_at"]
         )
