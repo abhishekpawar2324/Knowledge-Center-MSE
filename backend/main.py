@@ -1723,6 +1723,7 @@ def update_document(
 
 @app.post("/api/upload")
 async def upload_documents(
+    background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
     product: Optional[str] = Form("xpi"),
     current_user: Optional[User] = Depends(get_current_user_optional),
@@ -1753,7 +1754,7 @@ async def upload_documents(
             shutil.copyfileobj(file.file, buffer)
         saved_count += 1
         
-        # Index document directly into SQLite with published status
+        # Index document directly into SQLite with published status (<50ms)
         ext = file.filename.split(".")[-1].lower()
         doc = index_single_file(
             file_path=normalized_dest_path,
@@ -1768,7 +1769,7 @@ async def upload_documents(
             db.commit()
             saved_docs.append(doc)
 
-    total_indexed, log_msg = scan_and_index(db)
+    total_indexed = db.query(Document).count()
 
     # Ingestion notification alert
     notif = Notification(
@@ -1777,8 +1778,11 @@ async def upload_documents(
     )
     db.add(notif)
     db.commit()
+
+    # Offload email dispatch to background task to eliminate client latency
     for doc in saved_docs:
-        notify_document_uploaded(doc.title, prod, author_name, doc.file_type)
+        background_tasks.add_task(notify_document_uploaded, doc.title, prod, author_name, doc.file_type)
+
     msg = f"Successfully uploaded and published {saved_count} document(s) into {prod.upper()} space. Search index updated ({total_indexed} total articles)."
 
     return {

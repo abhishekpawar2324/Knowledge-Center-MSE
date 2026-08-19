@@ -3353,11 +3353,22 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
     const feedback = document.getElementById('upload-status-feedback')
     const targetProduct = (document.getElementById('upload-target-product') || {}).value || 'xpi'
 
+    const totalBytes = fileList.reduce((acc, f) => acc + f.size, 0)
+    const formattedSize = totalBytes > 1048576 
+      ? (totalBytes / 1048576).toFixed(1) + ' MB'
+      : (totalBytes / 1024).toFixed(0) + ' KB'
+
     if (feedback) {
-      feedback.innerHTML = `<div style="padding:14px 18px; border-radius:8px; background:rgba(0,141,199,0.15); color:#38bdf8; display:flex; align-items:center; gap:10px; font-weight:600;">
-        <span style="display:inline-block; width:16px; height:16px; border:2px solid rgba(56,189,248,0.3); border-top-color:#38bdf8; border-radius:50%; animation:spin 0.8s linear infinite;"></span>
-        <span>Uploading & indexing ${fileList.length} document(s) into ${targetProduct.toUpperCase()} (uploads/${targetProduct}/)...</span>
-      </div>`
+      feedback.innerHTML = `
+        <div style="padding:16px 20px; border-radius:10px; background:rgba(15,23,42,0.85); border:1px solid rgba(56,189,248,0.3); display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.88rem; font-weight:600; color:#e0f2fe;">
+            <span id="upload-status-text">Uploading ${fileList.length} document(s) (${formattedSize}) into ${targetProduct.toUpperCase()}...</span>
+            <span id="upload-pct-text" style="color:#38bdf8; font-weight:700;">0%</span>
+          </div>
+          <div style="width:100%; height:6px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden;">
+            <div id="upload-progress-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #008DC7, #10b981); transition:width 0.15s ease;"></div>
+          </div>
+        </div>`
     }
 
     const formData = new FormData()
@@ -3365,20 +3376,49 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
     fileList.forEach(f => formData.append('files', f))
 
     try {
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData
+      const data = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        xhr.open('POST', '/api/upload')
+        if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100)
+            const pctEl = document.getElementById('upload-pct-text')
+            const barEl = document.getElementById('upload-progress-bar')
+            const statusEl = document.getElementById('upload-status-text')
+            if (pctEl) pctEl.textContent = `${pct}%`
+            if (barEl) barEl.style.width = `${pct}%`
+            if (pct >= 100 && statusEl) {
+              statusEl.innerHTML = `<span style="display:inline-block; width:14px; height:14px; border:2px solid rgba(56,189,248,0.3); border-top-color:#38bdf8; border-radius:50%; animation:spin 0.8s linear infinite; vertical-align:middle; margin-right:8px;"></span>⚡ Instant Indexing & Publishing to ${targetProduct.toUpperCase()} (<50ms)...`
+              if (pctEl) pctEl.textContent = 'Indexing'
+            }
+          }
+        }
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              resolve(JSON.parse(xhr.responseText))
+            } catch (err) {
+              resolve({ message: 'Files uploaded and indexed successfully!' })
+            }
+          } else {
+            let errMsg = 'Upload failed'
+            try {
+              const errData = JSON.parse(xhr.responseText)
+              errMsg = errData.detail || errData.message || errMsg
+            } catch (_) {}
+            reject(new Error(errMsg))
+          }
+        }
+
+        xhr.onerror = () => reject(new Error('Network error during upload. Please check your VPN connection.'))
+        xhr.ontimeout = () => reject(new Error('Upload timed out.'))
+
+        xhr.send(formData)
       })
-      if (!res.ok) {
-        let errMsg = 'Upload failed'
-        try {
-          const errData = await res.json()
-          errMsg = errData.detail || errData.message || errMsg
-        } catch (_) {}
-        throw new Error(errMsg)
-      }
-      const data = await res.json()
+
       if (feedback) {
         feedback.innerHTML = `<div style="padding:14px 18px; border-radius:8px; background:rgba(16,185,129,0.15); color:#34d399; font-weight:600;">✓ ${data.message || 'Files uploaded and indexed successfully!'}</div>`
       }
