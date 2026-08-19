@@ -1062,7 +1062,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       if (btnEl) btnEl.innerHTML = 'Publishing...'
-      const res = await fetch('/api/ai/create-kb', {
+      const res = await fetch('/api/ai/publish-kb', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -2188,8 +2188,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const contentInput = document.getElementById('publish-ai-content')
 
     if (resIdInput) resIdInput.value = resId || ''
-    if (titleInput) titleInput.value = (title || 'AI Troubleshooting SOP').replace(/^#+\s*/, '').slice(0, 120)
-    if (prodSelect) prodSelect.value = (product || activeProduct || 'xpi').toLowerCase()
+    let prodNormalized = (product || '').toLowerCase()
+    if (!['xpi', 'xpa', 'cloud_native', 'general'].includes(prodNormalized)) {
+      prodNormalized = (activeProduct && activeProduct !== 'all' && ['xpi', 'xpa', 'cloud_native', 'general'].includes(activeProduct)) ? activeProduct : 'general'
+    }
+    if (prodSelect) prodSelect.value = prodNormalized
     if (versionInput) versionInput.value = version || 'Universal'
     if (contentInput) contentInput.value = content || ''
 
@@ -2230,7 +2233,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       try {
-        const res = await fetch('/api/ai/create-kb', {
+        const res = await fetch('/api/ai/publish-kb', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -3203,6 +3206,10 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
       const modal = document.getElementById('modal-write-kb')
       if (modal) {
         modal.classList.remove('hide')
+        const kbProd = document.getElementById('kb-input-product')
+        if (kbProd && activeProduct && activeProduct !== 'all' && ['xpi', 'xpa', 'cloud_native', 'general'].includes(activeProduct)) {
+          kbProd.value = activeProduct
+        }
         checkAndPromptKbDraft()
         updateKbLivePreview()
         if (window.lucide) lucide.createIcons()
@@ -3315,7 +3322,22 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
     document.getElementById('page-product-workspace').classList.add('hide')
     document.getElementById('page-admin-suite').classList.add('hide')
     document.getElementById('page-upload-portal').classList.remove('hide')
+
+    const uploadTarget = document.getElementById('upload-target-product')
+    if (uploadTarget && activeProduct && activeProduct !== 'all' && ['xpi', 'xpa', 'cloud_native', 'general'].includes(activeProduct)) {
+      uploadTarget.value = activeProduct
+    }
+    const feedback = document.getElementById('upload-status-feedback')
+    if (feedback) feedback.innerHTML = ''
   })
+
+  const uploadTargetProdSelect = document.getElementById('upload-target-product')
+  if (uploadTargetProdSelect) {
+    uploadTargetProdSelect.addEventListener('change', () => {
+      const feedback = document.getElementById('upload-status-feedback')
+      if (feedback) feedback.innerHTML = ''
+    })
+  }
 
   document.getElementById('btn-upload-back-home').addEventListener('click', () => {
     switchProductScope('all')

@@ -579,6 +579,7 @@ CASE HISTORY & LOG DETAILS:
     return result
 
 @app.post("/api/ai/publish-kb")
+@app.post("/api/ai/create-kb")
 async def ai_publish_kb(
     request: Request,
     db: Session = Depends(get_db)
