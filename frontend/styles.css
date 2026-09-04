@@ -755,3 +755,72 @@ select option:checked, select option:hover {
   color: #38bdf8 !important;
   transform: translateY(-1px);
 }
+
+/* ==================== Document Reader & Function Spec Styling ==================== */
+.robohelp-doc-container {
+  font-family: var(--font-sans);
+  color: #cbd5e1;
+}
+
+.topic-overview-card {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.topic-syntax-card code {
+  user-select: all;
+}
+
+#reader-doc-body table {
+  width: 100% !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  margin: 1.5rem 0 !important;
+  background: rgba(15, 23, 42, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+}
+
+#reader-doc-body table td, #reader-doc-body table th {
+  padding: 14px 18px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  color: #cbd5e1 !important;
+  vertical-align: top !important;
+  font-size: 0.95rem !important;
+  line-height: 1.7 !important;
+}
+
+#reader-doc-body table tr:last-child td {
+  border-bottom: none !important;
+}
+
+#reader-doc-body table td:first-child {
+  font-weight: 700 !important;
+  color: #38bdf8 !important;
+  width: 22% !important;
+  background: rgba(0, 141, 199, 0.04) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+#reader-doc-body p {
+  margin-bottom: 1rem !important;
+  line-height: 1.8 !important;
+  color: #cbd5e1 !important;
+}
+
+#reader-doc-body h1, #reader-doc-body h2, #reader-doc-body h3 {
+  color: #ffffff !important;
+  margin-top: 1.5rem !important;
+  margin-bottom: 0.8rem !important;
+  font-weight: 700 !important;
+}
+
+#reader-doc-body ul, #reader-doc-body ol {
+  margin-left: 1.8rem !important;
+  margin-bottom: 1.2rem !important;
+}
+
+#reader-doc-body li {
+  margin-bottom: 0.5rem !important;
+  color: #cbd5e1 !important;
+}

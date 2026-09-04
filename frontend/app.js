@@ -745,6 +745,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  window.performSearch = performSearch
+  window.searchWithKeyword = function(keyword) {
+    if (!keyword) return
+    const input = document.getElementById('omnibox-search-input')
+    if (input) {
+      input.value = keyword
+      document.getElementById('btn-clear-search')?.classList.remove('hide')
+      document.getElementById('page-product-workspace')?.classList.remove('hide')
+      document.getElementById('page-home-spaces')?.classList.add('hide')
+      document.getElementById('view-document-reader')?.classList.add('hide')
+      document.getElementById('view-product-doc-listing')?.classList.add('hide')
+      document.getElementById('view-search-results')?.classList.remove('hide')
+      performSearch()
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
   function renderSearchResults(results, query) {
     document.getElementById('view-product-doc-listing').classList.add('hide')
     document.getElementById('view-document-reader').classList.add('hide')
@@ -769,16 +786,76 @@ document.addEventListener('DOMContentLoaded', () => {
       return
     }
 
-    results.forEach(doc => {
+    const trimmedQ = (query || '').trim().toLowerCase()
+    const top = results[0]
+    const hasHero = top && (top.doc_type === 'function' || top.syntax || top.title.toLowerCase().trim() === trimmedQ)
+
+    if (hasHero) {
+      const heroCard = document.createElement('div')
+      heroCard.className = 'glass-panel'
+      heroCard.style.cssText = 'padding:22px 24px; border:1.5px solid rgba(0, 141, 199, 0.45); background:linear-gradient(135deg, rgba(0,141,199,0.12), rgba(15,23,42,0.7)); border-radius:14px; margin-bottom:20px; box-shadow:0 8px 24px rgba(0,0,0,0.3); cursor:pointer;'
+      
+      const crumbsHtml = (top.breadcrumbs && top.breadcrumbs.length) 
+        ? `<div style="font-size:0.75rem; color:#94a3b8; margin-bottom:8px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <i data-lucide="folder" style="width:13px; height:13px;"></i>
+            ${top.breadcrumbs.map(b => `<span>${b}</span>`).join('<span style="color:#64748b;">›</span>')}
+           </div>`
+        : ''
+
+      heroCard.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
+              <span style="font-size:0.75rem; font-weight:800; padding:3px 10px; border-radius:6px; background:#008DC7; color:#fff; text-transform:uppercase; letter-spacing:0.5px; display:inline-flex; align-items:center; gap:4px;">
+                <i data-lucide="zap" style="width:12px; height:12px;"></i> ${top.doc_type === 'function' ? 'Official Function Reference' : 'Top Official Match'}
+              </span>
+              <span style="font-size:0.72rem; font-weight:700; padding:3px 8px; border-radius:6px; background:rgba(255,255,255,0.08); color:#38bdf8; text-transform:uppercase;">
+                ${top.product.toUpperCase()}
+              </span>
+              ${top.version && top.version !== 'Universal' ? `<span style="font-size:0.72rem; color:#94a3b8;">${top.version}</span>` : ''}
+            </div>
+            ${crumbsHtml}
+            <h2 style="font-size:1.45rem; font-weight:800; color:#fff; margin-bottom:6px;">${top.title}</h2>
+          </div>
+        </div>
+
+        ${top.syntax ? `
+          <div style="margin:12px 0 14px 0; background:#06090e; border:1px solid rgba(0,141,199,0.35); border-radius:8px; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
+            <div style="font-family:'Fira Code', monospace, Consolas; font-size:0.95rem; color:#38bdf8; overflow-x:auto; white-space:nowrap;">
+              <span style="color:#94a3b8; user-select:none;">Syntax: </span><strong>${top.syntax}</strong>
+            </div>
+            <button class="btn btn-secondary btn-sm" style="padding:4px 10px; font-size:0.75rem; white-space:nowrap;" onclick="event.stopPropagation(); navigator.clipboard.writeText('${top.syntax.replace(/'/g, "\\'")}'); showToast('Syntax copied to clipboard!', 'success');">
+              <i data-lucide="copy" style="width:13px; height:13px;"></i> Copy
+            </button>
+          </div>
+        ` : ''}
+
+        ${top.snippet ? `<p style="font-size:0.9rem; color:#cbd5e1; line-height:1.6; margin-bottom:14px;">${top.snippet}</p>` : ''}
+
+        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.06); padding-top:12px;">
+          <span style="font-size:0.8rem; color:#94a3b8;">By ${top.author || 'Magic Documentation'} • ${top.created_at}</span>
+          <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openDocument(${top.id});">
+            Open Function Guide & Examples →
+          </button>
+        </div>
+      `
+      heroCard.onclick = () => openDocument(top.id)
+      container.appendChild(heroCard)
+    }
+
+    const otherResults = hasHero ? results.slice(1) : results
+
+    otherResults.forEach(doc => {
       const card = document.createElement('div')
       card.className = 'glass-panel glass-panel-hover'
       card.style.cssText = 'padding:18px 20px; cursor:pointer; display:flex; flex-direction:column; gap:8px;'
       card.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
           <div>
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
               <span style="font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:6px; background:rgba(0,141,199,0.15); color:#38bdf8; text-transform:uppercase;">${doc.product}</span>
               <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:rgba(255,255,255,0.06); color:#9ca3af; text-transform:uppercase;">${doc.file_type}</span>
+              ${doc.doc_type === 'function' ? `<span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:rgba(16,185,129,0.15); color:#34d399; font-weight:700;">FUNCTION</span>` : ''}
               ${doc.version && doc.version !== 'Universal' ? `<span style="font-size:0.72rem; color:#cbd5e1;">${doc.version}</span>` : ''}
               ${doc.is_pinned ? `<span style="font-size:0.72rem; color:#f59e0b; font-weight:700;">★ Pinned SOP</span>` : ''}
             </div>
@@ -786,10 +863,11 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <span style="font-size:0.75rem; color:#64748b;">${doc.views || 0} views</span>
         </div>
+        ${doc.syntax ? `<div style="font-family:monospace; font-size:0.84rem; color:#38bdf8; background:rgba(0,0,0,0.3); padding:4px 10px; border-radius:6px; border:1px solid rgba(0,141,199,0.2); margin-bottom:4px; display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><span style="color:#94a3b8;">Syntax: </span>${doc.syntax}</div>` : ''}
         ${doc.snippet ? `<p style="font-size:0.88rem; color:#cbd5e1; line-height:1.6;">${doc.snippet}</p>` : ''}
         <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.04); padding-top:8px; font-size:0.78rem; color:#64748b;">
           <span>By ${doc.author || 'Engineering'} • ${doc.created_at}</span>
-          <span style="color:#008DC7; font-weight:600;">Read SOP →</span>
+          <span style="color:#008DC7; font-weight:600;">Read Document →</span>
         </div>
       `
       card.onclick = () => openDocument(doc.id)
@@ -842,6 +920,24 @@ document.addEventListener('DOMContentLoaded', () => {
       updateBookmarkButtonState(currentDoc.id)
       updatePinButtonState(currentDoc.is_pinned)
 
+      // Render Breadcrumbs
+      const bcContainer = document.getElementById('reader-breadcrumbs')
+      if (bcContainer) {
+        if (currentDoc.breadcrumbs && currentDoc.breadcrumbs.length > 0) {
+          const bcItems = ['Home', ...currentDoc.breadcrumbs, currentDoc.title]
+          bcContainer.innerHTML = bcItems.map((item, idx) => {
+            const isLast = idx === bcItems.length - 1
+            if (isLast) {
+              return `<span style="color:#ffffff; font-weight:700;">${item}</span>`
+            }
+            const escaped = item.replace(/'/g, "\\'")
+            return `<span style="cursor:pointer; color:#38bdf8; transition:color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#38bdf8'" onclick="searchWithKeyword('${escaped}');">${item}</span> <span style="color:#64748b;">›</span>`
+          }).join(' ')
+        } else {
+          bcContainer.innerHTML = `<span style="color:#94a3b8;">Home</span> <span style="color:#64748b;">›</span> <span style="color:#38bdf8; text-transform:uppercase;">${(currentDoc.product || 'xpi').toUpperCase()}</span> <span style="color:#64748b;">›</span> <span style="color:#ffffff; font-weight:700;">${currentDoc.title}</span>`
+        }
+      }
+
       // Render content
       const bodyContainer = document.getElementById('reader-doc-body')
       if (currentDoc.file_type === 'pdf') {
@@ -892,6 +988,7 @@ document.addEventListener('DOMContentLoaded', () => {
         bodyContainer.innerHTML = `<pre style="white-space:pre-wrap; font-family:inherit;">${currentDoc.content}</pre>`
       }
 
+      if (window.lucide) lucide.createIcons()
       window.scrollTo({ top: 0, behavior: 'smooth' })
       fetchComments(docId)
     } catch (e) {
@@ -1062,7 +1159,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       if (btnEl) btnEl.innerHTML = 'Publishing...'
-      const res = await fetch('/api/ai/create-kb', {
+      const res = await fetch('/api/ai/publish-kb', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -2188,8 +2285,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const contentInput = document.getElementById('publish-ai-content')
 
     if (resIdInput) resIdInput.value = resId || ''
-    if (titleInput) titleInput.value = (title || 'AI Troubleshooting SOP').replace(/^#+\s*/, '').slice(0, 120)
-    if (prodSelect) prodSelect.value = (product || activeProduct || 'xpi').toLowerCase()
+    let prodNormalized = (product || '').toLowerCase()
+    if (!['xpi', 'xpa', 'cloud_native', 'general'].includes(prodNormalized)) {
+      prodNormalized = (activeProduct && activeProduct !== 'all' && ['xpi', 'xpa', 'cloud_native', 'general'].includes(activeProduct)) ? activeProduct : 'general'
+    }
+    if (prodSelect) prodSelect.value = prodNormalized
     if (versionInput) versionInput.value = version || 'Universal'
     if (contentInput) contentInput.value = content || ''
 
@@ -2230,7 +2330,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       try {
-        const res = await fetch('/api/ai/create-kb', {
+        const res = await fetch('/api/ai/publish-kb', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -3203,6 +3303,10 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
       const modal = document.getElementById('modal-write-kb')
       if (modal) {
         modal.classList.remove('hide')
+        const kbProd = document.getElementById('kb-input-product')
+        if (kbProd && activeProduct && activeProduct !== 'all' && ['xpi', 'xpa', 'cloud_native', 'general'].includes(activeProduct)) {
+          kbProd.value = activeProduct
+        }
         checkAndPromptKbDraft()
         updateKbLivePreview()
         if (window.lucide) lucide.createIcons()
@@ -3315,7 +3419,22 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
     document.getElementById('page-product-workspace').classList.add('hide')
     document.getElementById('page-admin-suite').classList.add('hide')
     document.getElementById('page-upload-portal').classList.remove('hide')
+
+    const uploadTarget = document.getElementById('upload-target-product')
+    if (uploadTarget && activeProduct && activeProduct !== 'all' && ['xpi', 'xpa', 'cloud_native', 'general'].includes(activeProduct)) {
+      uploadTarget.value = activeProduct
+    }
+    const feedback = document.getElementById('upload-status-feedback')
+    if (feedback) feedback.innerHTML = ''
   })
+
+  const uploadTargetProdSelect = document.getElementById('upload-target-product')
+  if (uploadTargetProdSelect) {
+    uploadTargetProdSelect.addEventListener('change', () => {
+      const feedback = document.getElementById('upload-status-feedback')
+      if (feedback) feedback.innerHTML = ''
+    })
+  }
 
   document.getElementById('btn-upload-back-home').addEventListener('click', () => {
     switchProductScope('all')
@@ -3331,11 +3450,22 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
     const feedback = document.getElementById('upload-status-feedback')
     const targetProduct = (document.getElementById('upload-target-product') || {}).value || 'xpi'
 
+    const totalBytes = fileList.reduce((acc, f) => acc + f.size, 0)
+    const formattedSize = totalBytes > 1048576 
+      ? (totalBytes / 1048576).toFixed(1) + ' MB'
+      : (totalBytes / 1024).toFixed(0) + ' KB'
+
     if (feedback) {
-      feedback.innerHTML = `<div style="padding:14px 18px; border-radius:8px; background:rgba(0,141,199,0.15); color:#38bdf8; display:flex; align-items:center; gap:10px; font-weight:600;">
-        <span style="display:inline-block; width:16px; height:16px; border:2px solid rgba(56,189,248,0.3); border-top-color:#38bdf8; border-radius:50%; animation:spin 0.8s linear infinite;"></span>
-        <span>Uploading & indexing ${fileList.length} document(s) into ${targetProduct.toUpperCase()} (uploads/${targetProduct}/)...</span>
-      </div>`
+      feedback.innerHTML = `
+        <div style="padding:16px 20px; border-radius:10px; background:rgba(15,23,42,0.85); border:1px solid rgba(56,189,248,0.3); display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.88rem; font-weight:600; color:#e0f2fe;">
+            <span id="upload-status-text">Uploading ${fileList.length} document(s) (${formattedSize}) into ${targetProduct.toUpperCase()}...</span>
+            <span id="upload-pct-text" style="color:#38bdf8; font-weight:700;">0%</span>
+          </div>
+          <div style="width:100%; height:6px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden;">
+            <div id="upload-progress-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #008DC7, #10b981); transition:width 0.15s ease;"></div>
+          </div>
+        </div>`
     }
 
     const formData = new FormData()
@@ -3343,20 +3473,49 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
     fileList.forEach(f => formData.append('files', f))
 
     try {
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData
+      const data = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        xhr.open('POST', '/api/upload')
+        if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100)
+            const pctEl = document.getElementById('upload-pct-text')
+            const barEl = document.getElementById('upload-progress-bar')
+            const statusEl = document.getElementById('upload-status-text')
+            if (pctEl) pctEl.textContent = `${pct}%`
+            if (barEl) barEl.style.width = `${pct}%`
+            if (pct >= 100 && statusEl) {
+              statusEl.innerHTML = `<span style="display:inline-block; width:14px; height:14px; border:2px solid rgba(56,189,248,0.3); border-top-color:#38bdf8; border-radius:50%; animation:spin 0.8s linear infinite; vertical-align:middle; margin-right:8px;"></span>⚡ Instant Indexing & Publishing to ${targetProduct.toUpperCase()} (<50ms)...`
+              if (pctEl) pctEl.textContent = 'Indexing'
+            }
+          }
+        }
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              resolve(JSON.parse(xhr.responseText))
+            } catch (err) {
+              resolve({ message: 'Files uploaded and indexed successfully!' })
+            }
+          } else {
+            let errMsg = 'Upload failed'
+            try {
+              const errData = JSON.parse(xhr.responseText)
+              errMsg = errData.detail || errData.message || errMsg
+            } catch (_) {}
+            reject(new Error(errMsg))
+          }
+        }
+
+        xhr.onerror = () => reject(new Error('Network error during upload. Please check your VPN connection.'))
+        xhr.ontimeout = () => reject(new Error('Upload timed out.'))
+
+        xhr.send(formData)
       })
-      if (!res.ok) {
-        let errMsg = 'Upload failed'
-        try {
-          const errData = await res.json()
-          errMsg = errData.detail || errData.message || errMsg
-        } catch (_) {}
-        throw new Error(errMsg)
-      }
-      const data = await res.json()
+
       if (feedback) {
         feedback.innerHTML = `<div style="padding:14px 18px; border-radius:8px; background:rgba(16,185,129,0.15); color:#34d399; font-weight:600;">✓ ${data.message || 'Files uploaded and indexed successfully!'}</div>`
       }

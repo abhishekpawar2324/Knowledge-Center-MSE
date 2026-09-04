@@ -81,7 +81,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize DB tables, seed default admin user, benchmark cases, and synchronize repository index
+# Initialize DB tables, seed default admin user, and benchmark cases
 init_db()
 db = SessionLocal()
 try:
@@ -100,13 +100,27 @@ try:
 
     # Seed benchmark historical Salesforce cases if empty
     seed_initial_cases_if_empty(db)
-
-    # Auto-index repository files on startup (including docx, pdf, html)
-    scan_and_index(db)
 except Exception as e:
-    print(f"Startup index warning: {e}")
+    print(f"Startup initialization warning: {e}")
 finally:
     db.close()
+
+# Run repository background indexing non-blockingly so the server opens port 8000 instantly
+import threading
+
+def _background_startup_index():
+    try:
+        startup_db = SessionLocal()
+        try:
+            scan_and_index(startup_db)
+        finally:
+            startup_db.close()
+    except Exception as e:
+        print(f"Background startup index warning: {e}")
+
+@app.on_event("startup")
+def on_startup():
+    threading.Thread(target=_background_startup_index, daemon=True).start()
 
 # Static mounts with existence checks
 if os.path.exists(CONFLUENCE_DIR):
@@ -126,7 +140,7 @@ UPLOADS_ASSETS = os.path.join(UPLOADS_DIR, "assets")
 os.makedirs(UPLOADS_ASSETS, exist_ok=True)
 app.mount("/api/kb/assets", StaticFiles(directory=UPLOADS_ASSETS), name="kb_assets")
 
-# ----------------- Auth Endpoints -----------------
+# ----------------- Auth Endpoints (Case-Insensitive) -----------------
 
 @app.post("/api/auth/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -268,25 +282,8 @@ def search(
     if not query_terms:
         return []
 
-    # Expand query terms with spelling variants for typo tolerance
-    try:
-        all_docs = db.query(Document).all()
-        vocab = set()
-        for doc in all_docs:
-            words = re.findall(r'\b[a-zA-Z]{3,}\b', doc.content + " " + doc.title)
-            vocab.update(w.lower() for w in words)
-            
-        expanded_terms = list(query_terms)
-        for term in query_terms:
-            if term not in vocab and term.isalpha() and len(term) > 3:
-                for word in vocab:
-                    dist = levenshtein_distance(term, word)
-                    if (len(term) <= 4 and dist <= 1) or (len(term) > 4 and dist <= 2):
-                        expanded_terms.append(word)
-        query_terms = list(set(expanded_terms))
-    except Exception as e:
-        print(f"Error executing search expansions: {e}")
-        
+    from sqlalchemy import or_
+    
     query = db.query(Document)
     
     # Product filter
@@ -308,7 +305,43 @@ def search(
     if author:
         query = query.filter(Document.author == author)
         
-    docs = query.all()
+    # SQL level candidate filtering for lightning sub-15ms speed
+    term_filters = []
+    for term in query_terms:
+        term_filters.append(Document.title.ilike(f"%{term}%"))
+        term_filters.append(Document.file_path.ilike(f"%{term}%"))
+        term_filters.append(Document.breadcrumbs.ilike(f"%{term}%"))
+        term_filters.append(Document.tags.ilike(f"%{term}%"))
+        term_filters.append(Document.content.ilike(f"%{term}%"))
+        
+    docs = query.filter(or_(*term_filters)).all()
+    
+    # Typo tolerance fallback only if 0 candidates matched
+    if not docs and any(len(t) > 3 for t in query_terms):
+        try:
+            sample_docs = db.query(Document.title, Document.content).limit(200).all()
+            vocab = set()
+            for d_title, d_content in sample_docs:
+                words = re.findall(r'\b[a-zA-Z]{3,}\b', (d_title or "") + " " + (d_content or "")[:2000])
+                vocab.update(w.lower() for w in words)
+            expanded_terms = list(query_terms)
+            for term in query_terms:
+                if term not in vocab and term.isalpha() and len(term) > 3:
+                    for word in vocab:
+                        dist = levenshtein_distance(term, word)
+                        if (len(term) <= 4 and dist <= 1) or (len(term) > 4 and dist <= 2):
+                            expanded_terms.append(word)
+            new_terms = [t for t in set(expanded_terms) if t not in query_terms]
+            if new_terms:
+                query_terms.extend(new_terms)
+                new_filters = []
+                for term in new_terms:
+                    new_filters.append(Document.title.ilike(f"%{term}%"))
+                    new_filters.append(Document.content.ilike(f"%{term}%"))
+                docs = query.filter(or_(*new_filters)).all()
+        except Exception as e:
+            print(f"Typo fallback warning: {e}")
+
     results = []
     
     for doc in docs:
@@ -339,14 +372,18 @@ def search(
                 continue
             
         score = 0
-        # Direct raw phrase boost
-        if raw_q.lower() in title_lower or raw_q.lower() in filename_lower:
+        # Direct raw phrase or exact function match boost
+        if raw_q.lower() == title_lower or raw_q.lower() == filename_lower.replace('.htm', '').replace('.html', ''):
+            score += 500
+        elif raw_q.lower() in title_lower or raw_q.lower() in filename_lower:
             score += 200
         elif raw_q.lower() in content_lower:
             score += 80
             
         for term in query_terms:
-            if term in title_lower:
+            if term == title_lower:
+                score += 150
+            elif term in title_lower:
                 score += 50 + (title_lower.count(term) * 10)
             if term in filename_lower:
                 score += 40
@@ -355,8 +392,14 @@ def search(
             if doc.breadcrumbs and term in doc.breadcrumbs.lower():
                 score += 15
             if doc.tags and term in doc.tags.lower():
-                score += 25
+                score += 35
                 
+        # Function reference boost
+        if doc.doc_type == "function":
+            score += 30
+            if raw_q.lower() in title_lower:
+                score += 100
+
         # Pinned boost
         if doc.is_pinned:
             score += 20
@@ -368,6 +411,21 @@ def search(
                 
         snippet = generate_snippet(doc.content, query_terms)
         
+        # Extract syntax if function topic
+        syntax_str = ""
+        if doc.tags and "syntax:" in doc.tags:
+            match_syn_tag = re.search(r'syntax:(.*?)(?:;(?:function|syntax|error)|,function|,syntax|,reference|$)', doc.tags, re.I)
+            if match_syn_tag and match_syn_tag.group(1).strip():
+                syntax_str = match_syn_tag.group(1).strip()
+            else:
+                for t in doc.tags.split(";"):
+                    if t.startswith("syntax:"):
+                        syntax_str = t.replace("syntax:", "").strip()
+        if not syntax_str and (doc.doc_type == "function" or "syntax:" in doc.content.lower()[:300]):
+            match_syn = re.search(r'syntax:\s*([^\n\r<]+)', doc.content, re.I)
+            if match_syn:
+                syntax_str = match_syn.group(1).strip()
+
         results.append({
             "id": doc.id,
             "title": doc.title,
@@ -379,6 +437,7 @@ def search(
             "breadcrumbs": json.loads(doc.breadcrumbs) if doc.breadcrumbs else [],
             "created_at": doc.created_at.strftime("%d %b, %Y"),
             "snippet": snippet,
+            "syntax": syntax_str,
             "score": score,
             "views": doc.views or 0,
             "likes": doc.likes or 0,
@@ -579,6 +638,7 @@ CASE HISTORY & LOG DETAILS:
     return result
 
 @app.post("/api/ai/publish-kb")
+@app.post("/api/ai/create-kb")
 async def ai_publish_kb(
     request: Request,
     db: Session = Depends(get_db)
@@ -1125,6 +1185,198 @@ def convert_plain_text_to_html_confluence(content: str, query_terms: list = None
         
     return "\n".join(html_blocks)
 
+def format_robohelp_topic_html(soup: BeautifulSoup, doc_title: str) -> Optional[str]:
+    """
+    Transforms RoboHelp function specification tables into a clean, modern, structured documentation view.
+    """
+    tables = soup.find_all("table")
+    if not tables:
+        return None
+        
+    spec_table = None
+    for tbl in tables:
+        tbl_text = tbl.get_text().lower()
+        if "syntax:" in tbl_text or "parameters:" in tbl_text or "returns:" in tbl_text:
+            spec_table = tbl
+            break
+            
+    if not spec_table:
+        return None
+        
+    overview_paragraphs = []
+    syntax_val = ""
+    params_list = []
+    returns_val = ""
+    notes_list = []
+    examples_list = []
+    see_also_items = []
+    
+    rows = spec_table.find_all("tr")
+    for tr in rows:
+        cells = tr.find_all(["td", "th"])
+        if len(cells) == 1:
+            txt = cells[0].get_text().strip()
+            if txt and not any(k in txt.lower() for k in ["syntax:", "parameters:"]):
+                for line in txt.split("\n"):
+                    l_str = line.strip()
+                    if l_str:
+                        overview_paragraphs.append(l_str)
+        elif len(cells) >= 2:
+            label = cells[0].get_text().strip().lower().replace(":", "")
+            content_cell = cells[1]
+            content_txt = content_cell.get_text().strip()
+            
+            if "syntax" in label:
+                syntax_val = content_txt
+            elif "parameter" in label:
+                lines = [l.strip() for l in content_txt.split("\n") if l.strip()]
+                for line in lines:
+                    match_p = re.match(r'^([A-Za-z0-9_]+)\s*[\–\-\—\:\?]\s*(.*)$', line)
+                    if match_p:
+                        params_list.append({
+                            "name": match_p.group(1).strip(),
+                            "desc": match_p.group(2).strip()
+                        })
+                    else:
+                        params_list.append({
+                            "name": "",
+                            "desc": line
+                        })
+            elif "return" in label:
+                returns_val = content_txt
+            elif "note" in label or "remark" in label:
+                notes_list.append(content_txt)
+            elif "example" in label:
+                examples_list.append(content_txt)
+            elif "see also" in label:
+                links = content_cell.find_all("a")
+                if links:
+                    for a in links:
+                        a_txt = a.get_text().strip()
+                        if a_txt:
+                            see_also_items.append(a_txt)
+                else:
+                    items = [i.strip() for i in re.split(r'[,;\n]+', content_txt) if i.strip()]
+                    see_also_items.extend(items)
+            else:
+                if content_txt:
+                    overview_paragraphs.append(content_txt)
+
+    if not syntax_val and not params_list and not returns_val:
+        return None
+
+    html_parts = []
+    html_parts.append('<div class="robohelp-doc-container" style="display:flex; flex-direction:column; gap:20px;">')
+    
+    # 1. Overview / Summary
+    if overview_paragraphs:
+        overview_text = "".join([f"<p style='margin-bottom:8px; line-height:1.7;'>{p}</p>" for p in overview_paragraphs])
+        html_parts.append(f'''
+        <div class="topic-overview-card" style="background:rgba(0,141,199,0.08); border-left:4px solid #008DC7; padding:16px 20px; border-radius:0 10px 10px 0; color:#e2e8f0; font-size:1rem;">
+            {overview_text}
+        </div>
+        ''')
+        
+    # 2. Syntax Card with Copy
+    if syntax_val:
+        escaped_syn = syntax_val.replace("'", "\\'")
+        html_parts.append(f'''
+        <div class="topic-syntax-card" style="background:#070b12; border:1px solid rgba(0,141,199,0.4); border-radius:10px; padding:18px 22px; display:flex; justify-content:space-between; align-items:center; gap:16px; box-shadow:0 4px 20px rgba(0,0,0,0.4);">
+            <div style="overflow-x:auto;">
+                <div style="font-size:0.72rem; font-weight:800; color:#38bdf8; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px;">Syntax</div>
+                <code style="font-family:'Fira Code', monospace, Consolas; font-size:1.1rem; color:#ffffff; font-weight:600;">{syntax_val}</code>
+            </div>
+            <button class="btn btn-secondary btn-sm" style="white-space:nowrap; padding:6px 14px; display:flex; align-items:center; gap:6px;" onclick="navigator.clipboard.writeText('{escaped_syn}'); showToast('Syntax copied to clipboard!', 'success');">
+                <i data-lucide="copy" style="width:14px; height:14px;"></i> Copy Signature
+            </button>
+        </div>
+        ''')
+
+    # 3. Parameters Section
+    if params_list:
+        params_html = []
+        for p in params_list:
+            if p["name"]:
+                params_html.append(f'''
+                <div style="display:flex; align-items:baseline; gap:14px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+                    <code style="font-family:'Fira Code', monospace; color:#38bdf8; font-weight:700; background:rgba(0,141,199,0.14); padding:3px 10px; border-radius:6px; font-size:0.92rem; min-width:90px; display:inline-block; border:1px solid rgba(0,141,199,0.25);">{p["name"]}</code>
+                    <span style="color:#cbd5e1; font-size:0.95rem; line-height:1.6;">{p["desc"]}</span>
+                </div>
+                ''')
+            else:
+                params_html.append(f'''
+                <div style="padding:6px 0; color:#cbd5e1; font-size:0.95rem; line-height:1.6;">
+                    {p["desc"]}
+                </div>
+                ''')
+        html_parts.append(f'''
+        <div class="topic-section-card" style="background:rgba(15,23,42,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:20px 24px;">
+            <h3 style="font-size:1.1rem; font-weight:700; color:#38bdf8; margin-top:0; margin-bottom:14px; display:flex; align-items:center; gap:8px;">
+                <i data-lucide="sliders" style="width:16px; height:16px;"></i> Parameters
+            </h3>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+                {"".join(params_html)}
+            </div>
+        </div>
+        ''')
+
+    # 4. Returns & Example Grid
+    if returns_val or examples_list:
+        html_parts.append('<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:18px;">')
+        if returns_val:
+            html_parts.append(f'''
+            <div style="background:rgba(15,23,42,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:18px 22px;">
+                <h4 style="font-size:0.95rem; font-weight:700; color:#34d399; margin-top:0; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="arrow-right-circle" style="width:15px; height:15px;"></i> Returns
+                </h4>
+                <p style="color:#f1f5f9; font-size:0.98rem; font-weight:500; margin:0;">{returns_val}</p>
+            </div>
+            ''')
+        if examples_list:
+            ex_text = "<br>".join(examples_list)
+            html_parts.append(f'''
+            <div style="background:rgba(15,23,42,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:18px 22px;">
+                <h4 style="font-size:0.95rem; font-weight:700; color:#fbbf24; margin-top:0; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="code" style="width:15px; height:15px;"></i> Example
+                </h4>
+                <div style="font-family:'Fira Code', monospace; color:#f8fafc; font-size:0.92rem; background:#060a10; padding:10px 14px; border-radius:6px; border:1px solid rgba(255,255,255,0.06);">{ex_text}</div>
+            </div>
+            ''')
+        html_parts.append('</div>')
+
+    # 5. Notes / Remarks
+    if notes_list:
+        note_text = "<br>".join(notes_list)
+        html_parts.append(f'''
+        <div style="background:rgba(245,158,11,0.08); border-left:4px solid #f59e0b; padding:14px 18px; border-radius:0 8px 8px 0; color:#fde68a; font-size:0.92rem;">
+            <strong>Note:</strong> {note_text}
+        </div>
+        ''')
+
+    # 6. See Also
+    if see_also_items:
+        pills_html = []
+        for itm in see_also_items:
+            escaped_itm = itm.replace("'", "\\'")
+            pills_html.append(f'''
+            <button type="button" class="btn btn-secondary btn-sm" style="font-size:0.82rem; padding:6px 14px; border-radius:6px; background:rgba(0,141,199,0.12); color:#38bdf8; border:1px solid rgba(0,141,199,0.3); cursor:pointer;" onclick="searchWithKeyword('{escaped_itm}')">
+                {itm}
+            </button>
+            ''')
+        html_parts.append(f'''
+        <div style="background:rgba(15,23,42,0.4); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:18px 22px;">
+            <h4 style="font-size:0.92rem; font-weight:700; color:#94a3b8; margin-top:0; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+                <i data-lucide="link" style="width:14px; height:14px;"></i> See Also & Related Topics
+            </h4>
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                {"".join(pills_html)}
+            </div>
+        </div>
+        ''')
+
+    html_parts.append('</div>')
+    return "\n".join(html_parts)
+
 @app.get("/api/document/{doc_id}")
 def get_document(doc_id: int, q: Optional[str] = None, db: Session = Depends(get_db)):
     doc = db.query(Document).filter(Document.id == doc_id).first()
@@ -1143,27 +1395,34 @@ def get_document(doc_id: int, q: Optional[str] = None, db: Session = Depends(get
             query_terms = [t.lower().strip() for t in q.split() if t.strip()]
 
     html_content = None
-    if doc.file_type == "html" and os.path.exists(doc.file_path):
+    if doc.file_type in ["html", "htm"] and os.path.exists(doc.file_path):
         try:
             with open(doc.file_path, "r", encoding="utf-8", errors="ignore") as f:
-                soup = BeautifulSoup(f.read(), "html.parser")
-                content_div = soup.find(id="main-content")
-                if not content_div:
-                    content_div = soup.find(class_="wiki-content")
-                if not content_div:
-                    content_div = soup.find("body")
-                    
-                if content_div:
-                    for element in content_div(["script", "style"]):
-                        element.decompose()
-                    # Fix relative image paths to point to mounted static endpoints
-                    for img in content_div.find_all("img"):
-                        src = img.get("src", "")
-                        if src and not src.startswith("http") and not src.startswith("/") and not src.startswith("data:"):
-                            img["src"] = "/" + src
-                    if query_terms:
-                        highlight_html_text_nodes(content_div, query_terms)
-                    html_content = str(content_div)
+                raw_html = f.read()
+                soup = BeautifulSoup(raw_html, "html.parser")
+                
+                # Check for RoboHelp structured function layout
+                structured_view = format_robohelp_topic_html(soup, doc.title)
+                if structured_view:
+                    html_content = structured_view
+                else:
+                    content_div = soup.find(id="main-content")
+                    if not content_div:
+                        content_div = soup.find(class_="wiki-content")
+                    if not content_div:
+                        content_div = soup.find("body")
+                        
+                    if content_div:
+                        for element in content_div(["script", "style"]):
+                            element.decompose()
+                        # Fix relative image paths to point to mounted static endpoints
+                        for img in content_div.find_all("img"):
+                            src = img.get("src", "")
+                            if src and not src.startswith("http") and not src.startswith("/") and not src.startswith("data:"):
+                                img["src"] = "/" + src
+                        if query_terms:
+                            highlight_html_text_nodes(content_div, query_terms)
+                        html_content = str(content_div)
         except Exception as e:
             print(f"Error reading raw HTML: {e}")
     elif doc.file_type == "docx" and os.path.exists(doc.file_path + ".html"):
@@ -1722,6 +1981,7 @@ def update_document(
 
 @app.post("/api/upload")
 async def upload_documents(
+    background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
     product: Optional[str] = Form("xpi"),
     current_user: Optional[User] = Depends(get_current_user_optional),
@@ -1752,22 +2012,51 @@ async def upload_documents(
             shutil.copyfileobj(file.file, buffer)
         saved_count += 1
         
-        # Index document directly into SQLite with published status
+        # Index document directly into SQLite with published status (<50ms)
         ext = file.filename.split(".")[-1].lower()
-        doc = index_single_file(
-            file_path=normalized_dest_path,
-            file_type=ext,
-            db=db,
-            explicit_product=prod
-        )
-        if doc:
-            doc.status = "published"
-            doc.author = author_name
-            doc.product = prod
-            db.commit()
-            saved_docs.append(doc)
+        if ext == "zip":
+            zip_subfolder = os.path.splitext(file.filename)[0]
+            extract_dir = os.path.join(target_dir, zip_subfolder)
+            os.makedirs(extract_dir, exist_ok=True)
+            try:
+                import zipfile
+                with zipfile.ZipFile(normalized_dest_path, 'r') as zp:
+                    zp.extractall(extract_dir)
+                for root, _, zfiles in os.walk(extract_dir):
+                    for zf in zfiles:
+                        zext = zf.split(".")[-1].lower()
+                        if zext in ["html", "htm", "pdf", "docx", "txt", "md"]:
+                            zpath = os.path.abspath(os.path.join(root, zf))
+                            zdoc = index_single_file(
+                                file_path=zpath,
+                                file_type=zext,
+                                db=db,
+                                explicit_product=prod
+                            )
+                            if zdoc:
+                                zdoc.status = "published"
+                                zdoc.author = author_name
+                                zdoc.product = prod
+                                db.commit()
+                                saved_docs.append(zdoc)
+                                saved_count += 1
+            except Exception as e:
+                print(f"[Zip Ingestion Error]: {e}")
+        else:
+            doc = index_single_file(
+                file_path=normalized_dest_path,
+                file_type=ext,
+                db=db,
+                explicit_product=prod
+            )
+            if doc:
+                doc.status = "published"
+                doc.author = author_name
+                doc.product = prod
+                db.commit()
+                saved_docs.append(doc)
 
-    total_indexed, log_msg = scan_and_index(db)
+    total_indexed = db.query(Document).count()
 
     # Ingestion notification alert
     notif = Notification(
@@ -1776,8 +2065,11 @@ async def upload_documents(
     )
     db.add(notif)
     db.commit()
+
+    # Offload email dispatch to background task to eliminate client latency
     for doc in saved_docs:
-        notify_document_uploaded(doc.title, prod, author_name, doc.file_type)
+        background_tasks.add_task(notify_document_uploaded, doc.title, prod, author_name, doc.file_type)
+
     msg = f"Successfully uploaded and published {saved_count} document(s) into {prod.upper()} space. Search index updated ({total_indexed} total articles)."
 
     return {
