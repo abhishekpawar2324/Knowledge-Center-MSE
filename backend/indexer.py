@@ -79,36 +79,40 @@ for p_dir in [UPLOADS_DIR, UPLOADS_XPA, UPLOADS_XPI, UPLOADS_CLOUD, UPLOADS_GENE
 
 def detect_product(file_path: str, title: str = "", content: str = "", breadcrumbs: list = None) -> str:
     """
-    Intelligently identifies which Magic product space an article belongs to:
+    Identifies which Magic product space an article belongs to:
     'xpa' (Application Platform), 'xpi' (Integration Platform), 'cloud_native', or 'general'.
-    Prioritizes deep content and title keywords before defaulting to folder path.
+    Physical directory structure is strictly authoritative.
     """
+    path_lower = file_path.lower().replace("\\", "/")
+    
+    # 1. Folder path is strictly authoritative when placed inside product directories
+    if "/cloud_native/" in path_lower or "/cloud/" in path_lower or path_lower.endswith("/cloud_native"):
+        return "cloud_native"
+    if "/xpa/" in path_lower or path_lower.endswith("/xpa"):
+        return "xpa"
+    if "/xpi/" in path_lower or path_lower.endswith("/xpi"):
+        return "xpi"
+    if "/general/" in path_lower:
+        return "general"
+
     crumbs_text = " ".join(breadcrumbs) if breadcrumbs else ""
+    # 2. Confluence breadcrumbs check (e.g. Cloud Service Ops in root Confluence export)
+    if any(k in crumbs_text.lower() for k in ["cloud service ops", "cloud native", "cso"]):
+        return "cloud_native"
+
     combined = (title + " " + crumbs_text + " " + (content[:3500] if content else "")).lower()
     
-    # 1. Cloud Native checks (kubernetes, k8s, docker, imm, microservice, container)
+    # 3. Content heuristics for ambiguous root dumps (e.g. 863301644)
     if any(k in combined for k in ["cloud native", "kubernetes", "k8s", "docker", "imm", "microservice", "modernization factory", "cloud migration"]):
         return "cloud_native"
         
-    # 2. Magic xpi checks (connectors, datamapper, gigaspaces, salesforce resource, sap, etc.)
     if any(k in combined for k in ["xpi", "gigaspace", "gsc", "gsm", "gsa", "datamapper", "data mapper", "connector", "sap b1", "salesforce connector", "sugarcrm", "dynamics", "tcp-listener", "http trigger", "rest client"]):
         return "xpi"
         
-    # 3. Magic xpa checks
     if any(k in combined for k in ["magic xpa", "xpa studio", "ria application", "unipaas", "magic.ini", "mgreq", "mgrb", "xpa "]):
         if "xpi" not in combined:
             return "xpa"
 
-    path_lower = file_path.lower().replace("\\", "/")
-    if "/xpa/" in path_lower or "/xpa" in path_lower:
-        return "xpa"
-    if "/xpi/" in path_lower or "/xpi" in path_lower:
-        return "xpi"
-    if "/cloud_native/" in path_lower or "/cloud" in path_lower:
-        return "cloud_native"
-    if "/general/" in path_lower:
-        return "general"
-        
     if "863301644" in file_path:
         return "xpi"
         
@@ -609,6 +613,25 @@ def scan_and_index(db: Session):
             db.delete(sa)
         db.commit()
         log_msg.append(f"Cleaned up {len(stale_attachments)} internal attachment artifacts from KB index.")
+
+    # 1c. Ensure all existing documents match their authoritative folder space
+    aligned_count = 0
+    for doc in db.query(Document).all():
+        p_lower = doc.file_path.lower().replace("\\", "/")
+        crumbs = doc.breadcrumbs or ""
+        target_prod = None
+        if "/cloud_native/" in p_lower or "/cloud/" in p_lower or "cloud service ops" in crumbs.lower():
+            target_prod = "cloud_native"
+        elif "/xpa/" in p_lower:
+            target_prod = "xpa"
+        elif "/xpi/" in p_lower:
+            target_prod = "xpi"
+        if target_prod and doc.product != target_prod:
+            doc.product = target_prod
+            aligned_count += 1
+    if aligned_count:
+        db.commit()
+        log_msg.append(f"Re-aligned {aligned_count} documents to their authoritative folder space.")
 
     # 2. Scan for real Knowledge Base files
     all_files = []
