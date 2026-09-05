@@ -48,6 +48,10 @@ HELP_FOLDER_NAMES = {
     "template", "template_scripts", "test_help_package", "test_help_package_xpa"
 }
 
+ASSET_FOLDER_NAMES = {
+    "attachments", "images", "styles", "whxdata", "assets"
+}
+
 def is_help_path(file_path: str) -> bool:
     """Checks if a file path belongs to product help manuals rather than user documents."""
     norm = file_path.replace("\\", "/").lower()
@@ -58,6 +62,14 @@ def is_help_path(file_path: str) -> bool:
         return True
     base = os.path.basename(file_path).lower()
     if base in ["index.htm", "index.html"] and any(p in norm for p in ["/xpa/", "/xpi/", "/cloud_native/"]):
+        return True
+    return False
+
+def is_asset_path(file_path: str) -> bool:
+    """Checks if a file path belongs to an internal attachment or asset folder rather than a primary KB article."""
+    norm = file_path.replace("\\", "/").lower()
+    parts = set(norm.split("/"))
+    if any(af in parts for af in ASSET_FOLDER_NAMES):
         return True
     return False
 
@@ -585,20 +597,33 @@ def scan_and_index(db: Session):
     # 1. Clean and migrate any help manual topics previously stored in documents table
     clean_and_migrate_help_docs(db)
 
+    # 1b. Clean up any internal attachment artifacts previously indexed as standalone documents
+    stale_attachments = db.query(Document).filter(
+        (Document.file_path.like("%/attachments/%")) | 
+        (Document.file_path.like("%\\attachments\\%")) |
+        (Document.file_path.like("%/images/%")) | 
+        (Document.file_path.like("%\\images\\%"))
+    ).all()
+    if stale_attachments:
+        for sa in stale_attachments:
+            db.delete(sa)
+        db.commit()
+        log_msg.append(f"Cleaned up {len(stale_attachments)} internal attachment artifacts from KB index.")
+
     # 2. Scan for real Knowledge Base files
     all_files = []
     
     # Confluence folder (discover all supported file types: html, htm, docx, pdf, txt, md)
     if os.path.exists(CONFLUENCE_DIR):
         for root, dirs, files in os.walk(CONFLUENCE_DIR):
-            dirs[:] = [d for d in dirs if d.lower() not in HELP_FOLDER_NAMES]
-            if is_help_path(root):
+            dirs[:] = [d for d in dirs if d.lower() not in HELP_FOLDER_NAMES and d.lower() not in ASSET_FOLDER_NAMES]
+            if is_help_path(root) or is_asset_path(root):
                 continue
             for file in files:
                 if file in ["index.html", "index.htm"]:
                     continue
                 file_full = os.path.join(root, file)
-                if is_help_path(file_full):
+                if is_help_path(file_full) or is_asset_path(file_full):
                     continue
                 ext = file.split(".")[-1].lower()
                 if ext in ["html", "htm", "pdf", "docx", "txt", "md"]:
@@ -607,14 +632,14 @@ def scan_and_index(db: Session):
     # Uploads folder (and all product subdirectories)
     if os.path.exists(UPLOADS_DIR):
         for root, dirs, files in os.walk(UPLOADS_DIR):
-            dirs[:] = [d for d in dirs if d.lower() not in HELP_FOLDER_NAMES]
-            if is_help_path(root):
+            dirs[:] = [d for d in dirs if d.lower() not in HELP_FOLDER_NAMES and d.lower() not in ASSET_FOLDER_NAMES]
+            if is_help_path(root) or is_asset_path(root):
                 continue
             for file in files:
                 if file in ["index.html", "index.htm"]:
                     continue
                 file_full = os.path.join(root, file)
-                if is_help_path(file_full):
+                if is_help_path(file_full) or is_asset_path(file_full):
                     continue
                 ext = file.split(".")[-1].lower()
                 if ext in ["html", "htm", "pdf", "docx", "txt", "md"]:
