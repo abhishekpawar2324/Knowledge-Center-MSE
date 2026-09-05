@@ -137,10 +137,82 @@ if os.path.exists(CONFLUENCE_DIR):
     
     if os.path.exists(images_dir):
         app.mount("/images", StaticFiles(directory=images_dir), name="images")
-    if os.path.exists(attachments_dir):
-        app.mount("/attachments", StaticFiles(directory=attachments_dir), name="attachments")
     if os.path.exists(styles_dir):
         app.mount("/styles", StaticFiles(directory=styles_dir), name="styles")
+
+@app.get("/attachments/{file_path:path}")
+def get_attachment_file(file_path: str):
+    """
+    Unified multi-space attachment resolver.
+    Handles relative attachment paths across all product spaces: xpa, xpi, cloud_native, and Confluence.
+    """
+    clean_path = file_path.split("?")[0].replace("\\", "/").lstrip("/")
+    
+    # 1. Primary candidate paths
+    candidates = [
+        os.path.join(CONFLUENCE_DIR, "attachments", clean_path),
+        os.path.join(UPLOADS_DIR, "xpa", "attachments", clean_path),
+        os.path.join(UPLOADS_DIR, "xpi", "attachments", clean_path),
+        os.path.join(UPLOADS_DIR, "cloud_native", "attachments", clean_path),
+        os.path.join(UPLOADS_DIR, "attachments", clean_path),
+    ]
+    for c in candidates:
+        if os.path.isfile(c):
+            return FileResponse(c)
+
+    # 2. Check if clean_path starts with or lacks 'attachments/'
+    stripped = clean_path.replace("attachments/", "", 1) if clean_path.startswith("attachments/") else clean_path
+    candidates2 = [
+        os.path.join(CONFLUENCE_DIR, "attachments", stripped),
+        os.path.join(UPLOADS_DIR, "xpa", "attachments", stripped),
+        os.path.join(UPLOADS_DIR, "xpi", "attachments", stripped),
+        os.path.join(UPLOADS_DIR, "cloud_native", "attachments", stripped),
+        os.path.join(UPLOADS_DIR, "attachments", stripped),
+    ]
+    for c in candidates2:
+        if os.path.isfile(c):
+            return FileResponse(c)
+
+    # 3. Deep search inside subdirectories of UPLOADS_DIR & CONFLUENCE_DIR
+    target_name = os.path.basename(clean_path)
+    for search_root in [UPLOADS_DIR, CONFLUENCE_DIR]:
+        if not os.path.exists(search_root):
+            continue
+        for root, dirs, files in os.walk(search_root):
+            if target_name in files and "attachment" in root.lower():
+                full_p = os.path.join(root, target_name)
+                if os.path.isfile(full_p):
+                    return FileResponse(full_p)
+
+    raise HTTPException(status_code=404, detail=f"Attachment '{file_path}' not found")
+
+@app.get("/api/document/{doc_id}/asset/{asset_path:path}")
+def get_document_asset(doc_id: int, asset_path: str, db: Session = Depends(get_db)):
+    """
+    Contextual document asset resolver.
+    Resolves assets relative to the specific document's directory on disk,
+    with automatic fallback across spaces and subdirectories.
+    """
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc or not doc.file_path or not os.path.exists(doc.file_path):
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    clean_asset = asset_path.split("?")[0].replace("\\", "/").lstrip("/")
+    doc_dir = os.path.dirname(doc.file_path)
+
+    # 1. Check relative to document directory
+    p1 = os.path.normpath(os.path.join(doc_dir, clean_asset))
+    if os.path.isfile(p1):
+        return FileResponse(p1)
+
+    # 2. Check if clean_asset is inside attachments folder of doc_dir
+    if not clean_asset.startswith("attachments/"):
+        p2 = os.path.normpath(os.path.join(doc_dir, "attachments", clean_asset))
+        if os.path.isfile(p2):
+            return FileResponse(p2)
+
+    # 3. Fall back to global multi-space attachment resolver
+    return get_attachment_file(clean_asset)
 
 # Knowledge Base Uploaded Assets (Images & Attachments)
 UPLOADS_ASSETS = os.path.join(UPLOADS_DIR, "assets")
@@ -1655,11 +1727,12 @@ def get_document(doc_id: str, q: Optional[str] = None, db: Session = Depends(get
                     if content_div:
                         for element in content_div(["script", "style"]):
                             element.decompose()
-                        # Fix relative image paths to point to mounted static endpoints
+                        # Fix relative image paths to point to contextual document asset endpoint
                         for img in content_div.find_all("img"):
                             src = img.get("src", "")
-                            if src and not src.startswith("http") and not src.startswith("/") and not src.startswith("data:"):
-                                img["src"] = "/" + src
+                            if src and not src.startswith("http") and not src.startswith("data:"):
+                                clean_src = src.lstrip("/")
+                                img["src"] = f"/api/document/{doc.id}/asset/{clean_src}"
                         if query_terms:
                             highlight_html_text_nodes(content_div, query_terms)
                         html_content = str(content_div)
@@ -1668,8 +1741,13 @@ def get_document(doc_id: str, q: Optional[str] = None, db: Session = Depends(get
     elif doc.file_type == "docx" and os.path.exists(doc.file_path + ".html"):
         try:
             with open(doc.file_path + ".html", "r", encoding="utf-8", errors="ignore") as f:
-                html_val = f.read()
-                html_content = f'<div class="wiki-content group">{html_val}</div>'
+                docx_soup = BeautifulSoup(f.read(), "html.parser")
+                for img in docx_soup.find_all("img"):
+                    src = img.get("src", "")
+                    if src and not src.startswith("http") and not src.startswith("data:"):
+                        clean_src = src.lstrip("/")
+                        img["src"] = f"/api/document/{doc.id}/asset/{clean_src}"
+                html_content = f'<div class="wiki-content group">{str(docx_soup)}</div>'
         except Exception as e:
             print(f"Error reading generated DOCX HTML: {e}")
     elif doc.file_type == "md":
