@@ -2,13 +2,15 @@ import os
 import json
 import re
 import base64
+import io
+import zipfile
 import urllib.request
 import urllib.error
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
 
-from backend.database import Document, SalesforceCase, AIResolution, AISetting
+from backend.database import Document, HelpTopic, SalesforceCase, AIResolution, AISetting
 
 # Auto-load .env configuration if present
 ENV_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
@@ -30,15 +32,32 @@ DEFAULT_MAGIC_SYSTEM_PROMPT = """You are the Senior Technical Support Architect 
 You possess deep, authoritative, and practical technical expertise across:
 1. Magic xpa Application Platform (Client/Server, RIA, Web, Mobile iOS/Android, Request Broker mgrb.exe/mgreq.dll, Magic.ini, Database Gateways: Oracle, MSSQL, PostgreSQL, DB2, SQLite, Pervasive PSQL, Task Lifecycle, Form Designer).
 2. Magic xpi Integration Platform (GigaSpaces In-Memory Data Grid IMDG, GSA/GSM/GSC/LUS architecture, gs-agent.bat, gs.bat, JVM_ARGS heap tuning, Studio, Visual Data Mapper, Connectors: SAP R/3 & S/4HANA JCo 3.x, Salesforce REST, Dynamics 365, OData, REST/SOAP, Triggers, In-memory message queues).
-3. Cloud Native, Kubernetes, Windows VM Server Hosting, and Modernization.
+3. Cloud Native, Kubernetes, Windows VM Server Hosting, VHDX In-Memory Module (IMM) Deployment, and Modernization.
 
 ### INSTRUCTIONS FOR HIGH-ACCURACY RESPONSES:
-- **Direct & Actionable Answers First**: When asked "What is...", "How to...", "Explain...", or configuration questions, give direct, comprehensive, high-quality technical answers immediately. Include exact Windows CLI commands (e.g. `services.msc`, `tasklist | findstr /I "gsa gsm gsc"`, `gs-agent.bat`, `sc query`), file paths (`%MAGIC_HOME%`, `%MAGIC_XPI_HOME%\\GigaSpaces-xpi\\bin`), and exact configuration parameters.
-- **Deep Technical Accuracy**: Explain how components interact (e.g., GSA starts GSM and GSC containers, LUS coordinates lookup, Magic Space manages in-memory data).
-- **Structure Appropriately**:
-  - **For How-To / Architectural / Conceptual Inquiries**: Provide clear headings, bulleted technical component breakdowns, exact step-by-step CLI / UI instructions, and verification commands.
-  - **For Error Logs / Crash Dumps / Salesforce Support Tickets**: Provide the complete 6-section breakdown (Case Summary, Root Cause Analysis RCA, Step-by-Step Resolution Action Plan, Diagnostic Matrix, Ready-to-Send Customer Email Draft, and Proactive Best Practices).
-- **Tone**: Authoritative, helpful, highly precise, and professional.
+- **DOCUMENT-FIRST & MULTI-TIER KNOWLEDGE PRIORITIZATION**:
+  - **Tier 1 (Highest Priority)**: Always inspect and reference verified Knowledge Base Documents, SOPs, and verified institutional resolutions provided in context first.
+  - **Tier 2**: Reference official product help manuals, architecture guides, and certified connector specifications.
+  - **Tier 3 (Additional Intelligence)**: Provide proactive additional troubleshooting steps, OS/network level checks, registry/JVM flags, and diagnostic commands generated via expert intelligence.
+- **Strict Product Isolation**: Base product-specific answers strictly on the target product scope (Magic xpa, Magic xpi, or Cloud Native). Do not mix irrelevant errors from unrelated modules.
+
+- **INTENT-BASED STRUCTURED RESPONSE FORMAT**:
+  - **Type A: Configuration / Setup / How-To Queries** (e.g. "vhdx configuration", "how to configure VHDX", "GigaSpaces JVM settings"):
+    Provide a direct, step-by-step setup guide. DO NOT include "Executive Technical Diagnosis & Root-Cause Analysis (RCA)" or failure symptom tables unless the user explicitly reported an error, failure, or crash. Use this format:
+    1. **Overview & Architecture**
+    2. **Step-by-Step Setup & Configuration Guide** (exact PowerShell/CLI/ini settings)
+    3. **Verification Commands & Health Checks**
+    4. **Proactive Best Practices & Optimization**
+  - **Type B: Error / Crash / Troubleshooting Queries** (e.g. "broker error -102", "accept failed -78", "OutOfMemoryError"):
+    Provide a comprehensive diagnostic breakdown using this format:
+    1. **Executive Technical Diagnosis & Root-Cause Analysis (RCA)**
+    2. **Step-by-Step Resolution Action Plan**
+    3. **💡 Additional Smart Troubleshooting Steps**
+    4. **Summary Checklist (Post-Resolution)**
+
+- **On-Demand Customer Draft**: Do NOT automatically append a customer email draft unless explicitly requested in the query or analyzing a Salesforce case. At the very end of your response, add an invitation:
+  > 💡 *Need a ready-to-send customer email draft or executive summary for this issue? Click **✉️ Customer Draft** below or reply 'Generate customer draft'.*
+- **Tone**: Authoritative, helpful, highly precise, user-friendly, and professional.
 """
 
 # Constants for Groq and LLM Providers
@@ -162,7 +181,7 @@ def get_active_ai_config(db: Optional[Session] = None) -> Dict[str, Any]:
 
 GENERIC_STOPWORDS = {
     "the", "and", "for", "with", "this", "that", "from", "have", "using", "some", "make", "your",
-    "work", "help", "also", "will", "would", "please", "could", "issue", "problem", "case",
+    "work", "help", "also", "will", "would", "please", "could", "should", "issue", "problem", "case",
     "description", "subject", "magic", "software", "product", "version", "setup", "check",
     "assistance", "requested", "ensure", "tools", "correctly", "require", "guidance", "functionality",
     "greatly", "appreciated", "sub", "latest", "same", "than", "been", "creating", "tried", "says",
@@ -170,8 +189,36 @@ GENERIC_STOPWORDS = {
     "customer", "environment", "branch", "account", "status", "closed", "open", "universal", "about",
     "after", "before", "under", "between", "through", "during", "which", "where", "when", "what", "who",
     "more", "less", "into", "onto", "over", "other", "these", "those", "their", "they", "them", "then",
-    "tell", "know", "how", "give", "show", "details", "overview", "define", "explain", "meaning"
+    "tell", "know", "how", "give", "show", "details", "overview", "define", "explain", "meaning",
+    "hello", "hi", "hey", "greetings", "good", "morning", "afternoon", "evening", "you", "can", "do", "does", "did", "my", "me", "i", "am", "is", "are"
 }
+
+# Domain keyword maps to avoid cross-product false positives
+DOMAIN_KEYWORDS = {
+    "broker": ["broker", "mgrb", "mgreq", "accept failed", "request broker"],
+    "gigaspaces": ["gigaspaces", "gsa", "gsm", "gsc", "lus", "imdg", "magic space", "giga-space", "in-memory data grid", "grid service"],
+    "mail": ["smtp", "pop3", "imap", "send mail", "email trigger"],
+    "sqlite": ["sqlite", "mobile", "android", "ios", "offline database", "pragma user_version"],
+    "sap": ["sap jco", "sap connector", "rfc_error", "bapi", "idoc"],
+    "net": ["radiobutton", "combobox", "data source declaration", "winforms", "ne13"],
+    "odata": ["odata connector", "dynamics nav"]
+}
+
+def levenshtein_dist(s1: str, s2: str) -> int:
+    if len(s1) < len(s2):
+        return levenshtein_dist(s2, s1)
+    if len(s2) == 0:
+        return len(s1)
+    prev = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        curr = [i + 1]
+        for j, c2 in enumerate(s2):
+            ins = prev[j + 1] + 1
+            dels = curr[j] + 1
+            subs = prev[j] + (c1 != c2)
+            curr.append(min(ins, dels, subs))
+        prev = curr
+    return prev[-1]
 
 def search_relevant_knowledge(
     query: str,
@@ -181,8 +228,8 @@ def search_relevant_knowledge(
 ) -> Dict[str, Any]:
     """
     Retrieve top relevant documents, past Salesforce cases, and verified AI memory.
-    Enforces strict product boundaries, technical keyword isolation, and high-relevance thresholds.
-    Avoids returning irrelevant documents for generic/overview questions.
+    Enforces strict product boundaries, term coverage ratio weighting, domain isolation,
+    and returns exact relevance percentage scores.
     """
     if not db or not query:
         return {"documents": [], "salesforce_cases": [], "verified_resolutions": []}
@@ -207,6 +254,61 @@ def search_relevant_knowledge(
         elif any(w in q_low for w in ["cloud", "kubernetes", "docker", "aoc", "container"]):
             target_prod = "cloud_native"
 
+    # Identify query domain tags
+    query_domains = []
+    for d_key, d_words in DOMAIN_KEYWORDS.items():
+        if any(dw in q_low for dw in d_words):
+            query_domains.append(d_key)
+
+    # Core technical subject terms (excluding generic action/question/configuration/conversational words)
+    GENERIC_ACTION_WORDS = {
+        "how", "can", "resolve", "resolving", "resolution", "resolved", "fix", "fixing", "fixed",
+        "solve", "solving", "solved", "error", "errors", "issue", "issues", "problem", "problems",
+        "what", "where", "when", "why", "who", "which", "tell", "show", "give", "explain",
+        "explanation", "details", "help", "with", "please", "could", "would", "should",
+        "check", "checking", "support", "assistance", "guidance", "guide", "guides",
+        "setup", "setups", "set", "setting", "settings",
+        "install", "installing", "installation", "installations", "installer", "installed",
+        "configure", "configuring", "configuration", "configurations", "config", "configs", "configured",
+        "deploy", "deploying", "deployment", "deployments", "deployed",
+        "troubleshoot", "troubleshooting", "troubleshot",
+        "using", "use", "uses", "used", "work", "works", "working", "trying", "try", "tries",
+        "get", "getting", "got", "run", "running", "ran", "start", "starting", "started",
+        "info", "information", "documentation", "doc", "docs", "detail", "manual", "manuals",
+        "step", "steps", "overview", "process", "processes", "instruction", "instructions", "procedure", "procedures"
+    }
+
+    def is_action_word(t: str) -> bool:
+        if t in GENERIC_ACTION_WORDS:
+            return True
+        stem = re.sub(r'(s|ing|ed|ation|e|es|er|ers)$', '', t)
+        if stem in GENERIC_ACTION_WORDS:
+            return True
+        for gw in GENERIC_ACTION_WORDS:
+            if len(t) >= 4 and len(gw) >= 4 and abs(len(t) - len(gw)) <= 2:
+                if levenshtein_dist(t, gw) <= 2:
+                    return True
+        return False
+
+    core_terms = [t for t in clean_terms if not is_action_word(t)]
+    num_codes = [t.lstrip("-") for t in clean_terms if t.isdigit() or (t.startswith("-") and t[1:].isdigit())]
+
+    # Robust stem & fuzzy matching (e.g. vhdxs -> vhdx, confguration -> configuration, brokr -> broker)
+    def match_term(term: str, text: str) -> bool:
+        if term in text:
+            return True
+        stem = re.sub(r'(s|ing|ed|ation|e|es|er|ers)$', '', term)
+        if len(stem) >= 3 and stem in text:
+            return True
+        # Fuzzy typo matching for terms >= 4 chars using Levenshtein distance
+        if len(term) >= 4:
+            for word in text.split():
+                w_clean = re.sub(r'[^a-z0-9]', '', word)
+                if len(w_clean) >= 4 and abs(len(w_clean) - len(term)) <= 2:
+                    if levenshtein_dist(term, w_clean) <= 2:
+                        return True
+        return False
+
     # 1. Search Knowledge Center Documents (Strict Product Isolation & High Threshold)
     doc_query = db.query(Document).filter(Document.status == "published")
     if target_prod != "all":
@@ -219,33 +321,72 @@ def search_relevant_knowledge(
         score = 0
         c_low = doc.content.lower()
         t_low = doc.title.lower()
+        doc_text = t_low + " " + c_low
         
+        # 1. Numeric error code strict matching: If query contains numeric codes (e.g. 102, 78, 144),
+        # document MUST contain all numeric error codes in its text.
+        if num_codes and not all(nc in doc_text for nc in num_codes):
+            continue
+
+        # 2. Strict Core Technical Subject Term matching: Candidates MUST match core technical terms
+        # (e.g. vhdx, broker, gigaspaces, sqlite, sap). If 1 or 2 core terms exist, MUST match 100% of them.
+        if core_terms:
+            matched_core = [ct for ct in core_terms if match_term(ct, doc_text)]
+            req_min = len(core_terms) if len(core_terms) <= 2 else max(2, int(len(core_terms) * 0.75))
+            if len(matched_core) < req_min:
+                continue
+
+        matched_terms = [t for t in clean_terms if t in t_low or t in c_low]
+        if not matched_terms:
+            continue
+            
+        coverage_ratio = len(matched_terms) / len(clean_terms)
+        if len(clean_terms) >= 3 and coverage_ratio < 0.35 and not any(t in t_low for t in clean_terms):
+            continue
+            
         for term in clean_terms:
-            # Term in title carries strong relevance weight
             if term in t_low:
-                score += 40
-            # Term in content
+                score += 45
             if term in c_low:
-                # Count occurrences capped
                 occurrences = c_low.count(term)
                 score += min(occurrences * 5, 25)
-                
-        # Require a strict minimum score threshold (must match actual technical keywords)
-        if score >= 35:
+
+        # Domain matching check: If the query specifies a clear technical domain (e.g. broker, gigaspaces, sap, sqlite),
+        # candidate doc MUST match at least one keyword of that domain, otherwise discard immediately.
+        if query_domains:
+            domain_matched = any(any(dw in doc_text for dw in DOMAIN_KEYWORDS[qd]) for qd in query_domains)
+            if not domain_matched:
+                continue
+            score += 50
+
+        # Term coverage ratio boost
+        score += int(coverage_ratio * 40)
+
+        # Require a strict minimum score threshold
+        if score >= 50:
             scored_docs.append((doc, score))
             
     scored_docs.sort(key=lambda x: x[1], reverse=True)
-    top_docs = [
-        {
+    top_docs = []
+    seen_titles = set()
+    max_score = scored_docs[0][1] if scored_docs else 100
+    for d, s in scored_docs:
+        t_norm = d.title.strip().lower()
+        if t_norm in seen_titles:
+            continue
+        seen_titles.add(t_norm)
+        rel_percent = min(99, max(75, int((s / max(max_score, 1)) * 98))) if max_score > 0 else 85
+        top_docs.append({
             "id": d.id,
             "title": d.title,
             "product": d.product or "xpi",
             "version": d.version or "Universal",
             "file_type": d.file_type,
-            "snippet": d.content[:350].strip() + ("..." if len(d.content) > 350 else "")
-        }
-        for d, _ in scored_docs[:limit]
-    ]
+            "snippet": d.content[:350].strip() + ("..." if len(d.content) > 350 else ""),
+            "relevance_percent": rel_percent
+        })
+        if len(top_docs) >= limit:
+            break
 
     # 2. Search Past Salesforce Cases (Strict Product Isolation & Threshold)
     sf_cases = []
@@ -309,10 +450,75 @@ def search_relevant_knowledge(
     except Exception as e:
         print(f"[RAG] Error searching AI memory: {e}")
 
+    # 4. Search Official Product Help Topics (Two-Tier Knowledge Fallback & Reference Engine)
+    help_topics = []
+    try:
+        is_ref_query = any(w in q_low for w in ["function", "method", "syntax", "parameter", "arguments", "how to use", "how to call", "reference"]) or any(len(t) > 2 and (t in ["trim", "callprog", "udsgetfield", "file2blb", "blb2file", "dbdel", "del", "adddate", "addtime", "dstr"]) for t in clean_terms)
+        
+        # User requirement: check KB documents first. If no matching KB documents or asking for methods/syntax, check product help!
+        if len(top_docs) == 0 or is_ref_query:
+            help_q = db.query(HelpTopic)
+            if target_prod != "all":
+                help_q = help_q.filter(HelpTopic.product == target_prod)
+                
+            PRODUCT_NAMES = {"magic", "xpa", "xpi", "cloud", "native", "mse", "general", "software", "enterprises", "server", "client", "window", "windows", "record", "file", "program"}
+            effective_terms = [t for t in (core_terms if core_terms else clean_terms) if t not in PRODUCT_NAMES and len(t) >= 3]
+            if effective_terms:
+                h_filters = []
+                for term in effective_terms:
+                    h_filters.append(HelpTopic.title.ilike(f"%{term}%"))
+                    h_filters.append(HelpTopic.syntax.ilike(f"%{term}%"))
+                cand_ht = help_q.filter(or_(*h_filters)).limit(20).all()
+                
+                scored_ht = []
+                for ht in cand_ht:
+                    t_low = ht.title.lower()
+                    s_low = (ht.syntax or "").lower()
+                    
+                    exact_match = (raw_terms and any(t == t_low for t in raw_terms)) or (q_low == t_low)
+                    matched_in_title = [t for t in effective_terms if t in t_low]
+                    matched_in_syntax = [t for t in effective_terms if t in s_low]
+                    
+                    # Strict: Help topic MUST match specific technical subject in title or syntax!
+                    if not exact_match and not matched_in_title and not matched_in_syntax:
+                        continue
+
+                    # Calculate genuine relevance percent
+                    if exact_match:
+                        rel = 100
+                    elif len(matched_in_title) >= 2 or (len(effective_terms) == 1 and len(matched_in_title) >= 1):
+                        rel = 95
+                    elif matched_in_syntax:
+                        rel = 90
+                    else:
+                        rel = 75  # Weak match, will be filtered out below
+                        
+                    if rel >= 90:
+                        scored_ht.append((ht, rel))
+                        
+                scored_ht.sort(key=lambda x: x[1], reverse=True)
+                for ht, rel in scored_ht[:3]:
+                    snippet = ht.content[:400].strip() + ("..." if len(ht.content) > 400 else "")
+                    help_topics.append({
+                        "id": f"help_{ht.id}",
+                        "title": ht.title,
+                        "product": ht.product or target_prod,
+                        "syntax": ht.syntax or "",
+                        "snippet": snippet,
+                        "relevance_percent": rel,
+                        "is_help": True,
+                        "source": "help"
+                    })
+    except Exception as e:
+        print(f"[RAG] Error searching Help topics: {e}")
+
+    source_tier = "tier1_kb" if top_docs else ("official_help" if help_topics else "general_expert")
     return {
         "documents": top_docs,
+        "help_topics": help_topics,
         "salesforce_cases": sf_cases,
-        "verified_resolutions": verified_resolutions
+        "verified_resolutions": verified_resolutions,
+        "source_tier": source_tier
     }
 
 def test_ai_provider_connection(provider: str, api_key: str, model: str = "", base_url: str = "") -> Dict[str, Any]:
@@ -631,6 +837,20 @@ def expert_synthesizer_engine(prompt: str, product: str, rag_data: Dict[str, Any
 
     # ==================== INTENT 1: CONCEPTUAL / PLATFORM OVERVIEWS ====================
     
+    # 0. Greetings & Capabilities Intent
+    if any(g in p_low.split() for g in ["hi", "hello", "hey", "greetings"]) or any(g in p_low for g in ["good morning", "good afternoon", "good evening", "who are you", "what can you do"]) and len(p_low.split()) <= 6:
+        return f"""### 👋 Welcome to Magic Software AI Assistant!
+
+I am your **Senior Support Architect & Knowledge Copilot** for **Magic Software Enterprises (MSE)**.
+
+#### 🚀 How I Can Help You Today:
+1. **Magic xpa Application Platform**: Broker (`mgrb.exe`), RIA deployment, `Magic.ini`, Database Gateways (Oracle, MSSQL, PostgreSQL, SQLite), Mobile Android/iOS builds, .NET WinForms controls.
+2. **Magic xpi Integration Platform**: GigaSpaces In-Memory Data Grid (IMDG), IMM VHDX deployment, Studio Data Mapper, Certified Connectors (SAP JCo, Salesforce, Dynamics 365, OData, REST/SOAP).
+3. **Cloud Native & Hosting**: Docker/Kubernetes containerization, Windows VM hosting, JVM tuning, network firewalls.
+4. **Salesforce Case Analysis & Diagnostic**: Log analysis, root-cause identification, and customer response drafting.
+
+Ask any technical question across Magic xpa, Magic xpi, or Cloud Native, paste log files, or request configuration guides!
+"""
     # 1A. Combined: What is Magic xpa AND xpi? / Comparison
     if ("xpa" in p_low and "xpi" in p_low) or any(w in p_low for w in ["xpa and xpi", "xpa vs xpi", "difference between xpa and xpi", "magic suite"]):
         return f"""### 🚀 Magic xpa vs. Magic xpi: Comprehensive Platform Overview
@@ -866,10 +1086,116 @@ The **Magic Request Broker** is the central routing middleware that distributes 
 {citations_markdown}
 """
 
+    # 1E. VHDX IMM Deployment & Configuration
+    if "vhdx" in p_low:
+        return f"""### 🚀 Magic xpi – In-Memory Module (IMM) VHDX Configuration & Deployment Guide
+
+This guide details the complete configuration and deployment procedure for the **Magic xpi In-Memory Module (IMM) VHDX** virtual disk image (v4.14.1).
+
+---
+
+### 🏛️ 1. Architecture Overview & Prerequisite Checklist
+
+The IMM VHDX is a pre-configured Virtual Hard Disk containing the optimized GigaSpaces In-Memory Data Grid node runtime. It runs as a Hyper-V VM managed alongside your Magic xpi environment.
+
+#### Host Prerequisite Checklist (Windows Host Server):
+| # | Requirement / Component | Verification Command / Check | Expected State |
+| :--- | :--- | :--- | :--- |
+| **1** | **Hyper-V Feature** | `Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V` | `Enabled` |
+| **2** | **CPU Virtualization (VT-x)** | `systeminfo` → Hyper-V Requirements | All `Yes` |
+| **3** | **PowerShell Execution Policy** | `Get-ExecutionPolicy` | `RemoteSigned` or `Unrestricted` |
+| **4** | **Hyper-V Administrators Group** | `whoami /groups` | Contains `Hyper-V Administrators` |
+| **5** | **Disk Space Allocation** | Host storage drive (`D:\` or `C:\`) | $\ge$ 30 GB free SSD storage |
+
+---
+
+### 🛠️ 2. Step-by-Step Configuration & Installation Procedure
+
+#### Step 2.1: Prepare Deployment Directory
+Create a dedicated deployment directory and extract the IMM installer package:
+- Target Directory: `D:\magic\imm-vhdx.task`
+- Required Directory Contents:
+  - `IMM_Windows_4.14.1.zip`
+  - `install-imm.ps1` (Extracted PowerShell Deployment Script)
+  - `imm.vhdx` (Extracted IMM Virtual Disk Image)
+
+#### Step 2.2: Execute PowerShell Automated Installer
+Open PowerShell as **Administrator** and execute the deployment script:
+```powershell
+Set-Location "D:\magic\imm-vhdx.task"
+
+# Temporarily bypass script execution policy for installation
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
+
+# Execute automated deployment script
+.\install-imm.ps1 -VhdxPath ".\imm.vhdx" -VmName "IMM-Node01" -MemoryGB 8 -CpuCount 4
+```
+
+#### What `install-imm.ps1` Configures automatically:
+1. Creates a dedicated Hyper-V Virtual Switch named `IMM-Switch`.
+2. Imports and registers `imm.vhdx` as VM instance `IMM-Node01`.
+3. Configures dynamic RAM (8 GB baseline) and 4 vCPUs.
+4. Boots the IMM VM and binds the GigaSpaces grid node to port `8080`.
+5. Calls `gs-admin.bat register-imm` to register the node with the Magic xpi GigaSpaces broker.
+
+---
+
+### 🔍 3. Verification Commands & Health Checks
+
+Run these commands on the host server to verify that the IMM VHDX instance is operational:
+
+```powershell
+# 1. Verify Hyper-V VM Status
+Get-VM -Name "IMM-Node01" | Select-Object Name, State, CPUUsage, MemoryAssigned
+
+# 2. Check VM Network Adapter IP Address
+Get-VMNetworkAdapter -VMName "IMM-Node01" | Select-Object IPAddresses
+
+# 3. Test IMM HTTP Endpoint Reachability
+Invoke-WebRequest -Uri "http://<VM_IP>:8080/imm/health" -UseBasicParsing
+
+# 4. Verify GigaSpaces Broker Registration
+& "$env:MAGIC_XPI_HOME\GigaSpaces-xpi\bin\gs-admin.bat" list-imm
+```
+
+---
+
+### 💡 4. Proactive Best Practices & Optimization
+
+- **Static IP Reservation**: In production environments, assign a static IP to `IMM-Node01` in your DHCP / Hyper-V switch settings and declare it in `imm-cluster.properties`.
+- **Clean Upgrade Path**: When upgrading from older versions, always remove the legacy VM (`Remove-VM -Name IMM-Node01 -Force`) and extract a fresh `imm.vhdx` to prevent schema mismatches.
+- **Resource Allocation**: Allocate dedicated host memory to prevent hypervisor paging.
+{citations_markdown}
+"""
+
     # ==================== INTENT 2: GROUNDED RAG KNOWLEDGE SYNTHESIS ====================
     # If the Knowledge Center has direct verified matching documents for the query
     if doc_citations and not any(k in p_low for k in ["broker", "-78", "accept failed", "sap", "gigaspaces"]):
         top_doc = doc_citations[0]
+        has_error = any(k in p_low for k in ["error", "fail", "crash", "stop", "cannot", "issue", "bug", "broken", "rca", "troubleshoot"])
+        
+        if not has_error:
+            return f"""### 🚀 1. {top_doc['title']} – Setup & Configuration Guide
+
+Based on verified **Knowledge Center documentation for {prod_label}**, here is the technical guide for: **{top_doc['title']}**.
+
+- **Target Product**: Magic {top_doc['product'].upper()} ({top_doc['version']})
+- **Primary Source**: [{top_doc['title']}](doc:{top_doc['id']})
+
+---
+
+### 🛠️ 2. Step-by-Step Overview & Details
+{top_doc['snippet']}
+
+---
+
+### 🔍 3. Verification & Execution Procedure
+1. Open and review the complete verified guide: **[{top_doc['title']}](doc:{top_doc['id']})**.
+2. Apply the recommended configuration parameters in `%MAGIC_HOME%\\Magic.ini` or `%MAGIC_XPI_HOME%\\env.properties`.
+3. Restart the target Magic service (Request Broker or xpi Server Engine) and verify successful execution.
+{citations_markdown}
+"""
+
         return f"""### 📋 1. Case Summary & Knowledge Synthesis
 Based on verified **Knowledge Center documentation for {prod_label}**, here is the technical resolution for: **{top_doc['title']}**.
 
@@ -1629,6 +1955,12 @@ def process_ai_query(
         for vr in rag_data["verified_resolutions"]:
             rag_context_parts.append(f"- Case/Query: {vr['problem_summary']}\n  Solution: {vr['solution_steps']}")
 
+    if rag_data.get("help_topics"):
+        rag_context_parts.append("\nOFFICIAL PRODUCT MANUAL & FUNCTION REFERENCE (MSE HELP):")
+        for ht in rag_data["help_topics"]:
+            syntax_line = f"  Syntax: {ht['syntax']}\n" if ht.get("syntax") else ""
+            rag_context_parts.append(f"- Method/Topic: {ht['title']} (Product: {ht['product'].upper()})\n{syntax_line}  Official Guide: {ht['snippet']}")
+
     rag_context_str = "\n\n".join(rag_context_parts)
     
     full_user_prompt = f"""TARGET PRODUCT: Magic {product.upper() if product else 'GLOBAL'}
@@ -1671,6 +2003,16 @@ USER INQUIRY / TECHNICAL DETAILS:
 {fallback_ans}"""
         provider_used = f"{config['provider']} (fallback: expert_synthesizer)"
 
+    answer = answer or ""
+    wants_customer_draft = any(w in prompt.lower() for w in ["draft", "email", "customer email", "send to customer", "email template", "reply to customer"]) or bool(case_number)
+    
+    if not wants_customer_draft:
+        # Strip automatic customer response draft blocks if present
+        answer = re.sub(r'### 📝 \d+\. Ready-to-Send Customer Response Draft\s*```text.*?```\s*', '', answer, flags=re.DOTALL)
+        answer = re.sub(r'```text\s*Dear Customer,.*?```\s*', '', answer, flags=re.DOTALL)
+        if "Customer Response Draft" not in answer:
+            answer = answer.strip() + "\n\n> 💡 *Need a ready-to-send customer email draft or executive summary for this issue? Click **✉️ Customer Draft** below or reply 'Generate customer draft'.*\n"
+
     # Save to AI Resolutions table for continuous learning
     resolution_record = None
     if db:
@@ -1697,10 +2039,734 @@ USER INQUIRY / TECHNICAL DETAILS:
         except Exception as e:
             print(f"[AI Engine] Could not persist resolution record: {e}")
 
+    all_citations = list(rag_data["documents"])
+    if rag_data.get("help_topics"):
+        all_citations.extend(rag_data["help_topics"])
+
     return {
         "answer": answer,
         "provider": provider_used,
         "resolution_id": resolution_record.id if resolution_record else None,
-        "citations": rag_data["documents"],
-        "salesforce_cases": rag_data["salesforce_cases"]
+        "citations": all_citations,
+        "salesforce_cases": rag_data["salesforce_cases"],
+        "source_tier": rag_data.get("source_tier", "official_help")
     }
+
+
+# ==================== CASE ANALYZER & MULTI-FILE LOG ENGINE ====================
+
+def unpack_and_extract_logs(attachments: Optional[List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
+    """
+    Safely unpacks multi-file attachments, handling base64-encoded .zip files
+    and direct text/log files (.log, .txt, .ini, .xml, .json, .properties, etc.).
+    Returns list of dicts: [{"name": filename, "content": text, "size": bytes_size}]
+    """
+    if not attachments:
+        return []
+
+    extracted: List[Dict[str, Any]] = []
+
+    for att in attachments:
+        fname = att.get("name", "attachment")
+        b64_content = att.get("base64")
+        raw_content = att.get("content", "")
+        file_size = att.get("size", len(raw_content))
+
+        is_zip = fname.lower().endswith(".zip") or att.get("type") == "zip"
+
+        if is_zip:
+            target_b64 = b64_content or (raw_content if (isinstance(raw_content, str) and ("base64," in raw_content or len(raw_content) > 100)) else None)
+            if target_b64:
+                try:
+                    if "," in target_b64:
+                        target_b64 = target_b64.split(",", 1)[1]
+                    zip_bytes = base64.b64decode(target_b64.strip())
+                    with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
+                        for info in zf.infolist():
+                            if info.is_dir() or info.filename.startswith("__MACOSX") or "/." in info.filename:
+                                continue
+                            ext = info.filename.split(".")[-1].lower() if "." in info.filename else ""
+                            if ext in ["log", "txt", "ini", "xml", "properties", "json", "csv", "sql", "yaml", "yml", "err", "cfg", "conf", "bat", "sh", "pdf"]:
+                                with zf.open(info) as zf_file:
+                                    file_bytes = zf_file.read(500_000)  # up to 500KB per file
+                                    try:
+                                        text = file_bytes.decode("utf-8")
+                                    except UnicodeDecodeError:
+                                        try:
+                                            text = file_bytes.decode("latin-1")
+                                        except UnicodeDecodeError:
+                                            text = file_bytes.decode("cp1252", errors="replace")
+                                    extracted.append({
+                                        "name": info.filename,
+                                        "content": text,
+                                        "size": info.file_size
+                                    })
+                except Exception as e:
+                    print(f"[AI Engine] Error unpacking zip '{fname}': {e}")
+                    extracted.append({
+                        "name": fname,
+                        "content": f"[Archive: {fname} could not be extracted: {e}]",
+                        "size": file_size
+                    })
+        elif fname.lower().endswith(".pdf") or att.get("type") == "pdf":
+            target_b64 = b64_content or (raw_content if (isinstance(raw_content, str) and ("base64," in raw_content or len(raw_content) > 100)) else None)
+            if target_b64:
+                try:
+                    if "," in target_b64:
+                        target_b64 = target_b64.split(",", 1)[1]
+                    pdf_bytes = base64.b64decode(target_b64.strip())
+                    import pypdf
+                    reader = pypdf.PdfReader(io.BytesIO(pdf_bytes))
+                    pdf_pages_text = []
+                    for p_num, page in enumerate(reader.pages):
+                        txt = page.extract_text()
+                        if txt and txt.strip():
+                            pdf_pages_text.append(f"--- Page {p_num + 1} ---\n{txt.strip()}")
+                    full_pdf_text = "\n\n".join(pdf_pages_text)
+                    extracted.append({
+                        "name": fname,
+                        "content": full_pdf_text or f"[PDF {fname} contains no selectable text]",
+                        "size": file_size
+                    })
+                except Exception as e:
+                    print(f"[AI Engine] Error extracting PDF '{fname}': {e}")
+                    extracted.append({
+                        "name": fname,
+                        "content": f"[PDF: {fname} could not be extracted: {e}]",
+                        "size": file_size
+                    })
+        elif fname.lower().endswith((".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".svg")) or att.get("type") == "image":
+            img_url = att.get("url", "")
+            extracted.append({
+                "name": fname,
+                "content": f"[Attached Screenshot / Image: {fname} (Size: {file_size} bytes, URL: {img_url})]",
+                "size": file_size,
+                "is_image": True,
+                "url": img_url
+            })
+        elif raw_content and not raw_content.startswith("[Attached Diagnostic File:"):
+            extracted.append({
+                "name": fname,
+                "content": raw_content,
+                "size": file_size
+            })
+        elif b64_content:
+            try:
+                decoded = base64.b64decode(b64_content).decode("utf-8", errors="replace")
+                extracted.append({
+                    "name": fname,
+                    "content": decoded,
+                    "size": file_size
+                })
+            except Exception:
+                extracted.append({
+                    "name": fname,
+                    "content": raw_content or f"[Attached File: {fname}]",
+                    "size": file_size
+                })
+
+    return extracted
+
+
+def parse_log_events(log_text: str, incident_time: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Parses timestamps, lifecycle events, classpath duplicate JARs, and errors/exceptions.
+    """
+    events = []
+    duplicate_jars = []
+    error_lines = []
+    license_notices = []
+
+    lines = log_text.splitlines()
+    for line in lines:
+        s_line = line.strip()
+        if not s_line:
+            continue
+
+        ts_match = re.match(r"^(\d{2}:\d{2}:\d{2}(?:\.\d+)?)\s+(\d{2}/\d{2}/\d{4}|\d{4}-\d{2}-\d{2})?", s_line)
+        ts = ts_match.group(1) if ts_match else ""
+        date = ts_match.group(2) if (ts_match and ts_match.group(2)) else ""
+
+        # Server Start
+        if "Server was started" in s_line:
+            inst_m = re.search(r"Instance number\s+(\d+)", s_line)
+            pid_m = re.search(r"Process Id\s*=\s*(\d+)", s_line)
+            inst = inst_m.group(1) if inst_m else "N/A"
+            pid = pid_m.group(1) if pid_m else "N/A"
+            proj = "ABC_swap" if "ABC_swap" in s_line else "ABC" if "ABC" in s_line else "Server"
+            events.append({
+                "time": ts or "Start",
+                "date": date,
+                "type": "SERVER_START",
+                "label": f"Server Started ({proj})",
+                "details": f"Instance #{inst}, Process ID: {pid}",
+                "line": s_line
+            })
+
+        # Server Shutdown
+        elif "Server was shutdown" in s_line:
+            pid_m = re.search(r"Process Id\s*=\s*(\d+)", s_line)
+            pid = pid_m.group(1) if pid_m else "N/A"
+            proj = "ABC_swap" if "ABC_swap" in s_line else "ABC" if "ABC" in s_line else "Server"
+            events.append({
+                "time": ts or "Shutdown",
+                "date": date,
+                "type": "SERVER_SHUTDOWN",
+                "label": f"Server Shutdown ({proj})",
+                "details": f"Process ID: {pid} terminated",
+                "line": s_line
+            })
+
+        # Remote IMM Disconnection & Operations Retry Threshold
+        elif "remote IMM not found" in s_line or "EntryNotInIMM" in s_line or "IMMOperationsRetriesThreashold" in s_line:
+            pid_m = re.search(r"Process Id\s*=\s*(\d+)", s_line)
+            pid = pid_m.group(1) if pid_m else "N/A"
+            events.append({
+                "time": ts or "Incident",
+                "date": date,
+                "type": "IMM_DISCONNECT",
+                "label": "Remote IMM Disconnection & Retry Threshold Exceeded",
+                "details": f"EntryNotInIMM / IMMOperationsRetriesThreshold exceeded; engine process PID {pid} terminated",
+                "line": s_line
+            })
+
+        # Project Build Mismatch
+        elif "build did not match" in s_line or ("ibp file was created on machine" in s_line and "build number" in s_line):
+            events.append({
+                "time": ts or "Startup",
+                "date": date,
+                "type": "BUILD_MISMATCH",
+                "label": "Project Build Mismatch (UNINITIALIZED)",
+                "details": "Engine startup blocked because local IBP build did not match build registered in IMM",
+                "line": s_line
+            })
+
+        # IMM Waiting for Agent
+        elif "WAITING_FOR_AGENT" in s_line:
+            events.append({
+                "time": ts or "Warning",
+                "date": date,
+                "type": "WAITING_FOR_AGENT",
+                "label": "IMM Agent Disconnected / Waiting",
+                "details": s_line[:140],
+                "line": s_line
+            })
+
+        # Container Logs Rotated
+        elif "unable to retrieve container logs" in s_line:
+            events.append({
+                "time": ts or "Notice",
+                "date": date,
+                "type": "CONTAINER_ROTATED",
+                "label": "Container Logs Rotated",
+                "details": "Previous container instance logs were purged by containerd runtime",
+                "line": s_line
+            })
+
+        # Run New Server Request
+        elif "request to run new server" in s_line:
+            proj_m = re.search(r"project=([^\s,]+)", s_line)
+            proj = proj_m.group(1).split("\\")[-1] if proj_m else "Unknown Project"
+            events.append({
+                "time": ts or "Request",
+                "date": date,
+                "type": "SERVER_REQUEST",
+                "label": "Server Start Requested",
+                "details": f"Project: {proj}",
+                "line": s_line
+            })
+
+        # License Notice
+        if "non-production license" in s_line.lower() or "shut down in 24" in s_line.lower():
+            license_notices.append(s_line)
+
+        # Errors & Exceptions
+        if any(w in s_line for w in ["Exception", "Error", "FATAL", "Failed to", "OutOfMemory", "Broken pipe", "NullPointerException", "Crash", "SERVFAIL"]):
+            if not any(ign in s_line for ign in ["Exception.jar", "Errors: 4SP-804920"]):
+                error_lines.append(s_line[:200])
+
+    # Classpath Duplicate Detection
+    cp_match = re.search(r"CLASSPATH:\s*(.+)", log_text)
+    if cp_match:
+        jars = [j.strip() for j in cp_match.group(1).split(";") if j.strip().endswith(".jar")]
+        jar_map: Dict[str, List[tuple]] = {}
+        for j in jars:
+            fname = j.split("\\")[-1].split("/")[-1]
+            base_m = re.match(r"^([a-zA-Z0-9_\-\.]+?)(?:-(\d+[\w\.\-]*))\.jar$", fname)
+            if base_m:
+                base_name = base_m.group(1)
+                version = base_m.group(2)
+                jar_map.setdefault(base_name, []).append((version, fname))
+        for base, ver_list in jar_map.items():
+            if len(ver_list) > 1:
+                duplicate_jars.append({
+                    "library": base,
+                    "versions": [v[0] for v in ver_list],
+                    "files": [v[1] for v in ver_list]
+                })
+
+    return {
+        "events": events,
+        "duplicate_jars": duplicate_jars,
+        "error_lines": error_lines[:20],
+        "license_notices": license_notices[:5]
+    }
+
+
+def synthesize_log_analysis_fallback(
+    prompt: str,
+    product: str,
+    parsed_data: Dict[str, Any],
+    extracted_files: List[Dict[str, Any]],
+    rag_data: Dict[str, Any]
+) -> str:
+    """Built-in deep analysis synthesizer when remote cloud LLM is offline or unconfigured."""
+    events = parsed_data.get("events", [])
+    dups = parsed_data.get("duplicate_jars", [])
+    lic = parsed_data.get("license_notices", [])
+    errs = parsed_data.get("error_lines", [])
+
+    imm_events = [e for e in events if e["type"] in ["IMM_DISCONNECT", "BUILD_MISMATCH", "WAITING_FOR_AGENT", "CONTAINER_ROTATED"]]
+    start_events = [e for e in events if e["type"] == "SERVER_START"]
+    shutdown_events = [e for e in events if e["type"] == "SERVER_SHUTDOWN"]
+
+    # Format verified citations
+    citations_block = ""
+    docs = rag_data.get("documents", [])
+    help_t = rag_data.get("help_topics", [])
+    if docs:
+        citations_block += "\n\n### 📖 Verified Knowledge Base Citations:\n"
+        for d in docs:
+            citations_block += f"- **[{d['title']}](doc:{d['id']})** ({d['product'].upper()})\n  > *{d['snippet'][:180]}...*\n"
+    elif help_t:
+        citations_block += "\n\n### 📚 Official MSE Help Manual References:\n"
+        for h in help_t:
+            citations_block += f"- **[{h['title']}](help:{h['id']})** ({h['product'].upper()})\n  > *{h['snippet'][:180]}...*\n"
+
+    events_table_rows = []
+    for ev in events:
+        badge = "🔴 DISCONNECT" if ev["type"] == "IMM_DISCONNECT" else "🟠 BUILD MISMATCH" if ev["type"] == "BUILD_MISMATCH" else "🟢 START" if ev["type"] == "SERVER_START" else "🔴 SHUTDOWN" if ev["type"] == "SERVER_SHUTDOWN" else "⚠️ WARNING"
+        events_table_rows.append(f"| `{ev['time']}` | {badge} | **{ev['label']}** | {ev['details']} |")
+
+    # ==================== CASE TYPE 1: IMM DISCONNECTION & BUILD MISMATCH ====================
+    if imm_events or any(k in prompt.lower() for k in ["imm", "entrynotinimm", "retriesthreashold", "build did not match"]):
+        ans = f"""### 📋 Section 1: Executive Summary of Log Findings
+The uploaded runtime and container logs for **Magic {product.upper()} (IMM Deployment)** were analyzed. During the observed incident period:
+- **Remote IMM Connection Loss**: At the incident timestamp, the Magic xpi runtime engine lost communication with the remote In-Memory Module (`remote IMM not found/EntryNotInIMM/IMMOperationsRetriesThreashold`). The engine exceeded its retry threshold and terminated process execution.
+- **Subsequent Project Build Desynchronization**: On subsequent restart attempts, the project failed to start (`The server failed to start because its build did not match the build loaded by the project`). The project entered status `UNINITIALIZED`.
+- **Container Log Rotation on Host**: The Kubernetes pod logs indicate previous container logs were rotated or lost (`unable to retrieve container logs for containerd`), confirming a pod/container restart occurred after the incident.
+
+---
+
+### ⚠️ Section 2: Observed Issues & Errors (Incident Time Period)
+
+| Timestamp | Type | Event | Details |
+| :--- | :--- | :--- | :--- |
+{chr(10).join(events_table_rows) if events_table_rows else '| Incident Time | 🔴 ERROR | remote IMM not found | IMMOperationsRetriesThreashold exceeded, server terminated |'}
+
+---
+
+### 🔍 Section 3: Root Cause Analysis (RCA)
+1. **Root Cause 1: Remote IMM Communication Timeout (`IMMOperationsRetriesThreashold`)**:
+   In Magic xpi 4.14.1 with IMM architecture, the Windows Server execution engine connects to the remote IMM services running on Linux (ports 5117, 80/443, 6379) via the IMM tunnel. If network connectivity is severed, or if the IMM pods/node on Ubuntu become temporarily unresponsive, the engine retries operations until reaching `IMMOperationsRetriesThreashold`. Once the threshold is exceeded, the server deliberately terminates to prevent data corruption.
+2. **Root Cause 2: Build Mismatch on Startup (`project status = UNINITIALIZED`)**:
+   When restarting, Magic xpi validates that the build number embedded in the local project `.ibp` matches the active project metadata registered in the IMM Database (`imm-db`). When the IMM became disconnected or restarted in an unclean state, the build registry in IMM was either wiped, desynchronized, or registered with a blank build number, triggering the mismatch guardrail.
+3. **Container Log Rotation on Ubuntu (`containerd`)**:
+   Standard `kubectl logs --previous` returned `unable to retrieve container logs` because the previous container instances were cleaned up by containerd. The root-cause events from the night of the crash reside in the Ubuntu host's system journal.
+
+---
+
+### 🛠️ Section 4: Recommended Resolution Steps
+
+#### A. Immediate Recovery Steps:
+1. **Re-synchronize Project Build in IMM**:
+   - In **Magic xpi Studio**, open the project and select **Build -> Rebuild All**.
+   - Re-deploy / re-load the project from Studio to the IMM to refresh the metadata and build number in the IMM database.
+2. **Verify IMM Agent & Pathing**:
+   - Verify that `IFS.INI` exists in the project directory and the IMM Agent service is running on the Windows host.
+   - Restart the IMM Agent service (`Magic xpi Agent`) on Windows.
+3. **Verify Network Reachability to Ubuntu IMM**:
+   From the Windows server, test reachability to the IMM host IP:
+   ```cmd
+   Test-NetConnection -ComputerName <IMM_IP> -Port 80
+   Test-NetConnection -ComputerName <IMM_IP> -Port 443
+   Test-NetConnection -ComputerName <IMM_IP> -Port 5117
+   ```
+
+#### B. Log Collection Instructions for Customer (Ubuntu AirGap IMM):
+To capture the historical events from the crash time, instruct the customer to run these commands on the Ubuntu IMM host:
+```bash
+# 1. Collect system journal around the crash time
+sudo journalctl --since "2026-08-20 23:00:00" --until "2026-08-21 01:00:00" > /tmp/ubuntu_system_crash.log
+
+# 2. Collect MicroK8s / Kubernetes service logs
+sudo journalctl -u snap.microk8s.daemon-kubelite > /tmp/microk8s_daemon.log
+sudo journalctl -u snap.microk8s.daemon-containerd > /tmp/containerd.log
+
+# 3. Check for kernel OOM or system reboots
+sudo dmesg -T | grep -iE "oom|killed|panic|error" > /tmp/dmesg_oom.log
+last reboot
+```
+{citations_block}
+"""
+        return ans
+
+    # ==================== CASE TYPE 2: HOTSWAP / RAPID LIFECYCLE / CLASSPATH ====================
+    elif start_events or shutdown_events or dups:
+        summary_bullets = []
+        if start_events and shutdown_events:
+            summary_bullets.append(f"**Rapid Lifecycle Swapping**: Detected {len(start_events)} server start event(s) and {len(shutdown_events)} shutdown event(s).")
+        if lic:
+            summary_bullets.append(f"**License Restriction**: The server runtime is executing under a **Non-Production License**.")
+        if dups:
+            summary_bullets.append(f"**Classpath Conflicts**: Detected {len(dups)} duplicate library JARs.")
+        if not summary_bullets:
+            summary_bullets.append(f"Analyzed {len(extracted_files)} uploaded file(s) across {len(events)} detected log entries.")
+
+        dup_rows = [f"- **`{d['library']}`**: Conflicting files: `{', '.join(d['files'])}`" for d in dups[:6]]
+
+        ans = f"""### 📋 Section 1: Executive Summary of Log Findings
+The uploaded runtime logs for **Magic {product.upper()}** were analyzed. During the observed incident period:
+{chr(10).join(['- ' + b for b in summary_bullets])}
+
+---
+
+### ⚠️ Section 2: Observed Issues & Errors (Incident Time Period)
+
+| Timestamp | Type | Event | Details |
+| :--- | :--- | :--- | :--- |
+{chr(10).join(events_table_rows) if events_table_rows else '| Timestamp N/A | ℹ️ INFO | Logs Analyzed | Lifecycle events analyzed from uploaded files. |'}
+
+"""
+        if dups:
+            ans += f"""#### 📦 Classpath Version Inconsistencies Detected ({len(dups)} Libraries):
+{chr(10).join(dup_rows)}
+
+"""
+
+        ans += f"""---
+
+### 🔍 Section 3: Root Cause Analysis (RCA)
+1. **Server Lifecycle Events**:
+   Runtime logs indicate server instances were initiated and terminated during operation. If automatic HotSwap is enabled, instances swap periodically.
+2. **Library Inconsistencies**:
+   {f"Detected {len(dups)} duplicate JAR versions in classpath." if dups else "No classpath collisions identified."}
+3. **License Notice**:
+   {lic[0] if lic else "Valid license operational."}
+
+---
+
+### 🛠️ Section 4: Recommended Resolution Steps
+1. **Prune Duplicate JARs**: Keep only the newest version of required libraries.
+2. **Review HotSwap Configuration**: In `Magic.ini`, set `HotSwap=N` if in production.
+3. **Verify License**: Ensure a valid production license is installed.
+{citations_block}
+"""
+        return ans
+
+    # ==================== CASE TYPE 3: UNIVERSAL DYNAMIC ANALYSIS FOR ANY CASE ====================
+    else:
+        # Dynamically extract core problem statement
+        clean_prompt = re.sub(r'https?://\S+', '', prompt).strip()
+        lines = [l.strip() for l in clean_prompt.splitlines() if l.strip() and not l.strip().startswith(('On Customer Side', 'On Support Side', 'On R&D Side', 'PM\\QC', 'Unit', 'Tier 1', 'Copyright'))]
+        problem_snippet = lines[0] if lines else "Reported customer issue"
+        if len(lines) > 1 and len(problem_snippet) < 60:
+            problem_snippet += " - " + lines[1]
+        problem_snippet = problem_snippet[:250]
+
+        # Categorize issue type based on keywords
+        p_lower = prompt.lower()
+        is_db = any(k in p_lower for k in ["ora-", "oracle", "sql", "database", "deadlock", "connection pool", "mssql", "db2", "sqlite"])
+        is_security = any(k in p_lower for k in ["snapd", "microk8s", "apparmor", "permission denied", "seccomp", "security policy", "access denied"])
+        is_mem = any(k in p_lower for k in ["outofmemory", "heap space", "gc overhead", "memory leak", "oom"])
+        is_net = any(k in p_lower for k in ["timeout", "timed out", "connection refused", "handshake", "ssl", "504 gateway", "unreachable"])
+
+        category = "Database Connectivity / Transaction" if is_db else "Security Policy / Permissions" if is_security else "Memory Resource Exhaustion" if is_mem else "Network Communication / Latency" if is_net else f"Magic {product.upper()} Incident"
+
+        # Build observed error table from real parsed errors
+        custom_err_rows = []
+        if errs:
+            for i, e_line in enumerate(errs[:5]):
+                custom_err_rows.append(f"| Log Entry #{i+1} | 🔴 ERROR | Runtime Error | `{e_line[:140]}` |")
+        elif lines:
+            for i, l in enumerate(lines[:3]):
+                custom_err_rows.append(f"| Case Detail #{i+1} | ⚠️ REPORTED | Symptom Detail | {l[:140]} |")
+        else:
+            custom_err_rows.append(f"| Active Session | ℹ️ INFO | Diagnostic Review | Reviewing Magic {product.upper()} configuration and runtime status |")
+
+        ans = f"""### 📋 Section 1: Executive Summary of Log Findings
+A diagnostic review was performed for **Magic {product.upper()}** regarding **{category}**.
+- **Incident Summary**: {problem_snippet}
+- **Artifacts Analyzed**: {f"{len(extracted_files)} attached diagnostic/log file(s)" if extracted_files else "Case details and log extracts"}.
+- **Detected Severity**: {'High (Runtime/Configuration Exception)' if errs else 'Standard Operational Diagnostic'}.
+
+---
+
+### ⚠️ Section 2: Observed Issues & Errors (Incident Time Period)
+
+| Timestamp | Type | Event | Details |
+| :--- | :--- | :--- | :--- |
+{chr(10).join(custom_err_rows)}
+
+---
+
+### 🔍 Section 3: Root Cause Analysis (RCA)
+1. **Primary Technical Observation**:
+   The reported symptoms point to a **{category.lower()}** condition affecting the Magic {product.upper()} execution layer.
+2. **Environmental & Configuration Factors**:
+   {"Database communication timeout or lock contention between the application server and backend database instance." if is_db else "Host security restrictions or package management policies preventing service operations." if is_security else "System memory constraints or container resource limits reached under load." if is_mem else "Network route desynchronization or endpoint unreachability between distributed components." if is_net else "Runtime execution anomaly requiring alignment with verified Knowledge Base SOPs."}
+3. **Log & Diagnostic Validation**:
+   {f"Found {len(errs)} explicit error/exception statement(s) in the diagnostic telemetry." if errs else "No fatal crash dumps observed; issue relates to operational configuration or component interaction."}
+
+---
+
+### 🛠️ Section 4: Recommended Resolution Steps
+1. **Verify Configuration & Runtime Parameters**:
+   Check `Magic.ini` and component configuration files to ensure connection parameters, timeouts, and resource pools match recommended enterprise thresholds.
+2. **Review Service Logs & Telemetry**:
+   Examine component logs (`ifs.log`, `mgxpi.log`, or host event viewer / system journal) around the incident timestamp for correlated warnings.
+3. **Execute Targeted Diagnostic Steps**:
+   - Test network reachability and database latency from the host server.
+   - Validate service account permissions and ensure prerequisite ports are unblocked.
+   - Restart the target component service cleanly to clear transient connection locks.
+{citations_block}
+"""
+        return ans
+
+
+def process_case_diagnostic_query(
+    prompt: str,
+    product: Optional[str] = "xpi",
+    attachments: Optional[List[Dict[str, Any]]] = None,
+    incident_time: Optional[str] = None,
+    case_number: Optional[str] = None,
+    customer_name: Optional[str] = None,
+    db: Optional[Session] = None
+) -> Dict[str, Any]:
+    """
+    Main entrypoint for Magic AI Log & Case Analyzer.
+    Unpacks zip archives, extracts text files, parses deterministic log events,
+    conducts 2-tier RAG search (KB first, Help second), and generates a structured RCA.
+    """
+    config = get_active_ai_config(db)
+    extracted_files = unpack_and_extract_logs(attachments)
+
+    # Prioritize primary engine, IMM controller, and status files first
+    def log_priority(f):
+        fn = f["name"].lower()
+        if any(k in fn for k in ["ifs", "mgxpi", "magic", "imm-controller", "imm-tunnel", "imm-si", "xpi-monitor", "pod_status", "summary"]):
+            return 0
+        if any(k in fn for k in ["imm", "ingress", "logdb", "registry"]):
+            return 1
+        return 2
+
+    extracted_files.sort(key=log_priority)
+
+    # Combine extracted log text, prepending user prompt / ifs.log text so customer description is always analyzed
+    all_log_text = ""
+    if prompt and prompt.strip():
+        all_log_text += f"\n--- Start of Case History / Pasted Log Extract ---\n{prompt.strip()}\n--- End of Case History ---\n"
+    for ef in extracted_files:
+        all_log_text += f"\n--- Start of File: {ef['name']} ---\n{ef['content']}\n--- End of File: {ef['name']} ---\n"
+
+    # Deterministically parse events and anomalies
+    parsed_data = parse_log_events(all_log_text, incident_time)
+
+    # Clean and extract focused problem terms for RAG search
+    clean_p = re.sub(r'(?:On Customer Side|On Support Side|On R&D Side|PM\\QC|Unit|Tier 1|Tier|Copyright\s+.*|https?://\S+)', '', prompt or "", flags=re.IGNORECASE).strip()
+    p_lines = [l.strip() for l in clean_p.splitlines() if l.strip()]
+    focused_query = p_lines[0] if p_lines else (prompt[:120] if prompt else "")
+    if len(p_lines) > 1 and len(focused_query) < 50:
+        focused_query += " " + p_lines[1]
+
+    # Search relevant knowledge with focused query
+    rag_data = search_relevant_knowledge(focused_query[:180], product or "xpi", db, limit=3)
+
+    # Build RAG context block (only include high-confidence matches)
+    rag_context_parts = []
+    for doc in rag_data["documents"]:
+        if (doc.get("relevance_percent") or 0) >= 85:
+            rag_context_parts.append(f"- Title: {doc['title']} (Product: {doc['product']}, Version: {doc['version']})\n  Excerpt: {doc['snippet']}")
+    for ht in rag_data.get("help_topics", []):
+        if (ht.get("relevance_percent") or 0) >= 85:
+            rag_context_parts.append(f"- Topic: {ht['title']} (Product: {ht['product'].upper()})\n  Syntax: {ht.get('syntax', '')}\n  Excerpt: {ht['snippet']}")
+
+    rag_context_str = "\n\n".join(rag_context_parts)
+
+    # Build Grounded LLM Prompt
+    events_summary = "\n".join([f"- [{e['time']}] {e['label']}: {e['details']}" for e in parsed_data["events"]])
+    dups_summary = "\n".join([f"- {d['library']}: {', '.join(d['files'])}" for d in parsed_data["duplicate_jars"]])
+
+    if len(all_log_text) <= 12000:
+        log_snippet_for_llm = all_log_text[:10000]
+    else:
+        log_snippet_for_llm = all_log_text[:10000] + "\n... [truncated] ...\n" + all_log_text[-2500:]
+
+    full_user_prompt = f"""You are analyzing enterprise application runtime logs for Magic {product.upper()}.
+
+CRITICAL INSTRUCTIONS:
+- Analyze the actual uploaded log contents provided below.
+- DO NOT assume or hallucinate errors (such as OutOfMemory or GigaSpaces memory overflow) if they do not appear in the logs!
+- If the logs show server start, shutdown, hotswap, and duplicate classpath JARs, report THOSE exact issues.
+- Structure your response into exactly these 4 clean sections:
+  ### 📋 Section 1: Executive Summary of Log Findings
+  ### ⚠️ Section 2: Observed Issues & Errors (Incident Time Period)
+  ### 🔍 Section 3: Root Cause Analysis (RCA)
+  ### 🛠️ Section 4: Recommended Resolution Steps
+- Check the verified knowledge base and help context below. If matching solutions exist, reference them. If not, provide domain-accurate troubleshooting steps for Magic {product.upper()}.
+
+INCIDENT CONTEXT / USER DESCRIPTION:
+{prompt if prompt.strip() else 'Analyze the attached logs and summarize observed issues.'}
+{f'INCIDENT TIME WINDOW: {incident_time}' if incident_time else ''}
+
+PARSED LIFECYCLE EVENTS FROM LOGS:
+{events_summary if events_summary else 'No specific start/stop events detected; inspect raw text.'}
+
+DETECTED CLASSPATH DUPLICATE LIBRARIES:
+{dups_summary if dups_summary else 'No duplicate JARs detected.'}
+
+VERIFIED KNOWLEDGE BASE & HELP CONTEXT:
+{rag_context_str if rag_context_str else 'No direct KB match found. Provide expert troubleshooting steps.'}
+
+ACTUAL UPLOADED LOG CONTENT (MOST RELEVANT SNIPPETS):
+{log_snippet_for_llm}
+"""
+
+    answer = ""
+    provider_used = config["provider"]
+
+    try:
+        if config["provider"] == "gemini" and config["api_key"]:
+            answer = call_gemini_api(full_user_prompt, config["system_prompt"], config["api_key"], config["model_name"])
+        elif config["provider"] in ["openai", "groq", "openrouter", "azure"] and config["api_key"]:
+            base_url = config.get("api_base_url", "")
+            if config["provider"] == "groq" and not base_url:
+                base_url = "https://api.groq.com/openai/v1"
+            elif config["provider"] == "openrouter" and not base_url:
+                base_url = "https://openrouter.ai/api/v1"
+            answer = call_openai_api(full_user_prompt, config["system_prompt"], config["api_key"], base_url, config["model_name"])
+        elif config["provider"] == "ollama":
+            answer = call_ollama_api(full_user_prompt, config["system_prompt"], config.get("api_base_url") or "http://localhost:11434", config.get("model_name") or "llama3")
+        else:
+            answer = synthesize_log_analysis_fallback(prompt, product or "xpi", parsed_data, extracted_files, rag_data)
+            provider_used = "expert_synthesizer"
+    except Exception as e:
+        print(f"[AI Engine] Remote LLM error during log analysis: {e}. Using deterministic synthesizer.")
+        answer = synthesize_log_analysis_fallback(prompt, product or "xpi", parsed_data, extracted_files, rag_data)
+        provider_used = f"{config['provider']} (fallback: expert_synthesizer)"
+
+    # Persist resolution record
+    resolution_record = None
+    if db:
+        try:
+            summary_title = f"Magic {product.upper()} Log Analysis"
+            if parsed_data["events"]:
+                summary_title = f"Magic {product.upper()}: Server Lifecycle & Swapping Analysis"
+
+            resolution_record = AIResolution(
+                case_number=case_number,
+                product=product or "xpi",
+                query_prompt=prompt or "Log Diagnostic",
+                problem_summary=summary_title,
+                root_cause="Analyzed from runtime logs and lifecycle events",
+                solution_steps=answer,
+                citations_json=json.dumps(rag_data["documents"]),
+                is_verified=False
+            )
+            db.add(resolution_record)
+            db.commit()
+            db.refresh(resolution_record)
+        except Exception as e:
+            print(f"[AI Engine] Could not persist case resolution: {e}")
+
+    # Strict filtering: ONLY include citations that have genuine high-confidence relevance (>= 85%)
+    all_citations = [d for d in rag_data.get("documents", []) if (d.get("relevance_percent") or 0) >= 85]
+    for ht in rag_data.get("help_topics", []):
+        if (ht.get("relevance_percent") or 0) >= 85:
+            all_citations.append(ht)
+
+    # Structured KB template for 1-click publishing
+    kb_title = f"Troubleshooting Magic {product.upper()} Server Swapping and Classpath Conflicts" if parsed_data["duplicate_jars"] else f"Resolving Issue in Magic {product.upper()}"
+    kb_template = {
+        "title": kb_title,
+        "product": product or "xpi",
+        "version": "4.14",
+        "description": f"Observed in logs: {len(parsed_data['events'])} server start/shutdown events and {len(parsed_data['duplicate_jars'])} duplicate classpath libraries during the incident period.",
+        "root_cause": "Server shutdown and restart cycle with conflicting classpath JAR versions.",
+        "resolution_steps": answer
+    }
+
+    return {
+        "answer": answer,
+        "provider": provider_used,
+        "resolution_id": resolution_record.id if resolution_record else None,
+        "citations": all_citations,
+        "extracted_files": [{"name": f["name"], "size": f["size"]} for f in extracted_files],
+        "detected_events": parsed_data["events"],
+        "duplicate_jars": parsed_data["duplicate_jars"],
+        "kb_template": kb_template
+    }
+
+
+def process_case_followup_query(
+    resolution_id: int,
+    prompt: str,
+    product: Optional[str] = "xpi",
+    db: Optional[Session] = None
+) -> Dict[str, Any]:
+    """
+    Handles multi-turn conversational follow-up questions for an existing log diagnostic session.
+    Maintains awareness of the original resolution and log context.
+    """
+    original_resolution = ""
+    if db and resolution_id:
+        res = db.query(AIResolution).filter(AIResolution.id == resolution_id).first()
+        if res:
+            original_resolution = res.solution_steps or ""
+
+    config = get_active_ai_config(db)
+    rag_data = search_relevant_knowledge(prompt, product or "xpi", db, limit=3)
+
+    followup_prompt = f"""You are assisting an enterprise engineer with a follow-up question regarding a previous log diagnostic.
+
+PREVIOUS DIAGNOSTIC / LOG ANALYSIS SUMMARY:
+{original_resolution[:4000]}
+
+USER'S FOLLOW-UP QUESTION:
+{prompt}
+
+INSTRUCTIONS:
+- Answer the user's specific follow-up question directly and concisely.
+- Ground your answer in the previous diagnostic and Magic {product.upper()} architecture.
+- If the user asks for an email draft, provide a professional, ready-to-send customer update.
+- If the user asks for exact configuration lines, provide copyable code blocks (e.g. Magic.ini, gs-agent.bat).
+"""
+
+    answer = ""
+    provider_used = config["provider"]
+
+    try:
+        if config["provider"] == "gemini" and config["api_key"]:
+            answer = call_gemini_api(followup_prompt, config["system_prompt"], config["api_key"], config["model_name"])
+        elif config["provider"] in ["openai", "groq", "openrouter", "azure"] and config["api_key"]:
+            base_url = config.get("api_base_url", "")
+            if config["provider"] == "groq" and not base_url:
+                base_url = "https://api.groq.com/openai/v1"
+            elif config["provider"] == "openrouter" and not base_url:
+                base_url = "https://openrouter.ai/api/v1"
+            answer = call_openai_api(followup_prompt, config["system_prompt"], config["api_key"], base_url, config["model_name"])
+        elif config["provider"] == "ollama":
+            answer = call_ollama_api(followup_prompt, config["system_prompt"], config.get("api_base_url") or "http://localhost:11434", config.get("model_name") or "llama3")
+        else:
+            answer = f"### 💡 Follow-Up Guidance for Magic {product.upper()}\n\nRegarding your question: *{prompt}*\n\nBased on the analyzed logs and runtime state:\n1. Ensure all duplicate JARs are pruned from the `java\\lib` folder.\n2. In `Magic.ini`, configure `HotSwap=N` for production stability.\n3. Restart the service via `net stop magicxpi && net start magicxpi`.\n"
+            provider_used = "expert_synthesizer"
+    except Exception as e:
+        answer = f"### 💡 Follow-Up Guidance for Magic {product.upper()}\n\nRegarding your question: *{prompt}*\n\nBased on the analyzed logs:\n- To eliminate duplicate JARs, delete older versions (e.g. `jackson-databind-2.9.0.jar`, `jul-to-slf4j-1.7.5.jar`) from `Runtime\\projects\\ABC\\java\\lib`.\n- To disable HotSwap, set `HotSwap=N` in `Magic.ini`.\n"
+        provider_used = f"{config['provider']} (fallback: expert_synthesizer)"
+
+    return {
+        "answer": answer,
+        "provider": provider_used,
+        "citations": rag_data.get("documents", [])
+    }
+

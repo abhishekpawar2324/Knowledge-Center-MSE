@@ -38,3 +38,7 @@ Thumbs.db
 # Misc logs & temporary files
 copy_log.txt
 *.log
+downloads/
+scratch/
+Mock Images/
+863301644/

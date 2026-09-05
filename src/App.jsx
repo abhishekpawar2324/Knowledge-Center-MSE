@@ -36,7 +36,10 @@ import {
   ArrowLeft,
   Copy,
   Check,
-  Printer
+  Printer,
+  Wrench,
+  ShieldCheck,
+  Download
 } from 'lucide-react'
 
 import ProductTabs from './components/ProductTabs'
@@ -47,6 +50,8 @@ import AdminPanel from './components/AdminPanel'
 import AICopilotModal from './components/AICopilotModal'
 import KBAuthorModal from './components/KBAuthorModal'
 import NotificationFeed from './components/NotificationFeed'
+import SupportToolsHub from './components/SupportToolsHub'
+import ReviewQueueModal from './components/ReviewQueueModal'
 
 // Inline high-fidelity SVG of Magic Software logo — perfectly scales without pixelation or clipping
 const MagicLogoSVG = ({ height = 44 }) => (
@@ -92,6 +97,8 @@ export default function App() {
   const [showKBAuthorModal, setShowKBAuthorModal] = useState(false)
   const [showNotificationFeed, setShowNotificationFeed] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
+  const [showReviewQueueModal, setShowReviewQueueModal] = useState(false)
+  const [pendingReviewCount, setPendingReviewCount] = useState(0)
 
   // Notifications
   const [notifications, setNotifications] = useState([])
@@ -171,12 +178,24 @@ export default function App() {
       .catch(err => console.error(err))
   }
 
+  const fetchPendingReviewCount = () => {
+    if (token && (role === 'Admin' || role === 'Reviewer')) {
+      fetch('/api/review/queue', { headers: { Authorization: `Bearer ${token}` } })
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) setPendingReviewCount(data.length)
+        })
+        .catch(() => {})
+    }
+  }
+
   useEffect(() => {
     fetchOverview()
     fetchNotifications()
     fetchFavorites()
     fetchRecentlyViewed()
-  }, [token, activeProduct])
+    fetchPendingReviewCount()
+  }, [token, activeProduct, role])
 
   // 3. Fetch Notifications
   const fetchNotifications = () => {
@@ -499,8 +518,67 @@ export default function App() {
               />
             </div>
 
-            {/* Write KB & Upload (Editors/Admins) */}
-            {['Admin', 'Editor'].includes(role) && (
+            {/* Downloads Section Navigation Button */}
+            <button
+              onClick={() => setActiveTab('utilities')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '7px 12px',
+                borderRadius: '8px',
+                background: activeTab === 'utilities' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                border: activeTab === 'utilities' ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.1)',
+                color: activeTab === 'utilities' ? '#38bdf8' : '#e2e8f0',
+                fontWeight: 600,
+                fontSize: '0.82rem',
+                cursor: 'pointer'
+              }}
+            >
+              <Download size={15} />
+              <span>Downloads</span>
+            </button>
+
+            {/* Review Queue (Reviewers & Admins) */}
+            {['Admin', 'Reviewer'].includes(role) && (
+              <button
+                onClick={() => setShowReviewQueueModal(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 12px',
+                  borderRadius: '8px',
+                  background: 'rgba(245, 158, 11, 0.18)',
+                  border: '1px solid rgba(245, 158, 11, 0.4)',
+                  color: '#fbbf24',
+                  fontWeight: 700,
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  position: 'relative'
+                }}
+              >
+                <ShieldCheck size={15} />
+                <span>Review Queue</span>
+                {pendingReviewCount > 0 && (
+                  <span
+                    style={{
+                      background: '#ef4444',
+                      color: '#ffffff',
+                      borderRadius: '10px',
+                      padding: '1px 6px',
+                      fontSize: '0.7rem',
+                      fontWeight: 800
+                    }}
+                  >
+                    {pendingReviewCount}
+                  </span>
+                )}
+              </button>
+            )}
+
+            {/* Write KB & Upload (Editors/Admins/Reviewers) */}
+            {['Admin', 'Editor', 'Reviewer'].includes(role) && (
               <>
                 <button
                   onClick={() => setShowKBAuthorModal(true)}
@@ -1046,6 +1124,15 @@ export default function App() {
             />
           )}
 
+          {/* SUPPORT UTILITIES HUB VIEW */}
+          {activeTab === 'utilities' && (
+            <SupportToolsHub
+              token={token}
+              role={role}
+              username={username}
+            />
+          )}
+
           {/* ADMIN SUITE VIEW */}
           {activeTab === 'admin' && (
             <AdminPanel token={token} />
@@ -1054,6 +1141,17 @@ export default function App() {
       </div>
 
       {/* Modals */}
+      {showReviewQueueModal && (
+        <ReviewQueueModal
+          token={token}
+          onClose={() => setShowReviewQueueModal(false)}
+          onRefreshData={() => {
+            fetchOverview()
+            fetchPendingReviewCount()
+          }}
+        />
+      )}
+
       <AICopilotModal
         isOpen={showCopilotModal}
         onClose={() => setShowCopilotModal(false)}

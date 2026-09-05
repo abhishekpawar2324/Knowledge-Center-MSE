@@ -42,11 +42,20 @@ if "%PY_CMD%"=="" (
     )
 )
 
-echo [1/2] Using Python Runtime: %PY_CMD%
+echo [1/3] Checking & compiling frontend application...
+where npm >nul 2>&1
+if %ERRORLEVEL% EQU 0 (
+    echo Compiling latest React assets...
+    call npm run build
+) else (
+    echo [INFO] Node.js not detected in PATH; using existing pre-built static bundle.
+)
+
+echo [2/3] Using Python Runtime: %PY_CMD%
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8000 ^| findstr LISTENING') do (
     taskkill /F /PID %%a >nul 2>&1
 )
-echo [2/2] Starting Magic Knowledge Center Server on Port 8000...
+echo [3/3] Starting Magic Knowledge Center Server on Port 8000...
 echo.
 echo ======================================================================
 echo  Knowledge Center is LIVE and accessible at:

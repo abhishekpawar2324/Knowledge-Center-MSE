@@ -58,6 +58,23 @@ class Document(Base):
     likes = Column(Integer, default=0)
     tags = Column(String, default="") # Comma-separated tags
     is_pinned = Column(Boolean, default=False)  # Admin/Editor can pin to sidebar
+    review_comment = Column(Text, nullable=True) # Reviewer feedback / rejection notes
+
+class HelpTopic(Base):
+    __tablename__ = "help_topics"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False, index=True)
+    product = Column(String, default="xpa", index=True) # xpa, xpi, cloud_native, general
+    file_path = Column(String, unique=True, index=True, nullable=False)
+    file_type = Column(String, default="html")
+    content = Column(Text, nullable=False) # Clean body text for fast search
+    syntax = Column(String, default="", index=True) # Extracted function/method syntax
+    breadcrumbs = Column(String, default="") # JSON list of breadcrumb hierarchy
+    doc_type = Column(String, default="reference") # function, syntax, how_to, connector, reference
+    views = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 
 class Comment(Base):
     __tablename__ = "comments"
@@ -177,6 +194,46 @@ class AIChatMessage(Base):
     citations_json = Column(Text, default="[]")
     created_at = Column(DateTime, default=datetime.utcnow)
 
+class SupportUtility(Base):
+    __tablename__ = "support_utilities"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    file_path = Column(String, nullable=False)
+    file_size = Column(String, default="0 KB")
+    product = Column(String, default="general", index=True) # xpa, xpi, cloud_native, general
+    category = Column(String, default="Diagnostic") # Diagnostic, Migration, License, CLI, Patch
+    version = Column(String, default="v1.0.0")
+    platform = Column(String, default="Cross-Platform") # Windows (x64), Linux, Cross-Platform
+    author = Column(String, default="System")
+    download_count = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class UserLoginHistory(Base):
+    __tablename__ = "user_login_history"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, nullable=False, index=True)
+    login_time = Column(DateTime, default=datetime.utcnow, index=True)
+    ip_address = Column(String, default="127.0.0.1")
+    user_agent = Column(String, default="Unknown")
+    status = Column(String, default="Success") # Success, Failed - Invalid Password, Failed - Suspended Account, Failed - User Not Found
+
+class EnterpriseAuditLog(Base):
+    __tablename__ = "enterprise_audit_logs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+    username = Column(String, default="System", index=True)
+    user_role = Column(String, default="Viewer")
+    ip_address = Column(String, default="127.0.0.1")
+    action_category = Column(String, default="SYSTEM", index=True) # AUTH, KB_MANAGE, REVIEW, DOWNLOADS, ADMIN
+    action = Column(String, nullable=False, index=True)
+    details = Column(Text, nullable=True)
+    target_id = Column(String, nullable=True)
+
 def init_db():
     Base.metadata.create_all(bind=engine)
     # Manual schema migrations for existing SQLite databases
@@ -184,6 +241,20 @@ def init_db():
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
+        
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS enterprise_audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            username TEXT,
+            user_role TEXT,
+            ip_address TEXT,
+            action_category TEXT,
+            action TEXT NOT NULL,
+            details TEXT,
+            target_id TEXT
+        );
+        """)
         
         # Ensure AI tables exist
         cursor.execute("""
@@ -231,6 +302,35 @@ def init_db():
         )
         """)
 
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS support_utilities (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            description TEXT,
+            file_path TEXT NOT NULL,
+            file_size TEXT DEFAULT '0 KB',
+            product TEXT DEFAULT 'general',
+            category TEXT DEFAULT 'Diagnostic',
+            version TEXT DEFAULT 'v1.0.0',
+            platform TEXT DEFAULT 'Cross-Platform',
+            author TEXT DEFAULT 'System',
+            download_count INTEGER DEFAULT 0,
+            is_active INTEGER DEFAULT 1,
+            created_at TIMESTAMP
+        )
+        """)
+
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_login_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            login_time TIMESTAMP,
+            ip_address TEXT DEFAULT '127.0.0.1',
+            user_agent TEXT DEFAULT 'Unknown',
+            status TEXT DEFAULT 'Success'
+        )
+        """)
+
         # Check columns in documents table
         cursor.execute("PRAGMA table_info(documents)")
         columns = [row[1] for row in cursor.fetchall()]
@@ -251,6 +351,8 @@ def init_db():
             cursor.execute("ALTER TABLE documents ADD COLUMN doc_type TEXT DEFAULT 'troubleshooting'")
         if "status" not in columns:
             cursor.execute("ALTER TABLE documents ADD COLUMN status TEXT DEFAULT 'published'")
+        if "review_comment" not in columns:
+            cursor.execute("ALTER TABLE documents ADD COLUMN review_comment TEXT")
             
         cursor.execute("PRAGMA table_info(users)")
         user_cols = [row[1] for row in cursor.fetchall()]

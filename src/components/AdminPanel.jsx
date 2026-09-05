@@ -28,11 +28,12 @@ import {
   UserCheck,
   FileCode,
   RotateCcw,
-  Sparkles
+  Sparkles,
+  ShieldCheck
 } from 'lucide-react'
 
 export default function AdminPanel({ token }) {
-  const [adminSection, setAdminSection] = useState('contributions') // 'contributions', 'analytics', 'users', 'taxonomy', 'indexer'
+  const [adminSection, setAdminSection] = useState('contributions') // 'contributions', 'analytics', 'users', 'taxonomy', 'indexer', 'login_history'
   
   // 1. Contributor Analytics states
   const [contributionData, setContributionData] = useState(null)
@@ -74,13 +75,41 @@ export default function AdminPanel({ token }) {
   const [indexSuccess, setIndexSuccess] = useState('')
   const [indexError, setIndexError] = useState('')
 
+  // 6. Login Audit History states
+  const [loginHistory, setLoginHistory] = useState([])
+  const [loginHistoryLoading, setLoginHistoryLoading] = useState(false)
+  const [loginSearchUser, setLoginSearchUser] = useState('')
+  const [loginStatusFilter, setLoginStatusFilter] = useState('all')
+
   useEffect(() => {
     if (adminSection === 'contributions') fetchContributions()
     if (adminSection === 'analytics') fetchAnalytics()
     if (adminSection === 'users') fetchUsers()
     if (adminSection === 'taxonomy') fetchDocuments()
     if (adminSection === 'indexer') fetchLogs()
-  }, [adminSection, filterUser, filterYear, filterMonth, filterStartDate, filterEndDate, filterProduct, filterStatus])
+    if (adminSection === 'login_history') fetchLoginHistory()
+  }, [adminSection, filterUser, filterYear, filterMonth, filterStartDate, filterEndDate, filterProduct, filterStatus, loginSearchUser, loginStatusFilter])
+
+  const fetchLoginHistory = async () => {
+    setLoginHistoryLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (loginSearchUser.trim()) params.append('username', loginSearchUser.trim())
+      if (loginStatusFilter !== 'all') params.append('status_filter', loginStatusFilter)
+
+      const res = await fetch(`/api/admin/login-history?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setLoginHistory(data)
+      }
+    } catch (err) {
+      console.error("Failed to fetch login history:", err)
+    } finally {
+      setLoginHistoryLoading(false)
+    }
+  }
 
   const fetchContributions = async () => {
     setContribLoading(true)
@@ -386,6 +415,7 @@ export default function AdminPanel({ token }) {
           { id: 'contributions', label: 'User Contributions & Uploads', icon: Award },
           { id: 'analytics', label: 'Search Telemetry & Gaps', icon: BarChart2 },
           { id: 'users', label: 'User & RBAC Directory', icon: Users },
+          { id: 'login_history', label: 'User Audit & Login History', icon: ShieldCheck },
           { id: 'taxonomy', label: 'Document & Space Governance', icon: Database },
           { id: 'indexer', label: 'Search Indexer Diagnostics', icon: RefreshCw }
         ].map((tab) => {
@@ -1187,6 +1217,7 @@ export default function AdminPanel({ token }) {
                 >
                   <option value="Viewer">Viewer (Read-only)</option>
                   <option value="Editor">Editor / Contributor (Upload & Author)</option>
+                  <option value="Reviewer">Reviewer (Review & Approve KBs)</option>
                   <option value="Admin">Admin (Full Control Suite)</option>
                 </select>
               </div>
@@ -1499,6 +1530,137 @@ export default function AdminPanel({ token }) {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* SECTION 6: LOGIN AUDIT HISTORY */}
+      {adminSection === 'login_history' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
+              <div>
+                <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#ffffff', margin: 0 }}>
+                  User Login Audit Trail
+                </h3>
+                <p style={{ fontSize: '0.86rem', color: '#94a3b8', margin: '4px 0 0 0' }}>
+                  Track successful logins, failed password attempts, and suspicious authentication activity.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <div style={{ position: 'relative' }}>
+                  <Search size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+                  <input
+                    type="text"
+                    placeholder="Search username..."
+                    value={loginSearchUser}
+                    onChange={(e) => setLoginSearchUser(e.target.value)}
+                    style={{
+                      padding: '8px 12px 8px 34px',
+                      background: 'rgba(0,0,0,0.4)',
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      borderRadius: '8px',
+                      color: '#ffffff',
+                      fontSize: '0.85rem'
+                    }}
+                  />
+                </div>
+
+                <select
+                  value={loginStatusFilter}
+                  onChange={(e) => setLoginStatusFilter(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    background: 'rgba(0,0,0,0.4)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: '8px',
+                    color: '#ffffff',
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  <option value="all">All Outcomes</option>
+                  <option value="Success">🟢 Successful Logins</option>
+                  <option value="Failed - Invalid Password">🔴 Invalid Passwords</option>
+                  <option value="Failed - Suspended Account">⚠️ Suspended Account</option>
+                  <option value="Failed - User Not Found">❓ Unknown User</option>
+                </select>
+
+                <button
+                  onClick={fetchLoginHistory}
+                  style={{
+                    padding: '8px 14px',
+                    background: 'rgba(56,189,248,0.15)',
+                    border: '1px solid rgba(56,189,248,0.3)',
+                    color: '#38bdf8',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  <RefreshCw size={14} className={loginHistoryLoading ? 'animate-spin' : ''} />
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            {loginHistoryLoading ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
+                Loading audit logs...
+              </div>
+            ) : loginHistory.length === 0 ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+                No login history records found matching criteria.
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.86rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8' }}>
+                      <th style={{ padding: '12px' }}>Timestamp</th>
+                      <th style={{ padding: '12px' }}>User / Email Account</th>
+                      <th style={{ padding: '12px' }}>Client IP Address</th>
+                      <th style={{ padding: '12px' }}>Browser / Client Info</th>
+                      <th style={{ padding: '12px' }}>Authentication Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loginHistory.map(item => (
+                      <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                        <td style={{ padding: '12px', color: '#e2e8f0', whiteSpace: 'nowrap' }}>
+                          {item.login_time}
+                        </td>
+                        <td style={{ padding: '12px', fontWeight: 600, color: '#38bdf8' }}>
+                          {item.username}
+                        </td>
+                        <td style={{ padding: '12px', color: '#94a3b8', fontFamily: 'monospace' }}>
+                          {item.ip_address}
+                        </td>
+                        <td style={{ padding: '12px', color: '#64748b', fontSize: '0.78rem', maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {item.user_agent}
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          <span style={{
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            background: item.status === 'Success' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
+                            color: item.status === 'Success' ? '#34d399' : '#f87171',
+                            border: `1px solid ${item.status === 'Success' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`
+                          }}>
+                            {item.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}
