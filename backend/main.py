@@ -2125,30 +2125,58 @@ def toggle_pin(doc_id: int, db: Session = Depends(get_db)):
         "message": f"Document {'pinned' if doc.is_pinned else 'unpinned'} successfully"
     }
 
-@app.post("/api/document/{doc_id}/comments")
-def add_comment(doc_id: int, content: str = Form(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    doc = db.query(Document).filter(Document.id == doc_id).first()
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-    comment = Comment(document_id=doc_id, username=current_user.username, content=content)
-    db.add(comment)
-    db.commit()
-    return {
-        "id": comment.id,
-        "username": comment.username,
-        "content": comment.content,
-        "created_at": comment.created_at.strftime("%Y-%m-%d %H:%M:%S")
-    }
-
 @app.get("/api/document/{doc_id}/comments")
-def get_comments(doc_id: int, db: Session = Depends(get_db)):
-    comments = db.query(Comment).filter(Comment.document_id == doc_id).order_by(Comment.created_at.desc()).all()
+def get_comments(doc_id: str, db: Session = Depends(get_db)):
+    if str(doc_id).startswith("help_"):
+        return []
+    try:
+        int_id = int(doc_id)
+    except ValueError:
+        return []
+    comments = db.query(Comment).filter(Comment.document_id == int_id).order_by(Comment.created_at.desc()).all()
     return [{
         "id": c.id,
         "username": c.username,
         "content": c.content,
         "created_at": c.created_at.strftime("%Y-%m-%d %H:%M:%S")
     } for c in comments]
+
+@app.post("/api/document/{doc_id}/comments")
+def add_comment(
+    doc_id: str, 
+    content: str = Form(...), 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    if str(doc_id).startswith("help_"):
+        raise HTTPException(status_code=400, detail="Comments are not supported on reference manual topics")
+    try:
+        int_id = int(doc_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid document ID")
+    doc = db.query(Document).filter(Document.id == int_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    new_comment = Comment(
+        document_id=int_id,
+        username=current_user.username,
+        content=content.strip()
+    )
+    db.add(new_comment)
+    db.commit()
+    
+    # Notify Super Admin via Email
+    try:
+        notify_new_comment(doc.title, current_user.username, content.strip())
+    except Exception as e:
+        print(f"Comment email notification warning: {e}")
+        
+    return {
+        "id": new_comment.id,
+        "username": new_comment.username,
+        "content": new_comment.content,
+        "created_at": new_comment.created_at.strftime("%Y-%m-%d %H:%M:%S")
+    }
 
 @app.delete("/api/comment/{comment_id}")
 def delete_comment(comment_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -2198,39 +2226,6 @@ def like_document(doc_id: int, db: Session = Depends(get_db)):
     doc.likes = (doc.likes or 0) + 1
     db.commit()
     return {"likes": doc.likes}
-
-@app.get("/api/document/{doc_id}/comments")
-def get_document_comments(doc_id: int, db: Session = Depends(get_db)):
-    comments = db.query(Comment).filter(Comment.document_id == doc_id).order_by(Comment.created_at.desc()).all()
-    return [{
-        "id": c.id,
-        "username": c.username,
-        "content": c.content,
-        "created_at": c.created_at.strftime("%Y-%m-%d %H:%M")
-    } for c in comments]
-
-@app.post("/api/document/{doc_id}/comments")
-def add_document_comment(
-    doc_id: int, 
-    content: str = Form(...), 
-    current_user: User = Depends(get_current_user), 
-    db: Session = Depends(get_db)
-):
-    doc = db.query(Document).filter(Document.id == doc_id).first()
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-    new_comment = Comment(
-        document_id=doc_id,
-        username=current_user.username,
-        content=content.strip()
-    )
-    db.add(new_comment)
-    db.commit()
-    
-    # Notify Super Admin via Email
-    notify_new_comment(doc.title, current_user.username, content.strip())
-    
-    return {"message": "Comment posted successfully"}
 
 # ----------------- Document Editing -----------------
 
