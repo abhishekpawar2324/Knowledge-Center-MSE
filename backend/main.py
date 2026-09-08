@@ -1933,8 +1933,15 @@ def get_products_overview(db: Session = Depends(get_db)):
     xpi_help_count = db.query(HelpTopic).filter(HelpTopic.product == "xpi").count()
     
     pinned_docs = db.query(Document).filter(Document.is_pinned == True).limit(8).all()
-    recent_docs = db.query(Document).order_by(Document.created_at.desc()).limit(8).all()
-    top_docs = db.query(Document).order_by(Document.views.desc()).limit(8).all()
+    # Only published documents belong on the public landing page; drafts and
+    # anything sitting in the review workflow must not leak into these lists.
+    recent_docs = (db.query(Document)
+                     .filter(Document.status == "published")
+                     .order_by(Document.created_at.desc()).limit(8).all())
+    # Secondary sort keeps the list stable while every view counter is still 0.
+    top_docs = (db.query(Document)
+                  .filter(Document.status == "published")
+                  .order_by(Document.views.desc(), Document.created_at.desc()).limit(8).all())
     
     return {
         "products": {
@@ -1968,7 +1975,8 @@ def get_products_overview(db: Session = Depends(get_db)):
             "id": d.id, "title": d.title, "product": d.product or "xpi", "file_type": d.file_type, "views": d.views or 0
         } for d in pinned_docs],
         "recent": [{
-            "id": d.id, "title": d.title, "product": d.product or "xpi", "file_type": d.file_type, "created_at": d.created_at.strftime("%d %b, %Y")
+            "id": d.id, "title": d.title, "product": d.product or "xpi", "file_type": d.file_type,
+            "author": d.author or "", "created_at": d.created_at.strftime("%d %b, %Y") if d.created_at else ""
         } for d in recent_docs],
         "trending": [{
             "id": d.id, "title": d.title, "product": d.product or "xpi", "file_type": d.file_type, "views": d.views or 0, "likes": d.likes or 0
@@ -2194,7 +2202,8 @@ def toggle_favorite(doc_id: int, current_user: User = Depends(get_current_user),
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    favorite = db.query(Favorite).filter(Favorite.document_id == doc_id, Favorite.username == current_user.username).first()
+    uname = current_user.username.lower().strip()
+    favorite = db.query(Favorite).filter(Favorite.document_id == doc_id, func.lower(Favorite.username) == uname).first()
     if favorite:
         db.delete(favorite)
         db.commit()
@@ -2207,15 +2216,36 @@ def toggle_favorite(doc_id: int, current_user: User = Depends(get_current_user),
 
 @app.get("/api/favorites")
 def get_favorites(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    favorites = db.query(Favorite).filter(Favorite.username == current_user.username).all()
+    uname = current_user.username.lower().strip()
+    favorites = db.query(Favorite).filter(func.lower(Favorite.username) == uname).all()
     doc_ids = [f.document_id for f in favorites]
-    docs = db.query(Document).filter(Document.id.in_(doc_ids)).all() if doc_ids else []
+    docs = db.query(Document).filter(Document.id.in_(doc_ids)).order_by(Document.created_at.desc()).all() if doc_ids else []
     return [{
         "id": d.id,
         "title": d.title,
         "product": d.product or "xpi",
         "file_type": d.file_type,
+        "views": d.views or 0,
+        "created_at": d.created_at.strftime("%d %b, %Y") if d.created_at else "",
         "breadcrumbs": json.loads(d.breadcrumbs) if d.breadcrumbs else []
+    } for d in docs]
+
+@app.get("/api/my/contributions")
+def get_my_contributions(limit: int = 8, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Self-scoped contributions for the signed-in user (no admin rights required)."""
+    uname = current_user.username.lower().strip()
+    docs = (db.query(Document)
+              .filter(func.lower(Document.author) == uname)
+              .filter(Document.status == "published")
+              .order_by(Document.created_at.desc())
+              .limit(limit).all())
+    return [{
+        "id": d.id,
+        "title": d.title,
+        "product": d.product or "xpi",
+        "file_type": d.file_type,
+        "views": d.views or 0,
+        "created_at": d.created_at.strftime("%d %b, %Y") if d.created_at else ""
     } for d in docs]
 
 @app.post("/api/document/{doc_id}/like")
@@ -2945,6 +2975,10 @@ def delete_document(doc_id: int, current_user: User = Depends(get_current_user),
             os.remove(doc.file_path)
         except Exception:
             pass
+    # SQLite runs with PRAGMA foreign_keys=OFF by default, so the declared
+    # ON DELETE CASCADE never fires. Clear dependent rows explicitly.
+    db.query(Favorite).filter(Favorite.document_id == doc_id).delete(synchronize_session=False)
+    db.query(Comment).filter(Comment.document_id == doc_id).delete(synchronize_session=False)
     db.delete(doc)
     db.commit()
     return {"message": f"Document {doc.title} deleted successfully"}

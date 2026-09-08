@@ -15,7 +15,10 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: 'frontend',
+    // Must NOT be 'frontend'. That folder holds the live hand-written app
+    // (index.html, app.js, styles.css) served by FastAPI; with emptyOutDir
+    // a build there deletes the running application.
+    outDir: 'dist-react',
     emptyOutDir: true
   }
 })

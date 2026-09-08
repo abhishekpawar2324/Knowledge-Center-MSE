@@ -77,23 +77,68 @@ def is_asset_path(file_path: str) -> bool:
 for p_dir in [UPLOADS_DIR, UPLOADS_XPA, UPLOADS_XPI, UPLOADS_CLOUD, UPLOADS_GENERAL]:
     os.makedirs(p_dir, exist_ok=True)
 
+# An upload folder's NAME decides which product space owns it, by token rather
+# than by an exact list. The naming convention is "<anything>-<product>" or
+# "<product>-<platform>", so xpa-windows, xpa-linux and isolated-fix-xpa all
+# resolve to Magic xpa; likewise for xpi. Cloud Service Ops (cso) is Cloud Native.
+#
+# Matching on a token instead of a fixed list is deliberate: the previous version
+# only knew the bare names (xpa, xpi, cloud_native, general) — all of which are
+# empty directories — so the real folders (cso/, xpi-windows/, xpa-windows/…)
+# matched nothing, fell through to keyword guessing, and a CSO runbook titled
+# "SOP for XPA Projects Alerts" landed in the Magic xpa space. New platform or
+# isolated-fix variants are now picked up without another code change.
+#
+# A folder naming BOTH products (e.g. today's flat "isolated-fix" holds
+# "Send Data from XPA to XPI") is left unowned on purpose, so those documents
+# keep being classified per-document rather than dumped wholesale into one space.
+PRODUCT_DIR_TOKENS = [
+    (("cso", "cloud_native", "cloud"), "cloud_native"),
+    (("xpa",), "xpa"),
+    (("xpi",), "xpi"),
+]
+
+
+def _folder_product(folder: str):
+    """Resolves one folder name to a product space, or None if it names none/both."""
+    parts = [p for p in re.split(r"[^a-z0-9]+", folder.lower()) if p]
+    hits = {prod for tokens, prod in PRODUCT_DIR_TOKENS if any(t in parts for t in tokens)}
+    if len(hits) == 1:
+        return hits.pop()
+    return None                      # names no product, or is ambiguous
+
+
+def product_from_path(file_path: str):
+    """Returns the product space a path's folder dictates, or None if unowned.
+
+    Only folders beneath uploads/ are considered, so a machine-specific parent
+    directory that happens to contain "xpi" can never decide a product.
+    """
+    path_lower = (file_path or "").lower().replace("\\", "/")
+    if "/uploads/" not in path_lower:
+        return None
+    segments = path_lower.split("/uploads/", 1)[1].split("/")[:-1]   # drop filename
+    for seg in segments:
+        if seg in ("attachments", "styles", "assets", "images"):
+            continue                 # export scaffolding, never a product space
+        if seg == "general":
+            return "general"
+        owned = _folder_product(seg)
+        if owned:
+            return owned
+    return None
+
+
 def detect_product(file_path: str, title: str = "", content: str = "", breadcrumbs: list = None) -> str:
     """
     Identifies which Magic product space an article belongs to:
     'xpa' (Application Platform), 'xpi' (Integration Platform), 'cloud_native', or 'general'.
     Physical directory structure is strictly authoritative.
     """
-    path_lower = file_path.lower().replace("\\", "/")
-    
     # 1. Folder path is strictly authoritative when placed inside product directories
-    if "/cloud_native/" in path_lower or "/cloud/" in path_lower or path_lower.endswith("/cloud_native"):
-        return "cloud_native"
-    if "/xpa/" in path_lower or path_lower.endswith("/xpa"):
-        return "xpa"
-    if "/xpi/" in path_lower or path_lower.endswith("/xpi"):
-        return "xpi"
-    if "/general/" in path_lower:
-        return "general"
+    owned = product_from_path(file_path)
+    if owned:
+        return owned
 
     crumbs_text = " ".join(breadcrumbs) if breadcrumbs else ""
     # 2. Confluence breadcrumbs check (e.g. Cloud Service Ops in root Confluence export)
@@ -103,7 +148,12 @@ def detect_product(file_path: str, title: str = "", content: str = "", breadcrum
     combined = (title + " " + crumbs_text + " " + (content[:3500] if content else "")).lower()
     
     # 3. Content heuristics for ambiguous root dumps (e.g. 863301644)
-    if any(k in combined for k in ["cloud native", "kubernetes", "k8s", "docker", "imm", "microservice", "modernization factory", "cloud migration"]):
+    # NB: "imm" is deliberately NOT a Cloud Native keyword. IMM is a Magic xpi
+    # 4.14 component, so its install/troubleshooting articles ("Unable to Start
+    # IMM Agent", "4.14.1_IMM_VHDX installation guide") belong to xpi. An IMM
+    # article that is genuinely about container orchestration still lands in
+    # Cloud Native via the kubernetes/helm/docker keywords below.
+    if any(k in combined for k in ["cloud native", "kubernetes", "k8s", "docker", "helm", "microservice", "modernization factory", "cloud migration"]):
         return "cloud_native"
         
     if any(k in combined for k in ["xpi", "gigaspace", "gsc", "gsm", "gsa", "datamapper", "data mapper", "connector", "sap b1", "salesforce connector", "sugarcrm", "dynamics", "tcp-listener", "http trigger", "rest client"]):
@@ -617,15 +667,12 @@ def scan_and_index(db: Session):
     # 1c. Ensure all existing documents match their authoritative folder space
     aligned_count = 0
     for doc in db.query(Document).all():
-        p_lower = doc.file_path.lower().replace("\\", "/")
         crumbs = doc.breadcrumbs or ""
-        target_prod = None
-        if "/cloud_native/" in p_lower or "/cloud/" in p_lower or "cloud service ops" in crumbs.lower():
+        # Same single source of truth as detect_product(); the folder wins, and
+        # Confluence breadcrumbs only decide for files outside a product folder.
+        target_prod = product_from_path(doc.file_path)
+        if not target_prod and "cloud service ops" in crumbs.lower():
             target_prod = "cloud_native"
-        elif "/xpa/" in p_lower:
-            target_prod = "xpa"
-        elif "/xpi/" in p_lower:
-            target_prod = "xpi"
         if target_prod and doc.product != target_prod:
             doc.product = target_prod
             aligned_count += 1

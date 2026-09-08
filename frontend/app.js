@@ -72,13 +72,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
       container.innerHTML = ''
       if (filtered.length === 0) {
-        container.innerHTML = '<span style="font-size:0.75rem; color:#64748b;">Open any article to track it here.</span>'
+        container.innerHTML = '<span style="font-size:0.75rem; color:var(--text-faint);">Open any article to track it here.</span>'
       } else {
         filtered.slice(0, 5).forEach(r => {
           const row = document.createElement('div')
           row.className = 'sidebar-item-row'
           row.innerHTML = `
-            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#e2e8f0;">🕒 ${r.title}</span>
+            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-soft);">🕒 ${r.title}</span>
             <button class="sidebar-item-remove" title="Remove from Recent">✕</button>
           `
           row.onclick = (e) => {
@@ -114,12 +114,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isPinned) {
       pinBtn.style.background = 'rgba(245,158,11,0.2)'
       pinBtn.style.borderColor = '#f59e0b'
-      pinBtn.style.color = '#fbbf24'
+      pinBtn.style.color = 'var(--c-amber)'
       pinLabel.textContent = 'Pinned SOP'
     } else {
-      pinBtn.style.background = 'rgba(255,255,255,0.06)'
-      pinBtn.style.borderColor = 'rgba(255,255,255,0.1)'
-      pinBtn.style.color = '#fbbf24'
+      pinBtn.style.background = 'var(--bg-subtle)'
+      pinBtn.style.borderColor = 'var(--border-strong)'
+      pinBtn.style.color = 'var(--c-amber)'
       pinLabel.textContent = 'Pin SOP'
     }
   }
@@ -134,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
       : pinnedDocs.filter(d => d.product === activeProduct)
 
     if (!filtered || filtered.length === 0) {
-      container.innerHTML = '<span style="font-size:0.75rem; color:#64748b;">No pinned SOPs in this space.</span>'
+      container.innerHTML = '<span style="font-size:0.75rem; color:var(--text-faint);">No pinned SOPs in this space.</span>'
       return
     }
 
@@ -142,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const row = document.createElement('div')
       row.className = 'sidebar-item-row'
       row.innerHTML = `
-        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#fbbf24;">⭐ ${doc.title}</span>
+        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--c-amber);">⭐ ${doc.title}</span>
         <button class="sidebar-item-remove" title="Unpin SOP">✕</button>
       `
       row.onclick = (e) => {
@@ -197,13 +197,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const isFav = isDocFavourite(docId)
     if (isFav) {
       btn.style.background = 'rgba(244,63,94,0.2)'
-      btn.style.borderColor = '#f43f5e'
-      btn.style.color = '#f43f5e'
+      btn.style.borderColor = 'var(--c-rose)'
+      btn.style.color = 'var(--c-rose)'
       label.textContent = 'Favourited'
     } else {
-      btn.style.background = 'rgba(255,255,255,0.06)'
-      btn.style.borderColor = 'rgba(255,255,255,0.1)'
-      btn.style.color = '#f43f5e'
+      btn.style.background = 'var(--bg-subtle)'
+      btn.style.borderColor = 'var(--border-strong)'
+      btn.style.color = 'var(--c-rose)'
       label.textContent = 'Favourite'
     }
   }
@@ -225,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
         row.className = 'sidebar-item-row'
         row.style.borderColor = 'rgba(244,63,94,0.15)'
         row.innerHTML = `
-          <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#fca5a5;">❤️ ${f.title}</span>
+          <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--c-rose-soft);">❤️ ${f.title}</span>
           <button class="sidebar-item-remove" title="Remove from Favourites">✕</button>
         `
         row.onclick = (e) => {
@@ -239,11 +239,17 @@ document.addEventListener('DOMContentLoaded', () => {
         container.appendChild(row)
       })
     } else {
-      container.innerHTML = '<span style="font-size:0.75rem; color:#64748b;">No favourite guides saved yet.</span>'
+      container.innerHTML = '<span style="font-size:0.75rem; color:var(--text-faint);">No favourite guides saved yet.</span>'
     }
   }
 
-  // ==================== 4. BOOKMARKS ====================
+  // ==================== 4. BOOKMARKS / STARRED ====================
+  // Signed in  -> server-side per-account favorites (/api/favorites), so stars
+  //               follow the user across browsers and devices.
+  // Signed out -> localStorage, so guests keep a usable bookmark feature.
+  let bookmarkCache = []                 // [{id, title, product, views, created_at}]
+  let bookmarkIdSet = new Set()          // stringified ids, for synchronous checks
+
   function getLocalBookmarks() {
     try {
       return JSON.parse(localStorage.getItem('user_bookmarks') || '[]')
@@ -254,25 +260,107 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function saveLocalBookmarks(bks) {
     localStorage.setItem('user_bookmarks', JSON.stringify(bks))
+    setBookmarkCache(bks)
+  }
+
+  function setBookmarkCache(list) {
+    bookmarkCache = Array.isArray(list) ? list : []
+    bookmarkIdSet = new Set(bookmarkCache.map(b => String(b.id)))
     renderBookmarksList()
   }
 
-  function isDocBookmarked(docId) {
-    const bks = getLocalBookmarks()
-    return bks.some(b => b.id === docId)
+  // Help topics ("help_123") live in a different table and cannot be favorited.
+  function isFavoritableId(docId) {
+    return docId !== undefined && docId !== null && /^\d+$/.test(String(docId))
   }
 
-  function toggleDocBookmark(doc) {
-    if (!doc || !doc.id) return
-    let bks = getLocalBookmarks()
-    const exists = bks.some(b => b.id === doc.id)
-    if (exists) {
-      bks = bks.filter(b => b.id !== doc.id)
-    } else {
-      bks.unshift({ id: doc.id, title: doc.title, product: doc.product || activeProduct })
+  async function loadBookmarks() {
+    if (!token) {
+      setBookmarkCache(getLocalBookmarks())
+      return
     }
-    saveLocalBookmarks(bks)
-    updateBookmarkButtonState(doc.id)
+    try {
+      const res = await fetch('/api/favorites', { headers: { Authorization: `Bearer ${token}` } })
+      if (!res.ok) throw new Error(`favorites ${res.status}`)
+      setBookmarkCache(await res.json())
+    } catch (e) {
+      // Never let a failed/expired-token call blank the sidebar.
+      console.error('Could not load favorites:', e)
+      setBookmarkCache([])
+    }
+  }
+
+  // One-time move of a guest's local bookmarks into their account on sign-in.
+  async function migrateLocalBookmarks() {
+    if (!token || !username) return
+    const flag = `bookmarks_migrated_${username.toLowerCase()}`
+    if (localStorage.getItem(flag)) return
+
+    const local = getLocalBookmarks().filter(b => isFavoritableId(b.id))
+    // Set the flag first: the favorite endpoint is a toggle, so a retry after a
+    // partial failure could un-star what already made it across.
+    localStorage.setItem(flag, '1')
+
+    if (local.length) {
+      let existing = new Set()
+      try {
+        const res = await fetch('/api/favorites', { headers: { Authorization: `Bearer ${token}` } })
+        if (res.ok) existing = new Set((await res.json()).map(d => String(d.id)))
+      } catch (e) { /* fall through and attempt the posts anyway */ }
+
+      for (const b of local) {
+        if (existing.has(String(b.id))) continue
+        try {
+          await fetch(`/api/document/${b.id}/favorite`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` }
+          })
+        } catch (e) {
+          console.error('Bookmark migration failed for doc', b.id, e)
+        }
+      }
+      localStorage.removeItem('user_bookmarks')
+    }
+  }
+
+  function isDocBookmarked(docId) {
+    return bookmarkIdSet.has(String(docId))
+  }
+
+  async function toggleDocBookmark(doc) {
+    if (!doc || !doc.id) return
+
+    if (!token) {
+      let bks = getLocalBookmarks()
+      const exists = bks.some(b => String(b.id) === String(doc.id))
+      if (exists) {
+        bks = bks.filter(b => String(b.id) !== String(doc.id))
+      } else {
+        bks.unshift({ id: doc.id, title: doc.title, product: doc.product || activeProduct })
+      }
+      saveLocalBookmarks(bks)
+      updateBookmarkButtonState(doc.id)
+      return
+    }
+
+    if (!isFavoritableId(doc.id)) {
+      alert('This help topic cannot be starred. Only knowledge base documents can be saved.')
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/document/${doc.id}/favorite`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (!res.ok) throw new Error(`favorite ${res.status}`)
+      await loadBookmarks()
+      updateBookmarkButtonState(doc.id)
+      if (typeof renderLandingSections === 'function') renderLandingSections()
+    } catch (e) {
+      console.error('Could not update favorite:', e)
+      alert('Could not update your starred items. Please try again.')
+    }
   }
 
   function updateBookmarkButtonState(docId) {
@@ -284,12 +372,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (bookmarked) {
       btn.style.background = 'rgba(0,141,199,0.2)'
       btn.style.borderColor = '#008DC7'
-      btn.style.color = '#38bdf8'
+      btn.style.color = 'var(--c-sky)'
       label.textContent = 'Bookmarked'
     } else {
-      btn.style.background = 'rgba(255,255,255,0.06)'
-      btn.style.borderColor = 'rgba(255,255,255,0.1)'
-      btn.style.color = '#38bdf8'
+      btn.style.background = 'var(--bg-subtle)'
+      btn.style.borderColor = 'var(--border-strong)'
+      btn.style.color = 'var(--c-sky)'
       label.textContent = 'Bookmark'
     }
   }
@@ -299,16 +387,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const countBadge = document.getElementById('left-bookmarks-count')
     if (!container) return
 
-    const bks = getLocalBookmarks()
-    const filtered = (activeProduct === 'all') 
-      ? bks 
+    const bks = bookmarkCache
+    const filtered = (activeProduct === 'all')
+      ? bks
       : bks.filter(b => b.product === activeProduct)
 
     if (countBadge) countBadge.textContent = filtered.length
 
     container.innerHTML = ''
     if (filtered.length === 0) {
-      container.innerHTML = '<span style="font-size:0.75rem; color:#64748b;">No saved bookmarks yet.</span>'
+      container.innerHTML = '<span style="font-size:0.75rem; color:var(--text-faint);">No saved bookmarks yet.</span>'
       return
     }
 
@@ -317,7 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
       row.className = 'sidebar-item-row'
       row.style.borderColor = 'rgba(0,141,199,0.15)'
       row.innerHTML = `
-        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#38bdf8;">🔖 ${b.title}</span>
+        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--c-sky);">🔖 ${b.title}</span>
         <button class="sidebar-item-remove" title="Remove Bookmark">✕</button>
       `
       row.onclick = (e) => {
@@ -349,6 +437,15 @@ document.addEventListener('DOMContentLoaded', () => {
       userBox.classList.remove('hide')
       signinBtn.classList.add('hide')
       userNameLabel.textContent = username
+
+      // Account menu identity + Downloads relocated inside the dropdown.
+      const initial = document.getElementById('user-avatar-initial')
+      const menuName = document.getElementById('user-menu-name')
+      const menuRole = document.getElementById('user-menu-role')
+      if (initial) initial.textContent = (username || 'U').trim().charAt(0) || 'U'
+      if (menuName) menuName.textContent = username
+      if (menuRole) menuRole.textContent = role || 'Viewer'
+      moveDownloadsButton(true)
 
       if (['admin', 'editor', 'reviewer'].includes(normRole)) {
         if (btnWriteKb) btnWriteKb.classList.remove('hide')
@@ -384,6 +481,9 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       userBox.classList.add('hide')
       signinBtn.classList.remove('hide')
+      closeUserMenu()
+      // Guests have no account menu, so Downloads goes back into the header.
+      moveDownloadsButton(false)
       if (btnWriteKb) btnWriteKb.classList.add('hide')
       if (btnUpload) btnUpload.classList.add('hide')
       if (btnAdmin) btnAdmin.classList.add('hide')
@@ -395,7 +495,152 @@ document.addEventListener('DOMContentLoaded', () => {
         btnCopilotSettings.style.setProperty('display', 'none', 'important')
       }
     }
+
+    // The landing sections differ by auth state (2 as a guest, 4 signed in).
+    renderLandingSections()
   }
+
+  // ==================== 5.05 THEME (light / dark) ====================
+  // Explicit choice wins and is remembered per browser; with no choice stored we
+  // follow the OS setting, and keep following it while it changes.
+  const THEME_KEY = 'kc_theme'
+
+  function systemPrefersLight() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)
+  }
+
+  function storedTheme() {
+    try {
+      const v = localStorage.getItem(THEME_KEY)
+      return (v === 'light' || v === 'dark') ? v : null
+    } catch (e) {
+      return null
+    }
+  }
+
+  function applyTheme(theme) {
+    const light = theme === 'light'
+    document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark')
+    const icon = document.getElementById('theme-toggle-icon')
+    const btn = document.getElementById('btn-theme-toggle')
+    if (icon) {
+      // Show the theme you would switch TO.
+      icon.setAttribute('data-lucide', light ? 'moon' : 'sun')
+      if (window.lucide) lucide.createIcons()
+    }
+    if (btn) btn.title = light ? 'Switch to dark theme' : 'Switch to light theme'
+    restyleCharts()
+  }
+
+  function currentTheme() {
+    return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'
+  }
+
+  // Chart.js paints to a canvas, so it cannot inherit CSS variables. These give
+  // it the current theme's values, and restyleCharts() re-applies them on toggle.
+  function chartGridColor() {
+    return currentTheme() === 'light' ? 'rgba(15,23,42,0.10)' : 'rgba(255,255,255,0.05)'
+  }
+
+  function chartTickColor() {
+    return currentTheme() === 'light' ? '#475569' : '#94a3b8'
+  }
+
+  function restyleCharts() {
+    const charts = [window.chartTelemetry, window.chartProductDist, window.chartAuthorLeaderboard,
+                    window.chartContribUsers, window.chartContribTimeline]
+    charts.forEach(ch => {
+      if (!ch || !ch.options) return
+      try {
+        const scales = ch.options.scales || {}
+        Object.keys(scales).forEach(k => {
+          const sc = scales[k]
+          if (!sc) return
+          if (sc.grid) sc.grid.color = chartGridColor()
+          if (sc.ticks) sc.ticks.color = chartTickColor()
+        })
+        const legend = ch.options.plugins && ch.options.plugins.legend
+        if (legend && legend.labels) legend.labels.color = chartTickColor()
+        ch.update('none')
+      } catch (e) {
+        console.error('Could not restyle chart on theme change:', e)
+      }
+    })
+  }
+
+  applyTheme(storedTheme() || (systemPrefersLight() ? 'light' : 'dark'))
+
+  const btnThemeToggle = document.getElementById('btn-theme-toggle')
+  if (btnThemeToggle) {
+    btnThemeToggle.addEventListener('click', () => {
+      const next = currentTheme() === 'light' ? 'dark' : 'light'
+      try { localStorage.setItem(THEME_KEY, next) } catch (e) { /* private mode */ }
+      applyTheme(next)
+    })
+  }
+
+  if (window.matchMedia) {
+    const mq = window.matchMedia('(prefers-color-scheme: light)')
+    const onSystemChange = (e) => {
+      // Only track the OS while the user has not made an explicit choice.
+      if (!storedTheme()) applyTheme(e.matches ? 'light' : 'dark')
+    }
+    if (mq.addEventListener) mq.addEventListener('change', onSystemChange)
+    else if (mq.addListener) mq.addListener(onSystemChange)
+  }
+
+  // ==================== 5.1 ACCOUNT MENU ====================
+  // Downloads is available to everyone, so it lives in the header for guests and
+  // moves into the account menu once signed in. appendChild relocates the very
+  // same node, so its existing click listener is preserved either way.
+  function moveDownloadsButton(intoMenu) {
+    const btn = document.getElementById('btn-tab-utilities')
+    const menuItems = document.getElementById('user-menu-items')
+    const headerActions = document.getElementById('header-actions-inline')
+    const signinBtn = document.getElementById('btn-open-signin')
+    if (!btn || !menuItems || !headerActions) return
+
+    if (intoMenu) {
+      if (btn.parentElement !== menuItems) menuItems.insertBefore(btn, menuItems.firstChild)
+      btn.classList.remove('hdr-btn')
+      btn.classList.add('user-menu-item')
+    } else {
+      if (btn.parentElement !== headerActions) headerActions.insertBefore(btn, signinBtn)
+      btn.classList.remove('user-menu-item')
+      btn.classList.add('hdr-btn')
+    }
+    if (window.lucide) lucide.createIcons()
+  }
+
+  function closeUserMenu() {
+    const dd = document.getElementById('user-menu-dropdown')
+    if (dd) dd.classList.add('hide')
+  }
+
+  const btnUserMenu = document.getElementById('btn-user-menu')
+  if (btnUserMenu) {
+    btnUserMenu.addEventListener('click', (e) => {
+      e.stopPropagation()
+      const dd = document.getElementById('user-menu-dropdown')
+      if (dd) dd.classList.toggle('hide')
+      // Two dropdowns in the same corner should never overlap.
+      const notif = document.getElementById('notification-dropdown')
+      if (notif) notif.classList.add('hide')
+    })
+  }
+
+  // Any menu action navigates away, so collapse the menu on click-through.
+  const userMenuDropdown = document.getElementById('user-menu-dropdown')
+  if (userMenuDropdown) {
+    userMenuDropdown.addEventListener('click', (e) => {
+      if (e.target.closest('button')) closeUserMenu()
+    })
+  }
+
+  document.addEventListener('click', (e) => {
+    const box = document.getElementById('user-profile-box')
+    if (box && !box.contains(e.target)) closeUserMenu()
+  })
 
   // ==================== 5.5 SUPPORT UTILITIES & REVIEW QUEUE & LOGIN AUDIT ====================
   function switchPage(pageId) {
@@ -430,7 +675,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const search = (document.getElementById('util-search-input')?.value || '').trim()
     const product = document.getElementById('util-filter-product')?.value || 'all'
 
-    grid.innerHTML = '<div style="grid-column:1/-1; padding:40px; text-align:center; color:#94a3b8;">Loading download files...</div>'
+    grid.innerHTML = '<div style="grid-column:1/-1; padding:40px; text-align:center; color:var(--text-muted);">Loading download files...</div>'
 
     let url = `/api/utilities?product=${product}`
     if (search) url += `&query=${encodeURIComponent(search)}`
@@ -442,30 +687,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
       grid.innerHTML = ''
       if (items.length === 0) {
-        grid.innerHTML = '<div style="grid-column:1/-1; padding:40px; text-align:center; color:#64748b; font-size:0.95rem;">No download files available.</div>'
+        grid.innerHTML = '<div style="grid-column:1/-1; padding:40px; text-align:center; color:var(--text-faint); font-size:0.95rem;">No download files available.</div>'
         return
       }
 
       items.forEach(item => {
         const card = document.createElement('div')
         card.className = 'glass-panel'
-        card.style.cssText = 'padding:22px; display:flex; flex-direction:column; justify-content:space-between; gap:16px; border:1px solid rgba(56,189,248,0.2); background:rgba(15,23,42,0.8);'
+        card.style.cssText = 'padding:22px; display:flex; flex-direction:column; justify-content:space-between; gap:16px; border:1px solid rgba(56,189,248,0.2); background:var(--bg-card);'
         
         const ext = item.file_name ? item.file_name.split('.').pop().toUpperCase() : 'FILE'
 
         card.innerHTML = `
           <div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-              <span style="font-size:0.72rem; font-weight:700; padding:3px 8px; border-radius:6px; background:rgba(56,189,248,0.15); color:#38bdf8; text-transform:uppercase;">${item.product || 'GENERAL'}</span>
-              <span style="font-size:0.75rem; padding:3px 8px; border-radius:6px; background:rgba(16,185,129,0.15); color:#34d399; font-weight:700;">${ext} • ${item.file_size || 'N/A'}</span>
+              <span style="font-size:0.72rem; font-weight:700; padding:3px 8px; border-radius:6px; background:rgba(56,189,248,0.15); color:var(--c-sky); text-transform:uppercase;">${item.product || 'GENERAL'}</span>
+              <span style="font-size:0.75rem; padding:3px 8px; border-radius:6px; background:rgba(16,185,129,0.15); color:var(--c-emerald); font-weight:700;">${ext} • ${item.file_size || 'N/A'}</span>
             </div>
-            <h3 style="font-size:1.15rem; font-weight:800; color:#fff; margin:0 0 8px 0; word-break:break-word;">${item.title}</h3>
-            <div style="font-size:0.82rem; color:#94a3b8; font-family:monospace; margin-bottom:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">📁 ${item.file_name || ''}</div>
-            ${item.description ? `<p style="font-size:0.85rem; color:#cbd5e1; line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin:0;">${item.description}</p>` : ''}
+            <h3 style="font-size:1.15rem; font-weight:800; color:var(--text-main); margin:0 0 8px 0; word-break:break-word;">${item.title}</h3>
+            <div style="font-size:0.82rem; color:var(--text-muted); font-family:monospace; margin-bottom:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">📁 ${item.file_name || ''}</div>
+            ${item.description ? `<p style="font-size:0.85rem; color:var(--text-soft); line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin:0;">${item.description}</p>` : ''}
           </div>
 
-          <div style="border-top:1px solid rgba(255,255,255,0.08); padding-top:14px; display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-size:0.75rem; color:#64748b; font-weight:600;">📥 ${item.download_count || 0} Downloads</span>
+          <div style="border-top:1px solid var(--border-color); padding-top:14px; display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:0.75rem; color:var(--text-faint); font-weight:600;">📥 ${item.download_count || 0} Downloads</span>
             <div style="display:flex; gap:8px;">
               <a href="/api/utilities/download/${item.id}" target="_blank" class="btn btn-primary" style="font-size:0.82rem; padding:8px 16px; background:linear-gradient(135deg, #008DC7, #2DBCEE); font-weight:700; display:inline-flex; align-items:center; gap:6px;">
                 <i data-lucide="download" style="width:14px; height:14px;"></i> Download File
@@ -612,7 +857,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const spaceFilter = document.getElementById('review-filter-space').value
     if (!container) return
 
-    container.innerHTML = '<div style="padding:12px; color:#94a3b8; font-size:0.8rem;">Loading pending KBs...</div>'
+    container.innerHTML = '<div style="padding:12px; color:var(--text-muted); font-size:0.8rem;">Loading pending KBs...</div>'
     try {
       const res = await fetch('/api/review/queue', { headers: { Authorization: `Bearer ${token}` } })
       if (!res.ok) return
@@ -623,19 +868,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
       container.innerHTML = ''
       if (items.length === 0) {
-        container.innerHTML = '<div style="padding:20px; color:#64748b; font-size:0.82rem; text-align:center;">No pending articles for review.</div>'
-        detailPane.innerHTML = '<div style="text-align:center; padding:60px 20px; color:#64748b;">Select a pending document from the left list to review its contents.</div>'
+        container.innerHTML = '<div style="padding:20px; color:var(--text-faint); font-size:0.82rem; text-align:center;">No pending articles for review.</div>'
+        detailPane.innerHTML = '<div style="text-align:center; padding:60px 20px; color:var(--text-faint);">Select a pending document from the left list to review its contents.</div>'
         return
       }
 
       items.forEach(item => {
         const card = document.createElement('div')
-        card.style.cssText = 'padding:12px; border-radius:8px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); cursor:pointer;'
+        card.style.cssText = 'padding:12px; border-radius:8px; background:var(--bg-subtle); border:1px solid var(--border-color); cursor:pointer;'
         card.innerHTML = `
-          <div style="font-size:0.85rem; font-weight:700; color:#fff; margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.title}</div>
-          <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:#94a3b8;">
+          <div style="font-size:0.85rem; font-weight:700; color:var(--text-main); margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.title}</div>
+          <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-muted);">
             <span>By: ${item.author}</span>
-            <span style="color:#fbbf24; font-weight:600;">${item.product}</span>
+            <span style="color:var(--c-amber); font-weight:600;">${item.product}</span>
           </div>
         `
         card.onclick = () => renderReviewItemDetail(item)
@@ -659,47 +904,47 @@ document.addEventListener('DOMContentLoaded', () => {
     const parsedContent = (window.marked && window.marked.parse) ? window.marked.parse(rawText) : rawText
 
     detailPane.innerHTML = `
-      <div style="border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:16px; margin-bottom:16px; flex-shrink:0;">
+      <div style="border-bottom:1px solid var(--border-color); padding-bottom:16px; margin-bottom:16px; flex-shrink:0;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:0.75rem; font-weight:700; padding:3px 8px; border-radius:6px; background:rgba(245,158,11,0.15); color:#fbbf24; text-transform:uppercase;">${(item.product || 'XPI').toUpperCase()}</span>
-            <span style="font-size:0.75rem; padding:3px 8px; border-radius:6px; background:rgba(255,255,255,0.06); color:#cbd5e1;">${item.file_type ? item.file_type.toUpperCase() : 'MD'}</span>
+            <span style="font-size:0.75rem; font-weight:700; padding:3px 8px; border-radius:6px; background:rgba(245,158,11,0.15); color:var(--c-amber); text-transform:uppercase;">${(item.product || 'XPI').toUpperCase()}</span>
+            <span style="font-size:0.75rem; padding:3px 8px; border-radius:6px; background:var(--bg-subtle); color:var(--text-soft);">${item.file_type ? item.file_type.toUpperCase() : 'MD'}</span>
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:0.78rem; color:#94a3b8;">Submitted: ${item.created_at || 'Recently'}</span>
-            <button type="button" onclick="downloadReviewOriginalFile(${item.id})" class="btn btn-secondary" style="font-size:0.75rem; padding:4px 10px; color:#34d399; border-color:rgba(52,211,153,0.3); display:inline-flex; align-items:center; gap:4px;">
+            <span style="font-size:0.78rem; color:var(--text-muted);">Submitted: ${item.created_at || 'Recently'}</span>
+            <button type="button" onclick="downloadReviewOriginalFile(${item.id})" class="btn btn-secondary" style="font-size:0.75rem; padding:4px 10px; color:var(--c-emerald); border-color:rgba(52,211,153,0.3); display:inline-flex; align-items:center; gap:4px;">
               <i data-lucide="download" style="width:13px; height:13px;"></i> Download Original File
             </button>
-            <button type="button" onclick="previewDocInReader(${item.id})" class="btn btn-secondary" style="font-size:0.75rem; padding:4px 10px; color:#38bdf8; border-color:rgba(56,189,248,0.3);">
+            <button type="button" onclick="previewDocInReader(${item.id})" class="btn btn-secondary" style="font-size:0.75rem; padding:4px 10px; color:var(--c-sky); border-color:rgba(56,189,248,0.3);">
               <i data-lucide="eye" style="width:13px; height:13px;"></i> Full Reader View
             </button>
           </div>
         </div>
-        <h2 style="font-size:1.35rem; font-weight:800; color:#fff; margin:0 0 6px 0; word-break:break-word;">${item.title}</h2>
-        <div style="font-size:0.82rem; color:#38bdf8;">Uploader / Author: <strong>${item.author || 'Contributor'}</strong></div>
+        <h2 style="font-size:1.35rem; font-weight:800; color:var(--text-main); margin:0 0 6px 0; word-break:break-word;">${item.title}</h2>
+        <div style="font-size:0.82rem; color:var(--c-sky);">Uploader / Author: <strong>${item.author || 'Contributor'}</strong></div>
       </div>
 
       ${item.review_comment ? `
-        <div style="padding:10px 14px; border-radius:8px; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); color:#fbbf24; font-size:0.82rem; margin-bottom:14px; flex-shrink:0;">
+        <div style="padding:10px 14px; border-radius:8px; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); color:var(--c-amber); font-size:0.82rem; margin-bottom:14px; flex-shrink:0;">
           <strong>Previous Review Notes:</strong> ${item.review_comment}
         </div>
       ` : ''}
 
       <!-- Clean Article Body Container -->
-      <div class="markdown-body" style="flex:1; min-height:220px; overflow-y:auto; overflow-x:auto; color:#e2e8f0; font-size:0.9rem; line-height:1.7; background:rgba(0,0,0,0.35); padding:18px 22px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); margin-bottom:16px; white-space:pre-wrap; word-break:break-word;">
+      <div class="markdown-body" style="flex:1; min-height:220px; overflow-y:auto; overflow-x:auto; color:var(--text-soft); font-size:0.9rem; line-height:1.7; background:var(--bg-input); padding:18px 22px; border-radius:10px; border:1px solid var(--border-color); margin-bottom:16px; white-space:pre-wrap; word-break:break-word;">
         ${parsedContent}
       </div>
 
       <!-- Action Panel -->
-      <div style="border-top:1px solid rgba(255,255,255,0.08); padding-top:14px; flex-shrink:0;">
+      <div style="border-top:1px solid var(--border-color); padding-top:14px; flex-shrink:0;">
         <div style="margin-bottom:10px;">
-          <label style="display:block; font-size:0.78rem; color:#cbd5e1; margin-bottom:4px; font-weight:600;">Review Comments / Revision Notes for Author</label>
-          <input type="text" id="review-action-comment" placeholder="Enter comments or requested modifications..." style="width:100%; padding:9px 12px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff; font-size:0.85rem; outline:none;">
+          <label style="display:block; font-size:0.78rem; color:var(--text-soft); margin-bottom:4px; font-weight:600;">Review Comments / Revision Notes for Author</label>
+          <input type="text" id="review-action-comment" placeholder="Enter comments or requested modifications..." style="width:100%; padding:9px 12px; background:var(--bg-input); border:1px solid var(--border-strong); border-radius:8px; color:var(--text-main); font-size:0.85rem; outline:none;">
         </div>
 
         <div style="display:flex; justify-content:flex-end; gap:10px;">
-          <button onclick="submitReviewDecision(${item.id}, 'reject')" class="btn" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#f87171; font-weight:700;">Reject</button>
-          <button onclick="submitReviewDecision(${item.id}, 'request_changes')" class="btn" style="background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.3); color:#fbbf24; font-weight:700;">Request Changes</button>
+          <button onclick="submitReviewDecision(${item.id}, 'reject')" class="btn" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:var(--c-rose); font-weight:700;">Reject</button>
+          <button onclick="submitReviewDecision(${item.id}, 'request_changes')" class="btn" style="background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.3); color:var(--c-amber); font-weight:700;">Request Changes</button>
           <button onclick="submitReviewDecision(${item.id}, 'approve')" class="btn btn-primary" style="background:linear-gradient(135deg, #10b981, #008DC7); font-weight:700;">Approve & Publish SOP</button>
         </div>
       </div>
@@ -793,7 +1038,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const category = document.getElementById('admin-login-filter-status')?.value || 'all'
     if (!container) return
 
-    container.innerHTML = '<tr><td colspan="6" style="padding:20px; text-align:center; color:#94a3b8;">Loading audit activity trail...</td></tr>'
+    container.innerHTML = '<tr><td colspan="6" style="padding:20px; text-align:center; color:var(--text-muted);">Loading audit activity trail...</td></tr>'
 
     let url = `/api/admin/enterprise-audit-logs?search=${encodeURIComponent(search)}&category=${encodeURIComponent(category)}`
     try {
@@ -804,7 +1049,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       container.innerHTML = ''
       if (items.length === 0) {
-        container.innerHTML = '<tr><td colspan="6" style="padding:20px; text-align:center; color:#64748b;">No audit log records found matching filters.</td></tr>'
+        container.innerHTML = '<tr><td colspan="6" style="padding:20px; text-align:center; color:var(--text-faint);">No audit log records found matching filters.</td></tr>'
         return
       }
 
@@ -812,31 +1057,31 @@ document.addEventListener('DOMContentLoaded', () => {
         const tr = document.createElement('tr')
         tr.style.borderBottom = '1px solid rgba(255,255,255,0.05)'
         
-        let catColor = '#38bdf8'
+        let catColor = 'var(--c-sky)'
         let catBg = 'rgba(56,189,248,0.15)'
         let catBorder = 'rgba(56,189,248,0.3)'
         
         if (item.action_category === 'REVIEW') {
-          catColor = '#fbbf24'; catBg = 'rgba(245,158,11,0.15)'; catBorder = 'rgba(245,158,11,0.3)';
+          catColor = 'var(--c-amber)'; catBg = 'rgba(245,158,11,0.15)'; catBorder = 'rgba(245,158,11,0.3)';
         } else if (item.action_category === 'AUTH') {
-          catColor = '#34d399'; catBg = 'rgba(52,211,153,0.15)'; catBorder = 'rgba(52,211,153,0.3)';
+          catColor = 'var(--c-emerald)'; catBg = 'rgba(52,211,153,0.15)'; catBorder = 'rgba(52,211,153,0.3)';
         } else if (item.action_category === 'DOWNLOADS') {
-          catColor = '#a855f7'; catBg = 'rgba(168,85,247,0.15)'; catBorder = 'rgba(168,85,247,0.3)';
+          catColor = 'var(--c-purple)'; catBg = 'rgba(168,85,247,0.15)'; catBorder = 'rgba(168,85,247,0.3)';
         }
 
         tr.innerHTML = `
-          <td style="padding:12px 16px; color:#e2e8f0; white-space:nowrap; font-size:0.82rem;">${item.timestamp}</td>
-          <td style="padding:12px 16px; font-weight:600; color:#fff; white-space:nowrap;">
-            ${item.username} <span style="font-size:0.72rem; color:#94a3b8; font-weight:normal;">(${item.user_role})</span>
+          <td style="padding:12px 16px; color:var(--text-soft); white-space:nowrap; font-size:0.82rem;">${item.timestamp}</td>
+          <td style="padding:12px 16px; font-weight:600; color:var(--text-main); white-space:nowrap;">
+            ${item.username} <span style="font-size:0.72rem; color:var(--text-muted); font-weight:normal;">(${item.user_role})</span>
           </td>
           <td style="padding:12px 16px;">
             <span style="padding:3px 8px; border-radius:6px; font-size:0.72rem; font-weight:700; background:${catBg}; color:${catColor}; border:1px solid ${catBorder};">
               ${item.action_category}
             </span>
           </td>
-          <td style="padding:12px 16px; font-weight:700; color:#38bdf8; font-size:0.82rem;">${item.action}</td>
-          <td style="padding:12px 16px; color:#cbd5e1; font-size:0.84rem; max-width:340px; word-break:break-word;">${item.details || '-'}</td>
-          <td style="padding:12px 16px; color:#94a3b8; font-family:monospace; font-size:0.78rem;">${item.ip_address}</td>
+          <td style="padding:12px 16px; font-weight:700; color:var(--c-sky); font-size:0.82rem;">${item.action}</td>
+          <td style="padding:12px 16px; color:var(--text-soft); font-size:0.84rem; max-width:340px; word-break:break-word;">${item.details || '-'}</td>
+          <td style="padding:12px 16px; color:var(--text-muted); font-family:monospace; font-size:0.78rem;">${item.ip_address}</td>
         `
         container.appendChild(tr)
       })
@@ -886,9 +1131,172 @@ document.addEventListener('DOMContentLoaded', () => {
       if (overviewData.pinned) {
         renderPinnedList(overviewData.pinned)
       }
+
+      renderLandingProductMeta()
+      renderLandingSections()
     } catch (e) {
       console.error('Error fetching overview:', e)
     }
+  }
+
+  // ==================== 6.1 LANDING PAGE: PRODUCT CARD META ====================
+  function renderLandingProductMeta() {
+    // Reflect the real corpus size in the hero search placeholder.
+    const input = document.getElementById('landing-search-input')
+    const total = overviewData ? overviewData.total_documents : 0
+    if (input && total) {
+      input.placeholder = `Search ${total} manuals, SOPs, connectors, and error codes...`
+    }
+  }
+
+  function escapeHtmlText(s) {
+    return String(s === undefined || s === null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+  }
+
+  // ==================== 6.2 LANDING PAGE: AUTH-AWARE CONTENT SECTIONS ====================
+  // One renderer for all four sections so there is no per-section copy-paste.
+  function buildLandingSection({ title, icon, accent, accentText, items, emptyText, meta, starred }) {
+    const section = document.createElement('div')
+    section.className = 'landing-section'
+
+    const head = document.createElement('div')
+    head.className = 'landing-section-head'
+    head.innerHTML = `
+      <span class="landing-section-icon" style="background:${accent}26; color:${accentText || accent};">
+        <i data-lucide="${icon}" style="width:16px; height:16px;"></i>
+      </span>
+      <span class="landing-section-title">${escapeHtmlText(title)}</span>
+      ${items.length ? `<span class="landing-section-count">${items.length}</span>` : ''}
+    `
+    section.appendChild(head)
+
+    if (!items.length) {
+      const empty = document.createElement('div')
+      empty.className = 'landing-empty'
+      empty.textContent = emptyText
+      section.appendChild(empty)
+      return section
+    }
+
+    items.slice(0, 6).forEach(item => {
+      const row = document.createElement('div')
+      row.className = 'landing-item-row'
+      row.title = item.title || ''
+
+      const body = document.createElement('div')
+      body.className = 'landing-item-body'
+      const metaText = meta ? meta(item) : ''
+      body.innerHTML = `
+        <span class="landing-item-title">${escapeHtmlText(item.title)}</span>
+        ${metaText ? `<span class="landing-item-meta">${escapeHtmlText(metaText)}</span>` : ''}
+      `
+      row.appendChild(body)
+
+      if (starred) {
+        const star = document.createElement('button')
+        star.type = 'button'
+        star.className = 'landing-star-btn'
+        star.title = 'Remove from Starred'
+        star.innerHTML = '<i data-lucide="star" style="width:15px; height:15px; fill:currentColor;"></i>'
+        star.onclick = (e) => {
+          e.stopPropagation()
+          toggleDocBookmark(item)
+        }
+        row.appendChild(star)
+      } else if (item.product) {
+        const badge = document.createElement('span')
+        badge.className = 'landing-item-right'
+        badge.textContent = PRODUCT_LABELS[item.product] || item.product
+        row.appendChild(badge)
+      }
+
+      row.onclick = () => openDocument(item.id)
+      section.appendChild(row)
+    })
+
+    return section
+  }
+
+  const PRODUCT_LABELS = { xpa: 'xpa', xpi: 'xpi', cloud_native: 'Cloud', general: 'General' }
+
+  async function fetchAuthedList(url) {
+    // Auth-only lists must degrade to empty rather than break the landing page.
+    if (!token) return []
+    try {
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      if (!res.ok) return []
+      const data = await res.json()
+      return Array.isArray(data) ? data : []
+    } catch (e) {
+      console.error('Could not load', url, e)
+      return []
+    }
+  }
+
+  async function renderLandingSections() {
+    const host = document.getElementById('landing-sections')
+    if (!host) return
+
+    const trending = (overviewData && overviewData.trending) ? overviewData.trending : []
+    const recent = (overviewData && overviewData.recent) ? overviewData.recent : []
+    const signedIn = !!token
+
+    const sections = [
+      buildLandingSection({
+        title: 'Most Viewed',
+        icon: 'trending-up',
+        accent: '#f59e0b',
+        accentText: 'var(--c-amber)',
+        items: trending,
+        emptyText: 'No documents have been opened yet. View counts appear here as the knowledge base gets used.',
+        meta: (d) => `${d.views || 0} view${(d.views || 0) === 1 ? '' : 's'}`
+      }),
+      buildLandingSection({
+        title: signedIn ? 'Recently Uploaded by All' : 'Recently Uploaded',
+        icon: 'clock',
+        accent: '#38bdf8',
+        accentText: 'var(--c-sky)',
+        items: recent,
+        emptyText: 'Nothing has been uploaded yet.',
+        meta: (d) => [d.created_at, d.author].filter(Boolean).join(' · ')
+      })
+    ]
+
+    if (signedIn) {
+      const [mine, starred] = await Promise.all([
+        fetchAuthedList('/api/my/contributions'),
+        fetchAuthedList('/api/favorites')
+      ])
+
+      sections.push(buildLandingSection({
+        title: 'My Contributions',
+        icon: 'pen-line',
+        accent: '#34d399',
+        accentText: 'var(--c-emerald)',
+        items: mine,
+        emptyText: 'Nothing yet. Articles you upload or author in the app will appear here.',
+        meta: (d) => [d.created_at, `${d.views || 0} views`].filter(Boolean).join(' · ')
+      }))
+
+      sections.push(buildLandingSection({
+        title: 'Starred',
+        icon: 'star',
+        accent: '#fbbf24',
+        accentText: 'var(--c-amber)',
+        items: starred,
+        emptyText: 'No starred documents yet. Use the Bookmark button on any article to save it here.',
+        meta: (d) => [PRODUCT_LABELS[d.product] || d.product, d.created_at].filter(Boolean).join(' · '),
+        starred: true
+      }))
+    }
+
+    host.innerHTML = ''
+    sections.forEach(s => host.appendChild(s))
+    // Drives the column count so a row is never left half-empty.
+    host.setAttribute('data-count', String(sections.length))
+    if (window.lucide) lucide.createIcons()
   }
 
   // ==================== 7. PRODUCT HERO QUICK SUGGESTIONS ====================
@@ -900,7 +1308,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     topics.forEach(t => {
       const chip = document.createElement('button')
-      chip.style.cssText = 'padding:6px 14px; border-radius:20px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#e2e8f0; font-size:0.8rem; cursor:pointer; transition:all 0.2s;'
+      chip.style.cssText = 'padding:6px 14px; border-radius:20px; background:var(--bg-subtle); border:1px solid var(--border-strong); color:var(--text-soft); font-size:0.8rem; cursor:pointer; transition:all 0.2s;'
       chip.textContent = `# ${t.label}`
       chip.onclick = () => {
         const searchInput = document.getElementById('omnibox-search-input')
@@ -932,7 +1340,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (countBadge) countBadge.textContent = sortedDocs.length
 
     if (sortedDocs.length === 0) {
-      container.innerHTML = '<span style="font-size:0.75rem; color:#64748b;">No documents in this space yet.</span>'
+      container.innerHTML = '<span style="font-size:0.75rem; color:var(--text-faint);">No documents in this space yet.</span>'
       return
     }
 
@@ -949,11 +1357,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Parent Expandable Space Tab Node
     const spaceTabNode = document.createElement('div')
     spaceTabNode.className = 'space-tree-parent-tab'
-    spaceTabNode.style.cssText = 'padding:8px 10px; border-radius:8px; background:rgba(0,141,199,0.12); border:1px solid rgba(0,141,199,0.25); cursor:pointer; display:flex; align-items:center; justify-content:space-between; color:#38bdf8; font-size:0.82rem; font-weight:700; user-select:none; margin-bottom:4px;'
+    spaceTabNode.style.cssText = 'padding:8px 10px; border-radius:8px; background:rgba(0,141,199,0.12); border:1px solid rgba(0,141,199,0.25); cursor:pointer; display:flex; align-items:center; justify-content:space-between; color:var(--c-sky); font-size:0.82rem; font-weight:700; user-select:none; margin-bottom:4px;'
     
     spaceTabNode.innerHTML = `
       <div style="display:flex; align-items:center; gap:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-        <i data-lucide="folder" style="width:15px; height:15px; flex-shrink:0; color:#38bdf8;"></i>
+        <i data-lucide="folder" style="width:15px; height:15px; flex-shrink:0; color:var(--c-sky);"></i>
         <span>${spaceTitle}</span>
       </div>
       <i data-lucide="chevron-down" id="space-tree-chevron" style="width:14px; height:14px; transition:transform 0.2s;"></i>
@@ -974,9 +1382,9 @@ document.addEventListener('DOMContentLoaded', () => {
     sortedDocs.forEach(doc => {
       const docRow = document.createElement('div')
       docRow.className = 'sidebar-item-row'
-      docRow.style.cssText = 'padding:6px 8px; border-radius:6px; font-size:0.78rem; cursor:pointer; color:#e2e8f0; display:flex; align-items:center; gap:6px; transition:all 0.15s;'
+      docRow.style.cssText = 'padding:6px 8px; border-radius:6px; font-size:0.78rem; cursor:pointer; color:var(--text-soft); display:flex; align-items:center; gap:6px; transition:all 0.15s;'
       docRow.innerHTML = `
-        <i data-lucide="file-text" style="width:13px; height:13px; color:#94a3b8; flex-shrink:0;"></i>
+        <i data-lucide="file-text" style="width:13px; height:13px; color:var(--text-muted); flex-shrink:0;"></i>
         <span class="doc-title-text" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;" title="${doc.title}">${doc.title}</span>
       `
       docRow.onclick = (e) => {
@@ -1009,7 +1417,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (heroDesc) heroDesc.textContent = `Your recently viewed articles appear below. Search documentation or expand the space tree on the left.`
     if (counter) counter.textContent = `Recently Viewed Documents`
 
-    container.innerHTML = '<div style="padding:20px; color:#94a3b8; text-align:center;">Loading space documents...</div>'
+    container.innerHTML = '<div style="padding:20px; color:var(--text-muted); text-align:center;">Loading space documents...</div>'
 
     try {
       const res = await fetch(`/api/search?q=*&product=${encodeURIComponent(activeProduct)}`)
@@ -1046,14 +1454,14 @@ document.addEventListener('DOMContentLoaded', () => {
           card.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:6px; background:rgba(0,141,199,0.15); color:#38bdf8; text-transform:uppercase;">${prod}</span>
-                <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:rgba(255,255,255,0.06); color:#9ca3af; text-transform:uppercase;">${fileType}</span>
-                <span style="font-size:0.7rem; font-weight:800; padding:2px 7px; border-radius:6px; background:rgba(34,211,238,0.15); color:#22d3ee; border:1px solid rgba(34,211,238,0.3);">RECENTLY VIEWED</span>
+                <span style="font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:6px; background:rgba(0,141,199,0.15); color:var(--c-sky); text-transform:uppercase;">${prod}</span>
+                <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:var(--bg-subtle); color:var(--text-muted); text-transform:uppercase;">${fileType}</span>
+                <span style="font-size:0.7rem; font-weight:800; padding:2px 7px; border-radius:6px; background:rgba(34,211,238,0.15); color:var(--c-cyan); border:1px solid rgba(34,211,238,0.3);">RECENTLY VIEWED</span>
               </div>
-              <span style="font-size:0.72rem; color:#64748b;">${createdAt ? createdAt + ' • ' : ''}${views} views</span>
+              <span style="font-size:0.72rem; color:var(--text-faint);">${createdAt ? createdAt + ' • ' : ''}${views} views</span>
             </div>
-            <h4 style="font-size:1.05rem; font-weight:700; color:#fff; margin:2px 0;">🕒 ${title}</h4>
-            ${snippet ? `<p style="font-size:0.84rem; color:#94a3b8; line-height:1.5; margin:0;">${snippet}</p>` : ''}
+            <h4 style="font-size:1.05rem; font-weight:700; color:var(--text-main); margin:2px 0;">🕒 ${title}</h4>
+            ${snippet ? `<p style="font-size:0.84rem; color:var(--text-muted); line-height:1.5; margin:0;">${snippet}</p>` : ''}
           `
           card.onclick = () => openDocument(r.id)
           container.appendChild(card)
@@ -1062,10 +1470,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Fallback if no docs have been viewed yet in this space
         const infoBox = document.createElement('div')
         infoBox.className = 'glass-panel'
-        infoBox.style.cssText = 'padding:20px 24px; text-align:center; background:rgba(15,23,42,0.6); border:1px dashed rgba(255,255,255,0.12); margin-bottom:12px;'
+        infoBox.style.cssText = 'padding:20px 24px; text-align:center; background:var(--bg-card); border:1px dashed rgba(255,255,255,0.12); margin-bottom:12px;'
         infoBox.innerHTML = `
-          <div style="font-size:0.9rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">No recently viewed articles in this space yet.</div>
-          <p style="font-size:0.82rem; color:#64748b; margin:0;">Open any article from the Space Documents tree on the left or search above to track your history here.</p>
+          <div style="font-size:0.9rem; color:var(--text-soft); font-weight:600; margin-bottom:4px;">No recently viewed articles in this space yet.</div>
+          <p style="font-size:0.82rem; color:var(--text-faint); margin:0;">Open any article from the Space Documents tree on the left or search above to track your history here.</p>
         `
         container.appendChild(infoBox)
 
@@ -1073,7 +1481,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const suggestions = docs.slice(0, 3)
         if (suggestions.length > 0) {
           const sugLabel = document.createElement('div')
-          sugLabel.style.cssText = 'font-size:0.82rem; color:#94a3b8; font-weight:700; margin:8px 0 4px 0;'
+          sugLabel.style.cssText = 'font-size:0.82rem; color:var(--text-muted); font-weight:700; margin:8px 0 4px 0;'
           sugLabel.textContent = 'Recommended Space Guides:'
           container.appendChild(sugLabel)
 
@@ -1083,10 +1491,10 @@ document.addEventListener('DOMContentLoaded', () => {
             card.style.cssText = 'padding:14px 18px; cursor:pointer; display:flex; flex-direction:column; gap:4px;'
             card.innerHTML = `
               <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:6px; background:rgba(0,141,199,0.15); color:#38bdf8; text-transform:uppercase;">${doc.product}</span>
-                <span style="font-size:0.72rem; color:#64748b;">${doc.views || 0} views</span>
+                <span style="font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:6px; background:rgba(0,141,199,0.15); color:var(--c-sky); text-transform:uppercase;">${doc.product}</span>
+                <span style="font-size:0.72rem; color:var(--text-faint);">${doc.views || 0} views</span>
               </div>
-              <h4 style="font-size:1.0rem; font-weight:700; color:#fff; margin:2px 0;">${doc.title}</h4>
+              <h4 style="font-size:1.0rem; font-weight:700; color:var(--text-main); margin:2px 0;">${doc.title}</h4>
             `
             card.onclick = () => openDocument(doc.id)
             container.appendChild(card)
@@ -1096,7 +1504,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } catch (e) {
       console.error(e)
-      container.innerHTML = '<div style="padding:20px; color:#f43f5e; text-align:center;">Failed to load space guides.</div>'
+      container.innerHTML = '<div style="padding:20px; color:var(--c-rose); text-align:center;">Failed to load space guides.</div>'
     }
   }
 
@@ -1128,7 +1536,7 @@ document.addEventListener('DOMContentLoaded', () => {
         itemEl.remove()
         const container = document.getElementById('notification-list')
         if (container && container.children.length === 0) {
-          container.innerHTML = '<span style="font-size:0.78rem; color:#64748b; text-align:center; padding:16px; display:block;">✓ All caught up! No unread notifications.</span>'
+          container.innerHTML = '<span style="font-size:0.78rem; color:var(--text-faint); text-align:center; padding:16px; display:block;">✓ All caught up! No unread notifications.</span>'
         }
       }, 200)
     }
@@ -1160,7 +1568,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const unreadNotifs = notifs.filter(n => !n.is_read)
     
     if (unreadNotifs.length === 0) {
-      container.innerHTML = '<span style="font-size:0.78rem; color:#64748b; text-align:center; padding:16px; display:block;">✓ All caught up! No unread notifications.</span>'
+      container.innerHTML = '<span style="font-size:0.78rem; color:var(--text-faint); text-align:center; padding:16px; display:block;">✓ All caught up! No unread notifications.</span>'
       return
     }
 
@@ -1170,7 +1578,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const timeStr = n.timestamp || 'Just now'
       item.style.cssText = `padding:11px 13px; border-radius:8px; background:rgba(0,141,199,0.14); border:1px solid rgba(0,141,199,0.25); cursor:pointer; transition:all 0.2s; position:relative;`
       item.innerHTML = `
-        <div style="font-size:0.84rem; font-weight:700; color:#fff; margin-bottom:3px; display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+        <div style="font-size:0.84rem; font-weight:700; color:var(--text-main); margin-bottom:3px; display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
           <div style="display:flex; align-items:center; gap:6px;">
             <span style="width:6px; height:6px; border-radius:50%; background:#38bdf8; flex-shrink:0;"></span>
             <span>${n.title}</span>
@@ -1179,13 +1587,13 @@ document.addEventListener('DOMContentLoaded', () => {
             type="button" 
             onclick="dismissNotification(${n.id}, event)" 
             title="Dismiss notification" 
-            style="background:none; border:none; color:#94a3b8; font-size:0.95rem; line-height:1; cursor:pointer; padding:1px 5px; border-radius:4px; transition:all 0.15s; flex-shrink:0;"
-            onmouseover="this.style.color='#f43f5e'; this.style.background='rgba(244,63,94,0.15)'" 
-            onmouseout="this.style.color='#94a3b8'; this.style.background='transparent'"
+            style="background:none; border:none; color:var(--text-muted); font-size:0.95rem; line-height:1; cursor:pointer; padding:1px 5px; border-radius:4px; transition:all 0.15s; flex-shrink:0;"
+            onmouseover="this.style.color = 'var(--c-rose)'; this.style.background='rgba(244,63,94,0.15)'" 
+            onmouseout="this.style.color = 'var(--text-muted)'; this.style.background='transparent'"
           >✕</button>
         </div>
-        <div style="font-size:0.78rem; color:#cbd5e1; margin-bottom:5px; line-height:1.4;">${n.message}</div>
-        <div style="font-size:0.68rem; color:#94a3b8;">${timeStr}</div>
+        <div style="font-size:0.78rem; color:var(--text-soft); margin-bottom:5px; line-height:1.4;">${n.message}</div>
+        <div style="font-size:0.68rem; color:var(--text-muted);">${timeStr}</div>
       `
       item.onclick = async () => {
         try {
@@ -1208,7 +1616,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const container = document.getElementById('notification-list')
     if (container) {
-      container.innerHTML = '<span style="font-size:0.78rem; color:#64748b; text-align:center; padding:16px; display:block;">✓ All caught up! No unread notifications.</span>'
+      container.innerHTML = '<span style="font-size:0.78rem; color:var(--text-faint); text-align:center; padding:16px; display:block;">✓ All caught up! No unread notifications.</span>'
     }
 
     try {
@@ -1230,6 +1638,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Hide special pages (Admin Suite, Upload Portal, Login Page)
     document.getElementById('page-admin-suite').classList.add('hide')
     document.getElementById('page-upload-portal').classList.add('hide')
+    document.getElementById('page-utilities-hub').classList.add('hide')
     const pageLogin = document.getElementById('page-login')
     if (pageLogin) pageLogin.classList.add('hide')
 
@@ -1256,19 +1665,19 @@ document.addEventListener('DOMContentLoaded', () => {
       if (prodId === 'xpa') {
         activeBadge.textContent = '⚡ Magic xpa Workspace'
         activeBadge.style.background = 'rgba(245, 158, 11, 0.15)'
-        activeBadge.style.color = '#fbbf24'
+        activeBadge.style.color = 'var(--c-amber)'
         activeBadge.style.border = '1px solid rgba(245, 158, 11, 0.3)'
         searchInput.placeholder = 'Search Magic xpa documentation, Studio, RIA, parameters...'
       } else if (prodId === 'xpi') {
         activeBadge.textContent = '🔗 Magic xpi Workspace'
         activeBadge.style.background = 'rgba(6, 182, 212, 0.15)'
-        activeBadge.style.color = '#22d3ee'
+        activeBadge.style.color = 'var(--c-cyan)'
         activeBadge.style.border = '1px solid rgba(6, 182, 212, 0.3)'
         searchInput.placeholder = 'Search Magic xpi connectors, Data Mapper, JVM_ARGS, GigaSpaces...'
       } else if (prodId === 'cloud_native') {
         activeBadge.textContent = '☁️ Cloud Native Workspace'
         activeBadge.style.background = 'rgba(16, 185, 129, 0.15)'
-        activeBadge.style.color = '#34d399'
+        activeBadge.style.color = 'var(--c-emerald)'
         activeBadge.style.border = '1px solid rgba(16, 185, 129, 0.3)'
         searchInput.placeholder = 'Search AOC SOPs, Docker/K8s, Linux modernization guides...'
       }
@@ -1309,6 +1718,59 @@ document.addEventListener('DOMContentLoaded', () => {
         icon.setAttribute('data-lucide', isExp ? 'minimize-2' : 'maximize-2')
         if (window.lucide) lucide.createIcons()
       }
+    })
+  }
+
+  // ==================== 10.9 LANDING GLOBAL SEARCH (all product spaces) ====================
+  const landingSearchInput = document.getElementById('landing-search-input')
+
+  function runLandingSearch(rawQuery) {
+    const q = (rawQuery || '').trim()
+    if (!q) return
+    // Search the global scope, then hand off to the existing omnibox pipeline.
+    switchProductScope('all')
+    if (typeof window.searchWithKeyword === 'function') window.searchWithKeyword(q)
+  }
+
+  if (landingSearchInput) {
+    landingSearchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        runLandingSearch(landingSearchInput.value)
+      }
+    })
+  }
+
+  // Ctrl/Cmd+K focuses the landing search, matching the hint shown in the field.
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+      const landing = document.getElementById('page-home-landing')
+      const input = document.getElementById('landing-search-input')
+      if (input && landing && !landing.classList.contains('hide')) {
+        e.preventDefault()
+        input.focus()
+        input.select()
+      }
+    }
+  })
+
+  function renderLandingQuickChips() {
+    const row = document.getElementById('landing-quick-chips')
+    if (!row) return
+    row.innerHTML = ''
+    // Flatten the per-product hot topics; the landing search is global scope.
+    const picks = [
+      ...(hotTopicsMap.xpi || []).slice(0, 3),
+      ...(hotTopicsMap.xpa || []).slice(0, 2),
+      ...(hotTopicsMap.cloud_native || []).slice(0, 2)
+    ]
+    picks.forEach(t => {
+      const chip = document.createElement('button')
+      chip.type = 'button'
+      chip.className = 'landing-chip'
+      chip.textContent = t.label
+      chip.onclick = () => runLandingSearch(t.query)
+      row.appendChild(chip)
     })
   }
 
@@ -1379,7 +1841,7 @@ document.addEventListener('DOMContentLoaded', () => {
       input.value = keyword
       document.getElementById('btn-clear-search')?.classList.remove('hide')
       document.getElementById('page-product-workspace')?.classList.remove('hide')
-      document.getElementById('page-home-spaces')?.classList.add('hide')
+      document.getElementById('page-home-landing')?.classList.add('hide')
       document.getElementById('view-document-reader')?.classList.add('hide')
       document.getElementById('view-product-doc-listing')?.classList.add('hide')
       document.getElementById('view-search-results')?.classList.remove('hide')
@@ -1401,8 +1863,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (results.length === 0) {
       container.innerHTML = `
         <div class="glass-panel" style="padding:36px; text-align:center;">
-          <h3 style="font-size:1.15rem; font-weight:700; color:#fff; margin-bottom:8px;">No matching documents found</h3>
-          <p style="font-size:0.85rem; color:#94a3b8; margin-bottom:16px;">Try searching with different keywords, or ask the Magic AI Assistant to synthesize a solution.</p>
+          <h3 style="font-size:1.15rem; font-weight:700; color:var(--text-main); margin-bottom:8px;">No matching documents found</h3>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:16px;">Try searching with different keywords, or ask the Magic AI Assistant to synthesize a solution.</p>
           <button class="btn btn-primary" onclick="openCopilotWithQuery('${query.replace(/'/g, "\\'")}')">
             <i data-lucide="sparkles" style="width:16px; height:16px;"></i> Ask Magic AI Assistant
           </button>
@@ -1419,12 +1881,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (hasHero) {
       const heroCard = document.createElement('div')
       heroCard.className = 'glass-panel'
-      heroCard.style.cssText = 'padding:22px 24px; border:1.5px solid rgba(0, 141, 199, 0.45); background:linear-gradient(135deg, rgba(0,141,199,0.12), rgba(15,23,42,0.7)); border-radius:14px; margin-bottom:20px; box-shadow:0 8px 24px rgba(0,0,0,0.3); cursor:pointer;'
+      heroCard.style.cssText = 'padding:22px 24px; border:1.5px solid rgba(0, 141, 199, 0.45); background:linear-gradient(135deg, var(--primary-soft), var(--bg-card)); border-radius:14px; margin-bottom:20px; box-shadow:0 8px 24px rgba(0,0,0,0.3); cursor:pointer;'
       
       const crumbsHtml = (top.breadcrumbs && top.breadcrumbs.length) 
-        ? `<div style="font-size:0.75rem; color:#94a3b8; margin-bottom:8px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+        ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:8px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
             <i data-lucide="folder" style="width:13px; height:13px;"></i>
-            ${top.breadcrumbs.map(b => `<span>${b}</span>`).join('<span style="color:#64748b;">›</span>')}
+            ${top.breadcrumbs.map(b => `<span>${b}</span>`).join('<span style="color:var(--text-faint);">›</span>')}
            </div>`
         : ''
 
@@ -1435,20 +1897,20 @@ document.addEventListener('DOMContentLoaded', () => {
               <span style="font-size:0.75rem; font-weight:800; padding:3px 10px; border-radius:6px; background:#008DC7; color:#fff; text-transform:uppercase; letter-spacing:0.5px; display:inline-flex; align-items:center; gap:4px;">
                 <i data-lucide="zap" style="width:12px; height:12px;"></i> ${top.doc_type === 'function' ? 'Official Function Reference' : 'Top Official Match'}
               </span>
-              <span style="font-size:0.72rem; font-weight:700; padding:3px 8px; border-radius:6px; background:rgba(255,255,255,0.08); color:#38bdf8; text-transform:uppercase;">
+              <span style="font-size:0.72rem; font-weight:700; padding:3px 8px; border-radius:6px; background:var(--bg-subtle); color:var(--c-sky); text-transform:uppercase;">
                 ${top.product.toUpperCase()}
               </span>
-              ${top.version && top.version !== 'Universal' ? `<span style="font-size:0.72rem; color:#94a3b8;">${top.version}</span>` : ''}
+              ${top.version && top.version !== 'Universal' ? `<span style="font-size:0.72rem; color:var(--text-muted);">${top.version}</span>` : ''}
             </div>
             ${crumbsHtml}
-            <h2 style="font-size:1.45rem; font-weight:800; color:#fff; margin-bottom:6px;">${top.title}</h2>
+            <h2 style="font-size:1.45rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">${top.title}</h2>
           </div>
         </div>
 
         ${top.syntax ? `
-          <div style="margin:12px 0 14px 0; background:#06090e; border:1px solid rgba(0,141,199,0.35); border-radius:8px; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
-            <div style="font-family:'Fira Code', monospace, Consolas; font-size:0.95rem; color:#38bdf8; overflow-x:auto; white-space:nowrap;">
-              <span style="color:#94a3b8; user-select:none;">Syntax: </span><strong>${top.syntax}</strong>
+          <div style="margin:12px 0 14px 0; background:var(--bg-card); border:1px solid rgba(0,141,199,0.35); border-radius:8px; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
+            <div style="font-family:'Fira Code', monospace, Consolas; font-size:0.95rem; color:var(--c-sky); overflow-x:auto; white-space:nowrap;">
+              <span style="color:var(--text-muted); user-select:none;">Syntax: </span><strong>${top.syntax}</strong>
             </div>
             <button class="btn btn-secondary btn-sm" style="padding:4px 10px; font-size:0.75rem; white-space:nowrap;" onclick="event.stopPropagation(); navigator.clipboard.writeText('${top.syntax.replace(/'/g, "\\'")}'); showToast('Syntax copied to clipboard!', 'success');">
               <i data-lucide="copy" style="width:13px; height:13px;"></i> Copy
@@ -1456,10 +1918,10 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         ` : ''}
 
-        ${top.snippet ? `<p style="font-size:0.9rem; color:#cbd5e1; line-height:1.6; margin-bottom:14px;">${top.snippet}</p>` : ''}
+        ${top.snippet ? `<p style="font-size:0.9rem; color:var(--text-soft); line-height:1.6; margin-bottom:14px;">${top.snippet}</p>` : ''}
 
-        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.06); padding-top:12px;">
-          <span style="font-size:0.8rem; color:#94a3b8;">By ${top.author || 'Magic Documentation'} • ${top.created_at}</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-color); padding-top:12px;">
+          <span style="font-size:0.8rem; color:var(--text-muted);">By ${top.author || 'Magic Documentation'} • ${top.created_at}</span>
           <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openDocument('${top.id}');">
             Open Function Guide & Examples →
           </button>
@@ -1486,21 +1948,21 @@ document.addEventListener('DOMContentLoaded', () => {
           <div>
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
               ${sourceBadge}
-              <span style="font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:6px; background:rgba(0,141,199,0.15); color:#38bdf8; text-transform:uppercase;">${doc.product}</span>
-              <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:rgba(255,255,255,0.06); color:#9ca3af; text-transform:uppercase;">${doc.file_type}</span>
-              ${doc.doc_type === 'function' ? `<span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:rgba(16,185,129,0.15); color:#34d399; font-weight:700;">FUNCTION</span>` : ''}
-              ${doc.version && doc.version !== 'Universal' ? `<span style="font-size:0.72rem; color:#cbd5e1;">${doc.version}</span>` : ''}
-              ${doc.is_pinned ? `<span style="font-size:0.72rem; color:#f59e0b; font-weight:700;">★ Pinned SOP</span>` : ''}
+              <span style="font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:6px; background:rgba(0,141,199,0.15); color:var(--c-sky); text-transform:uppercase;">${doc.product}</span>
+              <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:var(--bg-subtle); color:var(--text-muted); text-transform:uppercase;">${doc.file_type}</span>
+              ${doc.doc_type === 'function' ? `<span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:rgba(16,185,129,0.15); color:var(--c-emerald); font-weight:700;">FUNCTION</span>` : ''}
+              ${doc.version && doc.version !== 'Universal' ? `<span style="font-size:0.72rem; color:var(--text-soft);">${doc.version}</span>` : ''}
+              ${doc.is_pinned ? `<span style="font-size:0.72rem; color:var(--c-amber); font-weight:700;">★ Pinned SOP</span>` : ''}
             </div>
-            <h3 style="font-size:1.15rem; font-weight:700; color:#fff; margin-bottom:4px;">${doc.title}</h3>
+            <h3 style="font-size:1.15rem; font-weight:700; color:var(--text-main); margin-bottom:4px;">${doc.title}</h3>
           </div>
-          <span style="font-size:0.75rem; color:#64748b;">${doc.views || 0} views</span>
+          <span style="font-size:0.75rem; color:var(--text-faint);">${doc.views || 0} views</span>
         </div>
-        ${doc.syntax ? `<div class="syntax-pill" style="margin-bottom:4px;"><span style="color:#94a3b8;">Syntax: </span>${doc.syntax}</div>` : ''}
-        ${doc.snippet ? `<p style="font-size:0.88rem; color:#cbd5e1; line-height:1.6;">${doc.snippet}</p>` : ''}
-        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.04); padding-top:8px; font-size:0.78rem; color:#64748b;">
+        ${doc.syntax ? `<div class="syntax-pill" style="margin-bottom:4px;"><span style="color:var(--text-muted);">Syntax: </span>${doc.syntax}</div>` : ''}
+        ${doc.snippet ? `<p style="font-size:0.88rem; color:var(--text-soft); line-height:1.6;">${doc.snippet}</p>` : ''}
+        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-color); padding-top:8px; font-size:0.78rem; color:var(--text-faint);">
           <span>By ${doc.author || 'Engineering'} • ${doc.created_at}</span>
-          <span style="color:#008DC7; font-weight:600;">${isHelpTopic ? 'View Reference Specification →' : 'Read Document →'}</span>
+          <span style="color:var(--link); font-weight:600;">${isHelpTopic ? 'View Reference Specification →' : 'Read Document →'}</span>
         </div>
       `
       card.onclick = () => openDocument(doc.id)
@@ -1523,6 +1985,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('page-admin-suite').classList.add('hide')
     document.getElementById('page-upload-portal').classList.add('hide')
+    document.getElementById('page-utilities-hub').classList.add('hide')
     const pageLogin = document.getElementById('page-login')
     if (pageLogin) pageLogin.classList.add('hide')
 
@@ -1561,13 +2024,13 @@ document.addEventListener('DOMContentLoaded', () => {
           bcContainer.innerHTML = bcItems.map((item, idx) => {
             const isLast = idx === bcItems.length - 1
             if (isLast) {
-              return `<span style="color:#ffffff; font-weight:700;">${item}</span>`
+              return `<span style="color:var(--text-main); font-weight:700;">${item}</span>`
             }
             const escaped = item.replace(/'/g, "\\'")
-            return `<span style="cursor:pointer; color:#38bdf8; transition:color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#38bdf8'" onclick="searchWithKeyword('${escaped}');">${item}</span> <span style="color:#64748b;">›</span>`
+            return `<span style="cursor:pointer; color:var(--c-sky); transition:color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color = 'var(--c-sky)'" onclick="searchWithKeyword('${escaped}');">${item}</span> <span style="color:var(--text-faint);">›</span>`
           }).join(' ')
         } else {
-          bcContainer.innerHTML = `<span style="color:#94a3b8;">Home</span> <span style="color:#64748b;">›</span> <span style="color:#38bdf8; text-transform:uppercase;">${(currentDoc.product || 'xpi').toUpperCase()}</span> <span style="color:#64748b;">›</span> <span style="color:#ffffff; font-weight:700;">${currentDoc.title}</span>`
+          bcContainer.innerHTML = `<span style="color:var(--text-muted);">Home</span> <span style="color:var(--text-faint);">›</span> <span style="color:var(--c-sky); text-transform:uppercase;">${(currentDoc.product || 'xpi').toUpperCase()}</span> <span style="color:var(--text-faint);">›</span> <span style="color:var(--text-main); font-weight:700;">${currentDoc.title}</span>`
         }
       }
 
@@ -1575,12 +2038,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const bodyContainer = document.getElementById('reader-doc-body')
       if (currentDoc.file_type === 'pdf') {
         bodyContainer.innerHTML = `
-          <div style="margin-bottom:14px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:10px; background:rgba(255,255,255,0.03); padding:10px 16px; border-radius:10px; border:1px solid rgba(255,255,255,0.08);">
+          <div style="margin-bottom:14px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:10px; background:var(--bg-subtle); padding:10px 16px; border-radius:10px; border:1px solid var(--border-color);">
             <div style="display:flex; gap:8px;">
-              <button id="btn-toggle-pdf-view" class="btn" style="padding:6px 14px; font-size:0.8rem; font-weight:700; background:rgba(0,141,199,0.25); border:1px solid rgba(45,188,238,0.4); color:#38bdf8; border-radius:6px;">
+              <button id="btn-toggle-pdf-view" class="btn" style="padding:6px 14px; font-size:0.8rem; font-weight:700; background:rgba(0,141,199,0.25); border:1px solid rgba(45,188,238,0.4); color:var(--c-sky); border-radius:6px;">
                 📄 Original PDF Document
               </button>
-              <button id="btn-toggle-text-view" class="btn" style="padding:6px 14px; font-size:0.8rem; font-weight:600; background:transparent; border:1px solid transparent; color:#94a3b8; border-radius:6px;">
+              <button id="btn-toggle-text-view" class="btn" style="padding:6px 14px; font-size:0.8rem; font-weight:600; background:transparent; border:1px solid transparent; color:var(--text-muted); border-radius:6px;">
                 📝 Search Text View
               </button>
             </div>
@@ -1589,9 +2052,9 @@ document.addEventListener('DOMContentLoaded', () => {
             </a>
           </div>
           <div id="pdf-view-frame-container">
-            <iframe src="/api/document/raw/${currentDoc.id}#toolbar=1&navpanes=1" style="width:100%; height:820px; border:none; border-radius:10px; background:#0f172a; box-shadow:0 10px 30px rgba(0,0,0,0.5);"></iframe>
+            <iframe src="/api/document/raw/${currentDoc.id}#toolbar=1&navpanes=1" style="width:100%; height:820px; border:none; border-radius:10px; background:var(--bg-elev); box-shadow:0 10px 30px rgba(0,0,0,0.5);"></iframe>
           </div>
-          <div id="pdf-view-text-container" class="hide" style="padding:20px; border-radius:10px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.05); color:#cbd5e1; line-height:1.8;">
+          <div id="pdf-view-text-container" class="hide" style="padding:20px; border-radius:10px; background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-soft); line-height:1.8;">
             ${currentDoc.html_content || `<pre style="white-space:pre-wrap; font-family:inherit;">${currentDoc.content}</pre>`}
           </div>
         `
@@ -1599,20 +2062,20 @@ document.addEventListener('DOMContentLoaded', () => {
           document.getElementById('pdf-view-frame-container').classList.remove('hide')
           document.getElementById('pdf-view-text-container').classList.add('hide')
           document.getElementById('btn-toggle-pdf-view').style.background = 'rgba(0,141,199,0.25)'
-          document.getElementById('btn-toggle-pdf-view').style.color = '#38bdf8'
+          document.getElementById('btn-toggle-pdf-view').style.color = 'var(--c-sky)'
           document.getElementById('btn-toggle-pdf-view').style.borderColor = 'rgba(45,188,238,0.4)'
           document.getElementById('btn-toggle-text-view').style.background = 'transparent'
-          document.getElementById('btn-toggle-text-view').style.color = '#94a3b8'
+          document.getElementById('btn-toggle-text-view').style.color = 'var(--text-muted)'
           document.getElementById('btn-toggle-text-view').style.borderColor = 'transparent'
         }
         document.getElementById('btn-toggle-text-view').onclick = () => {
           document.getElementById('pdf-view-frame-container').classList.add('hide')
           document.getElementById('pdf-view-text-container').classList.remove('hide')
           document.getElementById('btn-toggle-text-view').style.background = 'rgba(0,141,199,0.25)'
-          document.getElementById('btn-toggle-text-view').style.color = '#38bdf8'
+          document.getElementById('btn-toggle-text-view').style.color = 'var(--c-sky)'
           document.getElementById('btn-toggle-text-view').style.borderColor = 'rgba(45,188,238,0.4)'
           document.getElementById('btn-toggle-pdf-view').style.background = 'transparent'
-          document.getElementById('btn-toggle-pdf-view').style.color = '#94a3b8'
+          document.getElementById('btn-toggle-pdf-view').style.color = 'var(--text-muted)'
           document.getElementById('btn-toggle-pdf-view').style.borderColor = 'transparent'
         }
       } else if (currentDoc.html_content) {
@@ -1686,13 +2149,13 @@ document.addEventListener('DOMContentLoaded', () => {
       container.innerHTML = ''
       comments.forEach(c => {
         const item = document.createElement('div')
-        item.style.cssText = 'padding:12px; border-radius:8px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05);'
+        item.style.cssText = 'padding:12px; border-radius:8px; background:var(--bg-subtle); border:1px solid var(--border-color);'
         item.innerHTML = `
-          <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:0.75rem; color:#94a3b8;">
-            <span style="font-weight:700; color:#38bdf8;">${c.username}</span>
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:0.75rem; color:var(--text-muted);">
+            <span style="font-weight:700; color:var(--c-sky);">${c.username}</span>
             <span>${c.created_at}</span>
           </div>
-          <p style="font-size:0.88rem; color:#e2e8f0; margin:0;">${c.content}</p>
+          <p style="font-size:0.88rem; color:var(--text-soft); margin:0;">${c.content}</p>
         `
         container.appendChild(item)
       })
@@ -1742,12 +2205,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fallback basic formatter
     return rawText
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/^### (.*$)/gim, '<h3 style="font-size:1.05rem; font-weight:700; color:#fff; margin-top:14px; margin-bottom:6px;">$1</h3>')
-      .replace(/^## (.*$)/gim, '<h2 style="font-size:1.15rem; font-weight:800; color:#38bdf8; margin-top:16px; margin-bottom:8px;">$1</h2>')
-      .replace(/\*\*(.*?)\*\*/gim, '<strong style="color:#fff;">$1</strong>')
+      .replace(/^### (.*$)/gim, '<h3 style="font-size:1.05rem; font-weight:700; color:var(--text-main); margin-top:14px; margin-bottom:6px;">$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2 style="font-size:1.15rem; font-weight:800; color:var(--c-sky); margin-top:16px; margin-bottom:8px;">$1</h2>')
+      .replace(/\*\*(.*?)\*\*/gim, '<strong style="color:var(--text-main);">$1</strong>')
       .replace(/\*(.*?)\*/gim, '<em>$1</em>')
-      .replace(/```([\s\S]*?)```/gim, '<pre style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); padding:12px; border-radius:8px; overflow-x:auto; color:#38bdf8; font-family:monospace; font-size:0.85rem; margin:10px 0;"><code>$1</code></pre>')
-      .replace(/`([^`]+)`/gim, '<code style="background:rgba(255,255,255,0.08); padding:2px 6px; border-radius:4px; color:#38bdf8; font-family:monospace; font-size:0.85rem;">$1</code>')
+      .replace(/```([\s\S]*?)```/gim, '<pre style="background:var(--bg-input); border:1px solid var(--border-strong); padding:12px; border-radius:8px; overflow-x:auto; color:var(--c-sky); font-family:monospace; font-size:0.85rem; margin:10px 0;"><code>$1</code></pre>')
+      .replace(/`([^`]+)`/gim, '<code style="background:var(--bg-subtle); padding:2px 6px; border-radius:4px; color:var(--c-sky); font-family:monospace; font-size:0.85rem;">$1</code>')
       .replace(/\n/gim, '<br>')
   }
 
@@ -1756,7 +2219,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const originalHtml = btnEl ? btnEl.innerHTML : ''
       if (btnEl) {
         btnEl.innerHTML = '✓ Copied!'
-        btnEl.style.color = '#34d399'
+        btnEl.style.color = 'var(--c-emerald)'
         setTimeout(() => {
           btnEl.innerHTML = originalHtml
           btnEl.style.color = ''
@@ -1837,16 +2300,16 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!res.ok) return
       const sessions = await res.json()
       if (sessions.length === 0) {
-        listEl.innerHTML = '<div style="font-size:0.75rem; color:#64748b; padding:8px;">No past sessions</div>'
+        listEl.innerHTML = '<div style="font-size:0.75rem; color:var(--text-faint); padding:8px;">No past sessions</div>'
         return
       }
       listEl.innerHTML = sessions.map(s => `
-        <div onclick="switchChatSession('${s.id}')" style="display:flex; justify-content:space-between; align-items:center; padding:7px 10px; border-radius:6px; background:${s.id === currentChatSessionId ? 'rgba(0,141,199,0.25)' : 'rgba(255,255,255,0.03)'}; border:1px solid ${s.id === currentChatSessionId ? 'rgba(45,188,238,0.3)' : 'transparent'}; cursor:pointer; transition:all 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='${s.id === currentChatSessionId ? 'rgba(0,141,199,0.25)' : 'rgba(255,255,255,0.03)'}'">
+        <div onclick="switchChatSession('${s.id}')" style="display:flex; justify-content:space-between; align-items:center; padding:7px 10px; border-radius:6px; background:${s.id === currentChatSessionId ? 'rgba(0,141,199,0.25)' : 'rgba(255,255,255,0.03)'}; border:1px solid ${s.id === currentChatSessionId ? 'rgba(45,188,238,0.3)' : 'transparent'}; cursor:pointer; transition:all 0.15s;" onmouseover="this.style.background = 'var(--bg-subtle)'" onmouseout="this.style.background='${s.id === currentChatSessionId ? 'rgba(0,141,199,0.25)' : 'rgba(255,255,255,0.03)'}'">
           <div style="display:flex; align-items:center; gap:6px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">
             <span style="font-size:0.75rem; color:${s.id === currentChatSessionId ? '#38bdf8' : '#94a3b8'};">💬</span>
-            <span style="font-size:0.75rem; color:#cbd5e1; overflow:hidden; text-overflow:ellipsis;">${s.title}</span>
+            <span style="font-size:0.75rem; color:var(--text-soft); overflow:hidden; text-overflow:ellipsis;">${s.title}</span>
           </div>
-          <button onclick="deleteChatSession('${s.id}', event)" style="background:none; border:none; color:#64748b; padding:2px 4px; cursor:pointer;" title="Delete Chat">×</button>
+          <button onclick="deleteChatSession('${s.id}', event)" style="background:none; border:none; color:var(--text-faint); padding:2px 4px; cursor:pointer;" title="Delete Chat">×</button>
         </div>
       `).join('')
     } catch (e) {}
@@ -1858,10 +2321,10 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAttachmentPreviews()
     const thread = document.getElementById('copilot-messages-thread')
     thread.innerHTML = `
-      <div style="padding:16px; border-radius:12px; background:linear-gradient(135deg, rgba(0,141,199,0.15), rgba(45,188,238,0.08)); border:1px solid rgba(45,188,238,0.3); color:#e2e8f0; font-size:0.9rem; line-height:1.6;">
+      <div style="padding:16px; border-radius:12px; background:linear-gradient(135deg, rgba(0,141,199,0.15), rgba(45,188,238,0.08)); border:1px solid rgba(45,188,238,0.3); color:var(--text-soft); font-size:0.9rem; line-height:1.6;">
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
           <span style="font-size:1.1rem;">👋</span>
-          <strong style="color:#fff;">New Magic AI Troubleshooting Session Started</strong>
+          <strong style="color:var(--text-main);">New Magic AI Troubleshooting Session Started</strong>
         </div>
         Ask any configuration question, attach logs/config files with <strong>📎</strong>, or switch to <strong>Salesforce Case Analyzer</strong>.
       </div>
@@ -1882,7 +2345,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAttachmentPreviews()
     loadRecentSessions()
     const thread = document.getElementById('copilot-messages-thread')
-    thread.innerHTML = '<div style="padding:10px; text-align:center; color:#94a3b8;">Loading chat history...</div>'
+    thread.innerHTML = '<div style="padding:10px; text-align:center; color:var(--text-muted);">Loading chat history...</div>'
 
     try {
       const res = await fetch(`/api/ai/sessions/${sessionId}/messages`)
@@ -1890,7 +2353,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const msgs = await res.json()
       thread.innerHTML = ''
       if (msgs.length === 0) {
-        thread.innerHTML = '<div style="padding:10px; text-align:center; color:#64748b;">Empty chat session. Type a message below.</div>'
+        thread.innerHTML = '<div style="padding:10px; text-align:center; color:var(--text-faint);">Empty chat session. Type a message below.</div>'
         return
       }
       for (const m of msgs) {
@@ -1901,9 +2364,9 @@ document.addEventListener('DOMContentLoaded', () => {
           thread.appendChild(userMsg)
         } else {
           const botMsg = document.createElement('div')
-          botMsg.style.cssText = 'align-self:flex-start; max-width:92%; width:92%; padding:18px 20px; border-radius:14px 14px 14px 4px; background:rgba(15,23,42,0.9); border:1px solid rgba(0,141,199,0.25); color:#cbd5e1; font-size:0.9rem;'
+          botMsg.style.cssText = 'align-self:flex-start; max-width:92%; width:92%; padding:18px 20px; border-radius:14px 14px 14px 4px; background:var(--bg-card); border:1px solid rgba(0,141,199,0.25); color:var(--text-soft); font-size:0.9rem;'
           botMsg.innerHTML = `
-            <div class="ai-response-rendered" style="color:#e2e8f0; font-size:0.92rem; line-height:1.75;">
+            <div class="ai-response-rendered" style="color:var(--text-soft); font-size:0.92rem; line-height:1.75;">
               ${renderMarkdownSafe(m.content)}
             </div>
           `
@@ -1912,7 +2375,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       thread.scrollTop = thread.scrollHeight
     } catch (e) {
-      thread.innerHTML = '<div style="color:#f43f5e;">Could not load session messages.</div>'
+      thread.innerHTML = '<div style="color:var(--c-rose);">Could not load session messages.</div>'
     }
   }
 
@@ -1939,7 +2402,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     box.classList.remove('hide')
     box.innerHTML = currentAttachments.map((att, idx) => `
-      <div style="display:flex; align-items:center; gap:6px; padding:4px 10px; border-radius:6px; background:rgba(0,141,199,0.25); border:1px solid rgba(45,188,238,0.4); color:#38bdf8; font-size:0.75rem;">
+      <div style="display:flex; align-items:center; gap:6px; padding:4px 10px; border-radius:6px; background:rgba(0,141,199,0.25); border:1px solid rgba(45,188,238,0.4); color:var(--c-sky); font-size:0.75rem;">
         <span>📄 ${att.name}</span>
         <span onclick="removeAttachment(${idx})" style="cursor:pointer; font-weight:bold; margin-left:4px;">×</span>
       </div>
@@ -1977,10 +2440,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const thread = document.getElementById('copilot-messages-thread')
     if (thread && thread.children.length === 0) {
       thread.innerHTML = `
-        <div style="padding:14px 16px; border-radius:10px; background:rgba(0,141,199,0.12); border:1px solid rgba(0,141,199,0.25); color:#e2e8f0; font-size:0.88rem; line-height:1.6;">
+        <div style="padding:14px 16px; border-radius:10px; background:rgba(0,141,199,0.12); border:1px solid rgba(0,141,199,0.25); color:var(--text-soft); font-size:0.88rem; line-height:1.6;">
           <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
             <span style="font-size:1.1rem;">👋</span>
-            <strong style="color:#38bdf8;">Welcome to Magic AI Copilot & Analyzer</strong>
+            <strong style="color:var(--c-sky);">Welcome to Magic AI Copilot & Analyzer</strong>
           </div>
           <div>Ask any technical configuration question, paste log errors, or switch to the <strong>Case Analyzer</strong> tab for root-cause diagnosis and ready-to-send customer email drafts.</div>
         </div>
@@ -2019,12 +2482,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     return mdText
-      .replace(/### (.*)/g, '<h3 style="color:#7dd3fc; margin-top:10px;">$1</h3>')
-      .replace(/## (.*)/g, '<h2 style="color:#38bdf8; margin-top:12px;">$1</h2>')
-      .replace(/# (.*)/g, '<h1 style="color:#fff; margin-top:14px;">$1</h1>')
+      .replace(/### (.*)/g, '<h3 style="color:var(--c-sky-soft); margin-top:10px;">$1</h3>')
+      .replace(/## (.*)/g, '<h2 style="color:var(--c-sky); margin-top:12px;">$1</h2>')
+      .replace(/# (.*)/g, '<h1 style="color:var(--text-main); margin-top:14px;">$1</h1>')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/`([^`]+)`/g, '<code style="background:rgba(0,0,0,0.4); padding:2px 6px; border-radius:4px; color:#38bdf8;">$1</code>')
+      .replace(/`([^`]+)`/g, '<code style="background:var(--bg-input); padding:2px 6px; border-radius:4px; color:var(--c-sky);">$1</code>')
       .replace(/\n/g, '<br>')
   }
 
@@ -2056,7 +2519,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (btnEl) {
         btnEl.style.background = 'rgba(16, 185, 129, 0.25)'
         btnEl.style.borderColor = '#10b981'
-        btnEl.style.color = '#34d399'
+        btnEl.style.color = 'var(--c-emerald)'
         btnEl.innerHTML = '✓ Verified & Benchmark Learned'
       }
     } catch (err) {
@@ -2183,7 +2646,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const thread = document.getElementById('copilot-messages-thread')
         if (thread) {
           thread.innerHTML = `
-            <div style="padding:14px 16px; border-radius:10px; background:rgba(0,141,199,0.12); border:1px solid rgba(0,141,199,0.25); color:#e2e8f0; font-size:0.88rem; line-height:1.6;">
+            <div style="padding:14px 16px; border-radius:10px; background:rgba(0,141,199,0.12); border:1px solid rgba(0,141,199,0.25); color:var(--text-soft); font-size:0.88rem; line-height:1.6;">
               👋 New troubleshooting session started. Ask any question across Magic xpa, Magic xpi, or Cloud Native.
             </div>
           `
@@ -2222,7 +2685,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const thread = document.getElementById('copilot-messages-thread')
           if (thread) {
             thread.innerHTML = `
-              <div style="padding:14px 16px; border-radius:10px; background:rgba(0,141,199,0.12); border:1px solid rgba(0,141,199,0.25); color:#e2e8f0; font-size:0.88rem; line-height:1.6;">
+              <div style="padding:14px 16px; border-radius:10px; background:rgba(0,141,199,0.12); border:1px solid rgba(0,141,199,0.25); color:var(--text-soft); font-size:0.88rem; line-height:1.6;">
                 👋 New troubleshooting session started. Ask any question across Magic xpa, Magic xpi, or Cloud Native.
               </div>
             `
@@ -2362,10 +2825,10 @@ document.addEventListener('DOMContentLoaded', () => {
         iconHtml = '🖼️'
       }
       return `
-      <div style="padding:4px 10px; border-radius:6px; background:rgba(0,141,199,0.2); border:1px solid rgba(0,141,199,0.4); color:#38bdf8; font-size:0.75rem; display:flex; align-items:center; gap:6px;">
+      <div style="padding:4px 10px; border-radius:6px; background:rgba(0,141,199,0.2); border:1px solid rgba(0,141,199,0.4); color:var(--c-sky); font-size:0.75rem; display:flex; align-items:center; gap:6px;">
         ${iconHtml}
         <span>${att.name} (${Math.round((att.size || 0) / 1024)} KB)</span>
-        <button type="button" onclick="removeStagedAttachment(${i})" style="background:none; border:none; color:#f43f5e; cursor:pointer; font-size:0.8rem; font-weight:700;">×</button>
+        <button type="button" onclick="removeStagedAttachment(${i})" style="background:none; border:none; color:var(--c-rose); cursor:pointer; font-size:0.8rem; font-weight:700;">×</button>
       </div>
     `}).join('')
   }
@@ -2386,14 +2849,14 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!res.ok) return
       const sessions = await res.json()
       if (!sessions || sessions.length === 0) {
-        listContainer.innerHTML = '<div style="padding:8px; text-align:center; color:#64748b; font-size:0.72rem;">No recent chats</div>'
+        listContainer.innerHTML = '<div style="padding:8px; text-align:center; color:var(--text-faint); font-size:0.72rem;">No recent chats</div>'
         return
       }
       listContainer.innerHTML = sessions.map(s => `
         <div class="sidebar-item-row" onclick="loadCopilotSession('${s.id}')" style="background:${s.id === activeSessionId ? 'rgba(0,141,199,0.18)' : 'rgba(255,255,255,0.02)'}; border-color:${s.id === activeSessionId ? 'rgba(0,141,199,0.4)' : 'transparent'};">
           <div style="display:flex; align-items:center; gap:6px; min-width:0; flex:1;">
-            <i data-lucide="message-square" style="width:13px; height:13px; color:#38bdf8; flex-shrink:0;"></i>
-            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#e2e8f0; font-size:0.78rem;">${s.title}</span>
+            <i data-lucide="message-square" style="width:13px; height:13px; color:var(--c-sky); flex-shrink:0;"></i>
+            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-soft); font-size:0.78rem;">${s.title}</span>
           </div>
           <button type="button" class="sidebar-item-remove" onclick="deleteCopilotSession('${s.id}', event)" title="Delete session">×</button>
         </div>
@@ -2410,7 +2873,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchCopilotSessions()
     const thread = document.getElementById('copilot-messages-thread')
     if (!thread) return
-    thread.innerHTML = '<div style="padding:10px; color:#94a3b8; font-size:0.8rem;">Loading conversation...</div>'
+    thread.innerHTML = '<div style="padding:10px; color:var(--text-muted); font-size:0.8rem;">Loading conversation...</div>'
     try {
       const res = await fetch(`/api/ai/sessions/${sessId}/messages`, {
         headers: { 'X-Client-Id': clientId }
@@ -2425,18 +2888,18 @@ document.addEventListener('DOMContentLoaded', () => {
           div.textContent = m.content
         } else {
           const sources = m.citations || []
-          div.style.cssText = 'align-self:flex-start; max-width:92%; padding:14px 16px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); color:#e2e8f0;'
+          div.style.cssText = 'align-self:flex-start; max-width:92%; padding:14px 16px; border-radius:12px; background:var(--bg-subtle); border:1px solid var(--border-color); color:var(--text-soft);'
           
           let topDocsHtml = ''
           if (sources && sources.length > 0) {
             topDocsHtml = `
               <div style="margin-bottom:12px; padding:10px 12px; border-radius:8px; background:rgba(0,141,199,0.12); border:1px solid rgba(56,189,248,0.25);">
-                <div style="font-size:0.72rem; color:#38bdf8; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">📖 Tier 1: Matched Source Documents & SOPs (${sources.length})</div>
+                <div style="font-size:0.72rem; color:var(--c-sky); font-weight:700; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">📖 Tier 1: Matched Source Documents & SOPs (${sources.length})</div>
                 <div style="display:flex; flex-direction:column; gap:4px;">
                   ${sources.map(s => `
-                    <div onclick="openDocument(${s.id})" style="padding:4px 8px; border-radius:6px; background:rgba(15,23,42,0.6); color:#38bdf8; font-size:0.75rem; cursor:pointer; display:flex; align-items:center; justify-content:space-between;">
+                    <div onclick="openDocument(${s.id})" style="padding:4px 8px; border-radius:6px; background:var(--bg-card); color:var(--c-sky); font-size:0.75rem; cursor:pointer; display:flex; align-items:center; justify-content:space-between;">
                       <span>📖 ${s.title}</span>
-                      <span style="font-size:0.65rem; color:#94a3b8; background:rgba(0,141,199,0.2); padding:1px 6px; border-radius:4px;">${(s.product || 'MSE').toUpperCase()}</span>
+                      <span style="font-size:0.65rem; color:var(--text-muted); background:rgba(0,141,199,0.2); padding:1px 6px; border-radius:4px;">${(s.product || 'MSE').toUpperCase()}</span>
                     </div>
                   `).join('')}
                 </div>
@@ -2449,7 +2912,7 @@ document.addEventListener('DOMContentLoaded', () => {
       })
       thread.scrollTop = thread.scrollHeight
     } catch (err) {
-      thread.innerHTML = `<div style="color:#f43f5e;">Could not load session messages.</div>`
+      thread.innerHTML = `<div style="color:var(--c-rose);">Could not load session messages.</div>`
     }
   }
 
@@ -2497,7 +2960,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (relevantSources && relevantSources.length > 0) {
       sourcesHtml = `
         <div style="margin-top:14px; padding:12px 14px; border-radius:10px; background:rgba(0,141,199,0.08); border:1px solid rgba(0,141,199,0.25);">
-          <div style="font-size:0.75rem; color:#38bdf8; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">
+          <div style="font-size:0.75rem; color:var(--c-sky); font-weight:700; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">
             📖 Verified Knowledge Base Citations & References (${relevantSources.length})
           </div>
           <div style="display:flex; flex-direction:column; gap:5px;">
@@ -2508,7 +2971,7 @@ document.addEventListener('DOMContentLoaded', () => {
               const badgeBg = isHelp ? 'rgba(168,85,247,0.2)' : 'rgba(0,141,199,0.2)'
               const badgeColor = isHelp ? '#c084fc' : '#38bdf8'
               return `
-                <div onclick="openDocument(${clickArg})" style="padding:6px 10px; border-radius:6px; background:rgba(255,255,255,0.03); color:#e2e8f0; font-size:0.78rem; cursor:pointer; display:flex; align-items:center; justify-content:space-between;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'">
+                <div onclick="openDocument(${clickArg})" style="padding:6px 10px; border-radius:6px; background:var(--bg-subtle); color:var(--text-soft); font-size:0.78rem; cursor:pointer; display:flex; align-items:center; justify-content:space-between;" onmouseover="this.style.background = 'var(--bg-subtle)'" onmouseout="this.style.background = 'var(--bg-subtle)'">
                   <span>${isHelp ? '📚' : '📖'} ${s.title}</span>
                   <span style="font-size:0.65rem; color:${badgeColor}; background:${badgeBg}; padding:2px 8px; border-radius:4px; font-weight:700;">${badge}</span>
                 </div>
@@ -2523,11 +2986,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let filesHtml = ''
     if (extractedFiles && extractedFiles.length > 0) {
       filesHtml = `
-        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:8px 12px; border-radius:8px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.06);">
-          <span style="font-size:0.72rem; color:#94a3b8; font-weight:700;">Analyzed Files (${extractedFiles.length}):</span>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:8px 12px; border-radius:8px; background:var(--bg-input); border:1px solid var(--border-color);">
+          <span style="font-size:0.72rem; color:var(--text-muted); font-weight:700;">Analyzed Files (${extractedFiles.length}):</span>
           ${extractedFiles.map(f => `
-            <div style="display:inline-flex; align-items:center; gap:5px; padding:3px 8px; border-radius:6px; background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.3); font-size:0.72rem; color:#e0f2fe;">
-              <i data-lucide="file-text" style="width:12px; height:12px; color:#38bdf8;"></i>
+            <div style="display:inline-flex; align-items:center; gap:5px; padding:3px 8px; border-radius:6px; background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.3); font-size:0.72rem; color:var(--text-soft);">
+              <i data-lucide="file-text" style="width:12px; height:12px; color:var(--c-sky);"></i>
               <span>${f.name}</span>
               <span style="opacity:0.6;">(${Math.round((f.size || 0) / 1024)} KB)</span>
             </div>
@@ -2546,15 +3009,15 @@ document.addEventListener('DOMContentLoaded', () => {
       <div style="display:flex; flex-direction:column; gap:12px;">
         
         <!-- Header Bar with Actions -->
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-radius:10px; background:rgba(15,23,42,0.9); border:1px solid rgba(56,189,248,0.25); flex-wrap:wrap; gap:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-radius:10px; background:var(--bg-card); border:1px solid rgba(56,189,248,0.25); flex-wrap:wrap; gap:10px;">
           <div style="display:flex; align-items:center; gap:8px;">
             <div style="width:10px; height:10px; border-radius:50%; background:#10b981; box-shadow:0 0 8px #10b981;"></div>
-            <span style="font-size:0.88rem; font-weight:800; color:#fff;">Log Diagnostic Analysis</span>
-            <span style="font-size:0.72rem; color:#38bdf8; background:rgba(0,141,199,0.18); padding:2px 8px; border-radius:4px; font-weight:700;">Magic ${product}</span>
+            <span style="font-size:0.88rem; font-weight:800; color:var(--text-main);">Log Diagnostic Analysis</span>
+            <span style="font-size:0.72rem; color:var(--c-sky); background:rgba(0,141,199,0.18); padding:2px 8px; border-radius:4px; font-weight:700;">Magic ${product}</span>
           </div>
 
           <div style="display:flex; align-items:center; gap:8px;">
-            <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px; color:#38bdf8; border-color:rgba(56,189,248,0.4);" onclick="copyTextToClipboard(\`${encodeURIComponent(rawAnswer).replace(/`/g, '\\`')}\`, this, true)">
+            <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px; color:var(--c-sky); border-color:rgba(56,189,248,0.4);" onclick="copyTextToClipboard(\`${encodeURIComponent(rawAnswer).replace(/`/g, '\\`')}\`, this, true)">
               <i data-lucide="copy" style="width:13px; height:13px;"></i> Copy Analysis
             </button>
             <button type="button" class="btn btn-primary" style="font-size:0.75rem; padding:6px 14px; background:linear-gradient(135deg, #10b981, #06b6d4); font-weight:700; gap:6px;" onclick="openPublishAiKbModal(${resId || 'null'}, \`${encodeURIComponent(kbTitle).replace(/`/g, '\\`')}\`, '${product.toLowerCase()}', \`${encodeURIComponent(kbSteps).replace(/`/g, '\\`')}\`, '4.14', \`${encodeURIComponent(kbDesc).replace(/`/g, '\\`')}\`, \`${encodeURIComponent(kbRoot).replace(/`/g, '\\`')}\`)">
@@ -2566,7 +3029,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ${filesHtml}
 
         <!-- Core Analysis Card (ChatGPT-Style Markdown View) -->
-        <div style="padding:18px 20px; border-radius:12px; background:rgba(15,23,42,0.7); border:1px solid rgba(255,255,255,0.08); line-height:1.65; color:#e2e8f0;">
+        <div style="padding:18px 20px; border-radius:12px; background:var(--bg-card); border:1px solid var(--border-color); line-height:1.65; color:var(--text-soft);">
           <div class="markdown-body">
             ${formattedHtml}
           </div>
@@ -2574,13 +3037,13 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
 
         <!-- Follow-up Multi-Turn Chat Section -->
-        <div id="case-followup-container" style="display:flex; flex-direction:column; gap:10px; margin-top:4px; padding:14px; border-radius:12px; background:rgba(6,4,13,0.7); border:1px solid rgba(56,189,248,0.2);">
+        <div id="case-followup-container" style="display:flex; flex-direction:column; gap:10px; margin-top:4px; padding:14px; border-radius:12px; background:var(--bg-card); border:1px solid rgba(56,189,248,0.2);">
           <div style="display:flex; align-items:center; justify-content:space-between;">
-            <div style="display:flex; align-items:center; gap:6px; font-size:0.78rem; font-weight:700; color:#38bdf8;">
+            <div style="display:flex; align-items:center; gap:6px; font-size:0.78rem; font-weight:700; color:var(--c-sky);">
               <i data-lucide="messages-square" style="width:14px; height:14px;"></i>
               <span>Ask Follow-up Questions About These Logs</span>
             </div>
-            <span style="font-size:0.7rem; color:#64748b;">Maintains active log context</span>
+            <span style="font-size:0.7rem; color:var(--text-faint);">Maintains active log context</span>
           </div>
 
           <!-- Quick Suggestion Pills -->
@@ -2596,7 +3059,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
           <!-- Follow-up Input Bar -->
           <form id="case-followup-form" onsubmit="event.preventDefault(); submitCaseFollowup();" style="display:flex; gap:8px; margin-top:4px;">
-            <input type="text" id="case-followup-input" placeholder="Ask a follow-up question about these logs, request specific fixes, or ask for config lines..." autocomplete="off" style="flex:1; padding:10px 14px; border-radius:8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:#fff; font-size:0.85rem; outline:none;">
+            <input type="text" id="case-followup-input" placeholder="Ask a follow-up question about these logs, request specific fixes, or ask for config lines..." autocomplete="off" style="flex:1; padding:10px 14px; border-radius:8px; background:var(--bg-subtle); border:1px solid var(--border-strong); color:var(--text-main); font-size:0.85rem; outline:none;">
             <button type="submit" id="btn-case-followup-send" class="btn btn-primary" style="padding:10px 18px; font-weight:700; gap:6px; flex-shrink:0;">
               <i data-lucide="send" style="width:14px; height:14px;"></i> Ask
             </button>
@@ -2635,8 +3098,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Append loading bot bubble
     const botDiv = document.createElement('div')
-    botDiv.style.cssText = 'align-self:flex-start; max-width:95%; padding:12px 14px; border-radius:10px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); color:#e2e8f0; font-size:0.82rem;'
-    botDiv.innerHTML = '<div style="display:flex; align-items:center; gap:8px; color:#94a3b8;"><div style="width:14px; height:14px; border:2px solid #38bdf8; border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite;"></div><span>Consulting Magic Knowledge Base and analyzing follow-up...</span></div>'
+    botDiv.style.cssText = 'align-self:flex-start; max-width:95%; padding:12px 14px; border-radius:10px; background:var(--bg-subtle); border:1px solid var(--border-color); color:var(--text-soft); font-size:0.82rem;'
+    botDiv.innerHTML = '<div style="display:flex; align-items:center; gap:8px; color:var(--text-muted);"><div style="width:14px; height:14px; border:2px solid #38bdf8; border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite;"></div><span>Consulting Magic Knowledge Base and analyzing follow-up...</span></div>'
     thread.appendChild(botDiv)
 
     try {
@@ -2654,7 +3117,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json()
       botDiv.innerHTML = `<div class="markdown-body">${safeRenderMarkdown(data.answer)}</div>`
     } catch (err) {
-      botDiv.innerHTML = `<div style="color:#f43f5e;">⚠️ Error: ${err.message}</div>`
+      botDiv.innerHTML = `<div style="color:var(--c-rose);">⚠️ Error: ${err.message}</div>`
     } finally {
       if (sendBtn) sendBtn.disabled = false
       if (window.lucide) lucide.createIcons()
@@ -2670,14 +3133,14 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!res.ok) return
       const cases = await res.json()
       if (!cases || cases.length === 0) {
-        listContainer.innerHTML = '<div style="padding:8px; text-align:center; color:#64748b; font-size:0.72rem;">No saved diagnostics</div>'
+        listContainer.innerHTML = '<div style="padding:8px; text-align:center; color:var(--text-faint); font-size:0.72rem;">No saved diagnostics</div>'
         return
       }
       listContainer.innerHTML = cases.map(c => `
         <div class="sidebar-item-row" onclick="loadCaseDiagnostic(${c.id})" style="background:${c.id === activeCaseDiagnosticId ? 'rgba(167,139,250,0.18)' : 'rgba(255,255,255,0.02)'}; border-color:${c.id === activeCaseDiagnosticId ? 'rgba(167,139,250,0.4)' : 'transparent'};">
           <div style="display:flex; align-items:center; gap:6px; min-width:0; flex:1;">
-            <i data-lucide="file-search" style="width:12px; height:12px; color:#a78bfa; flex-shrink:0;"></i>
-            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#e2e8f0; font-size:0.75rem;">
+            <i data-lucide="file-search" style="width:12px; height:12px; color:var(--c-purple); flex-shrink:0;"></i>
+            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-soft); font-size:0.75rem;">
               ${c.case_number ? `Case #${c.case_number}` : 'Diag'}: ${c.problem_summary || (c.product || 'MSE').toUpperCase()}
             </span>
           </div>
@@ -2758,16 +3221,16 @@ document.addEventListener('DOMContentLoaded', () => {
       indicator.innerHTML = `
         <div style="width:8px; height:8px; border-radius:50%; background:#10b981; box-shadow:0 0 8px #10b981; flex-shrink:0;"></div>
         <div style="flex:1; min-width:0;">
-          <div style="font-size:0.68rem; color:#94a3b8; text-transform:uppercase; font-weight:700;">ENGINE: ${prov}</div>
-          <div style="font-size:0.75rem; color:#38bdf8; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${model}">● Active (${model})</div>
+          <div style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">ENGINE: ${prov}</div>
+          <div style="font-size:0.75rem; color:var(--c-sky); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${model}">● Active (${model})</div>
         </div>
       `
     } catch (_) {
       indicator.innerHTML = `
         <div style="width:8px; height:8px; border-radius:50%; background:#10b981; box-shadow:0 0 8px #10b981; flex-shrink:0;"></div>
         <div style="flex:1; min-width:0;">
-          <div style="font-size:0.68rem; color:#94a3b8; text-transform:uppercase; font-weight:700;">ENGINE: GROQ</div>
-          <div style="font-size:0.75rem; color:#38bdf8; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="openai/gpt-oss-120b">● Active (openai/gpt-oss-120b)</div>
+          <div style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">ENGINE: GROQ</div>
+          <div style="font-size:0.75rem; color:var(--c-sky); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="openai/gpt-oss-120b">● Active (openai/gpt-oss-120b)</div>
         </div>
       `
     }
@@ -2778,7 +3241,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!resId) return
     if (btnEl) {
       btnEl.disabled = true
-      btnEl.innerHTML = '<span style="color:#fbbf24;">Verifying...</span>'
+      btnEl.innerHTML = '<span style="color:var(--c-amber);">Verifying...</span>'
     }
     try {
       const res = await fetch('/api/ai/mark-verified', {
@@ -2792,7 +3255,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!res.ok) throw new Error('Could not mark verified')
       const data = await res.json()
       if (btnEl) {
-        btnEl.style.color = '#34d399'
+        btnEl.style.color = 'var(--c-emerald)'
         btnEl.style.borderColor = 'rgba(16,185,129,0.5)'
         btnEl.innerHTML = '⭐ Verified in Memory (✓)'
       }
@@ -2849,7 +3312,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Render loading placeholder
       const botLoading = document.createElement('div')
-      botLoading.style.cssText = 'align-self:flex-start; max-width:92%; padding:14px 16px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); color:#94a3b8; font-size:0.85rem;'
+      botLoading.style.cssText = 'align-self:flex-start; max-width:92%; padding:14px 16px; border-radius:12px; background:var(--bg-subtle); border:1px solid var(--border-color); color:var(--text-muted); font-size:0.85rem;'
       botLoading.innerHTML = `
         <div style="display:flex; align-items:center; gap:8px;">
           <div style="width:14px; height:14px; border:2px solid #008DC7; border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite;"></div>
@@ -2891,28 +3354,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const sources = data.citations || data.sources || []
         const resId = data.resolution_id
 
-        botLoading.style.color = '#e2e8f0'
+        botLoading.style.color = 'var(--text-soft)'
         
         let topSourcesHtml = ''
         if (sources && sources.length > 0) {
           topSourcesHtml = `
-            <div style="margin-bottom:14px; padding:12px 14px; border-radius:10px; background:linear-gradient(135deg, rgba(0,141,199,0.15), rgba(15,23,42,0.6)); border:1px solid rgba(56,189,248,0.3); box-shadow:0 4px 14px rgba(0,0,0,0.3);">
+            <div style="margin-bottom:14px; padding:12px 14px; border-radius:10px; background:linear-gradient(135deg, var(--primary-soft), var(--bg-card)); border:1px solid rgba(56,189,248,0.3); box-shadow:0 4px 14px rgba(0,0,0,0.3);">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <span style="font-size:0.75rem; color:#38bdf8; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; display:flex; align-items:center; gap:6px;">
+                <span style="font-size:0.75rem; color:var(--c-sky); font-weight:700; text-transform:uppercase; letter-spacing:0.04em; display:flex; align-items:center; gap:6px;">
                   <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#38bdf8; box-shadow:0 0 8px #38bdf8;"></span>
                   Tier 1: Matched Source Documents & SOPs (${sources.length})
                 </span>
-                <span style="font-size:0.68rem; color:#94a3b8; background:rgba(255,255,255,0.06); padding:2px 8px; border-radius:12px;">Verified Knowledge Center Context</span>
+                <span style="font-size:0.68rem; color:var(--text-muted); background:var(--bg-subtle); padding:2px 8px; border-radius:12px;">Verified Knowledge Center Context</span>
               </div>
               <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:8px;">
                 ${sources.map(s => `
-                  <div onclick="openDocument(${s.id})" style="padding:8px 12px; border-radius:8px; background:rgba(15,23,42,0.7); border:1px solid rgba(56,189,248,0.2); cursor:pointer; transition:all 0.2s ease; display:flex; flex-direction:column; gap:4px;">
-                    <div style="font-size:0.78rem; font-weight:600; color:#f8fafc; line-height:1.3; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">
+                  <div onclick="openDocument(${s.id})" style="padding:8px 12px; border-radius:8px; background:var(--bg-card); border:1px solid rgba(56,189,248,0.2); cursor:pointer; transition:all 0.2s ease; display:flex; flex-direction:column; gap:4px;">
+                    <div style="font-size:0.78rem; font-weight:600; color:var(--text-main); line-height:1.3; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">
                       📖 ${s.title}
                     </div>
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:4px; font-size:0.68rem; color:#94a3b8;">
-                      <span style="padding:1px 6px; border-radius:4px; font-weight:700; background:rgba(0,141,199,0.2); color:#38bdf8;">${(s.product || 'MSE').toUpperCase()}</span>
-                      <span>Match: <strong style="color:#34d399;">${s.relevance_percent || 95}%</strong></span>
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:4px; font-size:0.68rem; color:var(--text-muted);">
+                      <span style="padding:1px 6px; border-radius:4px; font-weight:700; background:rgba(0,141,199,0.2); color:var(--c-sky);">${(s.product || 'MSE').toUpperCase()}</span>
+                      <span>Match: <strong style="color:var(--c-emerald);">${s.relevance_percent || 95}%</strong></span>
                     </div>
                   </div>
                 `).join('')}
@@ -2921,15 +3384,15 @@ document.addEventListener('DOMContentLoaded', () => {
           `
         } else {
           topSourcesHtml = `
-            <div style="margin-bottom:14px; padding:10px 14px; border-radius:10px; background:linear-gradient(135deg, rgba(0,141,199,0.1), rgba(15,23,42,0.6)); border:1px solid rgba(0,141,199,0.25); box-shadow:0 4px 14px rgba(0,0,0,0.3);">
+            <div style="margin-bottom:14px; padding:10px 14px; border-radius:10px; background:linear-gradient(135deg, var(--primary-soft), var(--bg-card)); border:1px solid rgba(0,141,199,0.25); box-shadow:0 4px 14px rgba(0,0,0,0.3);">
               <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:0.75rem; color:#38bdf8; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; display:flex; align-items:center; gap:6px;">
+                <span style="font-size:0.75rem; color:var(--c-sky); font-weight:700; text-transform:uppercase; letter-spacing:0.04em; display:flex; align-items:center; gap:6px;">
                   <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#38bdf8; box-shadow:0 0 8px #38bdf8;"></span>
                   📘 Tier 2: Official Magic Product Help Documentation
                 </span>
-                <span style="font-size:0.68rem; color:#94a3b8; background:rgba(255,255,255,0.06); padding:2px 8px; border-radius:12px;">Official Product Help Files</span>
+                <span style="font-size:0.68rem; color:var(--text-muted); background:var(--bg-subtle); padding:2px 8px; border-radius:12px;">Official Product Help Files</span>
               </div>
-              <div style="font-size:0.72rem; color:#cbd5e1; margin-top:6px; line-height:1.4;">
+              <div style="font-size:0.72rem; color:var(--text-soft); margin-top:6px; line-height:1.4;">
                 No custom local SOP was uploaded for this specific query. The resolution below is derived directly from official <strong>Magic ${(scope || 'MSE').toUpperCase()} Product Help Manuals & Architecture Specifications</strong>.
               </div>
             </div>
@@ -2939,21 +3402,21 @@ document.addEventListener('DOMContentLoaded', () => {
         // Mockup 1 Match: Top Green Verified Match Badge
         const matchPercent = sources.length > 0 ? (sources[0].relevance_percent || 98) : 98
         const verifiedBadgeHtml = `
-          <div style="display:inline-flex; align-items:center; gap:6px; padding:5px 14px; border-radius:20px; background:rgba(16,185,129,0.18); border:1px solid rgba(16,185,129,0.4); color:#34d399; font-size:0.75rem; font-weight:800; margin-bottom:10px; box-shadow:0 0 12px rgba(16,185,129,0.2);">
+          <div style="display:inline-flex; align-items:center; gap:6px; padding:5px 14px; border-radius:20px; background:rgba(16,185,129,0.18); border:1px solid rgba(16,185,129,0.4); color:var(--c-emerald); font-size:0.75rem; font-weight:800; margin-bottom:10px; box-shadow:0 0 12px rgba(16,185,129,0.2);">
             <span>✓ Tier 1: Verified Knowledge Center SOP (${matchPercent}% Match)</span>
           </div>
         `
 
         // Mockup 1 Match: Interactive Architecture Flow Diagram Box
         const architectureFlowHtml = `
-          <div style="margin-top:14px; padding:12px; border-radius:10px; background:rgba(15,23,42,0.8); border:1px solid rgba(56,189,248,0.25);">
-            <div style="font-size:0.75rem; font-weight:700; color:#38bdf8; margin-bottom:8px;">Interactive Architecture Flow:</div>
-            <div style="display:flex; align-items:center; justify-content:center; gap:10px; font-size:0.75rem; color:#e2e8f0; flex-wrap:wrap;">
+          <div style="margin-top:14px; padding:12px; border-radius:10px; background:var(--bg-card); border:1px solid rgba(56,189,248,0.25);">
+            <div style="font-size:0.75rem; font-weight:700; color:var(--c-sky); margin-bottom:8px;">Interactive Architecture Flow:</div>
+            <div style="display:flex; align-items:center; justify-content:center; gap:10px; font-size:0.75rem; color:var(--text-soft); flex-wrap:wrap;">
               <div style="padding:6px 12px; border-radius:6px; background:rgba(0,141,199,0.2); border:1px solid rgba(0,141,199,0.4); font-weight:600;">Server</div>
-              <span style="color:#38bdf8; font-weight:bold;">➔</span>
+              <span style="color:var(--c-sky); font-weight:bold;">➔</span>
               <div style="padding:6px 12px; border-radius:6px; background:rgba(56,189,248,0.2); border:1px solid rgba(56,189,248,0.4); font-weight:600;">Architecture Flow</div>
-              <span style="color:#38bdf8; font-weight:bold;">➔</span>
-              <div style="padding:6px 12px; border-radius:6px; background:rgba(16,185,129,0.2); border:1px solid rgba(16,185,129,0.4); font-weight:600; color:#34d399;">Communication Flow</div>
+              <span style="color:var(--c-sky); font-weight:bold;">➔</span>
+              <div style="padding:6px 12px; border-radius:6px; background:rgba(16,185,129,0.2); border:1px solid rgba(16,185,129,0.4); font-weight:600; color:var(--c-emerald);">Communication Flow</div>
             </div>
           </div>
         `
@@ -2962,40 +3425,40 @@ document.addEventListener('DOMContentLoaded', () => {
           ${verifiedBadgeHtml}
           ${topSourcesHtml}
           
-          <div style="font-size:0.82rem; font-weight:800; color:#38bdf8; margin-top:8px; margin-bottom:6px; letter-spacing:0.04em;">## Markdown &gt;&gt;</div>
+          <div style="font-size:0.82rem; font-weight:800; color:var(--c-sky); margin-top:8px; margin-bottom:6px; letter-spacing:0.04em;">## Markdown &gt;&gt;</div>
           <div class="markdown-body">${formattedHtml}</div>
 
           ${architectureFlowHtml}
 
           <!-- Mockup 1 Bottom Toolbar: 4 Primary Actions -->
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.08); flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding-top:12px; border-top:1px solid var(--border-color); flex-wrap:wrap; gap:8px;">
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px; color:#38bdf8; border-color:rgba(56,189,248,0.35); font-weight:700;" onclick="requestCustomerDraft()">
+              <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px; color:var(--c-sky); border-color:rgba(56,189,248,0.35); font-weight:700;" onclick="requestCustomerDraft()">
                 ✏️ Customer Draft
               </button>
               ${resId ? `
-                <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px; color:#34d399; border-color:rgba(16,185,129,0.4); font-weight:700;" onclick="markResolutionVerified(${resId}, this)">
+                <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px; color:var(--c-emerald); border-color:rgba(16,185,129,0.4); font-weight:700;" onclick="markResolutionVerified(${resId}, this)">
                   ✓ Mark Verified
                 </button>
               ` : `
-                <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px; color:#34d399; border-color:rgba(16,185,129,0.4); font-weight:700;" onclick="markResolutionVerified(1, this)">
+                <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px; color:var(--c-emerald); border-color:rgba(16,185,129,0.4); font-weight:700;" onclick="markResolutionVerified(1, this)">
                   ✓ Mark Verified
                 </button>
               `}
-              <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px; color:#38bdf8; border-color:rgba(0,141,199,0.4); font-weight:700;" onclick="openPublishAiKbModal(${resId || 'null'}, \`${encodeURIComponent(prompt || 'Magic Troubleshooting SOP').replace(/`/g, '\\`')}\`, '${scope}', \`${encodeURIComponent(data.answer).replace(/`/g, '\\`')}\`)">
+              <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px; color:var(--c-sky); border-color:rgba(0,141,199,0.4); font-weight:700;" onclick="openPublishAiKbModal(${resId || 'null'}, \`${encodeURIComponent(prompt || 'Magic Troubleshooting SOP').replace(/`/g, '\\`')}\`, '${scope}', \`${encodeURIComponent(data.answer).replace(/`/g, '\\`')}\`)">
                 🔗 Publish as KB
               </button>
-              <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px; color:#a78bfa; border-color:rgba(167,139,250,0.4); font-weight:700;" onclick="autoRemediateScript(\`${encodeURIComponent(data.answer).replace(/`/g, '\\`')}\`)">
+              <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px; color:var(--c-purple); border-color:rgba(167,139,250,0.4); font-weight:700;" onclick="autoRemediateScript(\`${encodeURIComponent(data.answer).replace(/`/g, '\\`')}\`)">
                 ⚙️ Auto-Remediate
               </button>
             </div>
-            <span style="font-size:0.7rem; color:#64748b;">Provider: <strong style="color:#38bdf8;">${data.provider || 'Groq'}</strong></span>
+            <span style="font-size:0.7rem; color:var(--text-faint);">Provider: <strong style="color:var(--c-sky);">${data.provider || 'Groq'}</strong></span>
           </div>
         `
         fetchCopilotSessions()
       } catch (err) {
         botLoading.innerHTML = `
-          <div style="color:#f43f5e; font-size:0.85rem; padding:10px 12px; background:rgba(244,63,94,0.1); border-radius:8px; border:1px solid rgba(244,63,94,0.25);">
+          <div style="color:var(--c-rose); font-size:0.85rem; padding:10px 12px; background:rgba(244,63,94,0.1); border-radius:8px; border:1px solid rgba(244,63,94,0.25);">
             ⚠️ Could not reach AI engine: ${err.message}. Please restart the Knowledge Center service on the server or review the <strong>Settings</strong> tab.
           </div>
         `
@@ -3026,7 +3489,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     caseUploadedAttachments.forEach((att, idx) => {
       const chip = document.createElement('div')
-      chip.style.cssText = 'display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:8px; background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.3); font-size:0.75rem; color:#e0f2fe; max-width:100%;'
+      chip.style.cssText = 'display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:8px; background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.3); font-size:0.75rem; color:var(--text-soft); max-width:100%;'
       
       const isImg = att.type === 'image' || (att.name && att.name.match(/\.(png|jpg|jpeg|webp|gif|bmp)$/i))
       let iconOrThumb = ''
@@ -3047,7 +3510,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ${iconOrThumb}
         <strong style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${att.name}">${att.name}</strong>
         <span style="opacity:0.7; font-size:0.7rem;">(${Math.round((att.size || 0) / 1024)} KB)</span>
-        <button type="button" style="background:none; border:none; color:#f87171; cursor:pointer; font-weight:700; padding:0 3px; font-size:0.9rem;" title="Remove attachment">&times;</button>
+        <button type="button" style="background:none; border:none; color:var(--c-rose); cursor:pointer; font-weight:700; padding:0 3px; font-size:0.9rem;" title="Remove attachment">&times;</button>
       `
       chip.querySelector('button').addEventListener('click', (e) => {
         e.stopPropagation()
@@ -3175,7 +3638,7 @@ document.addEventListener('DOMContentLoaded', () => {
       caseFilesDropzone.addEventListener(name, (e) => {
         e.preventDefault()
         e.stopPropagation()
-        caseFilesDropzone.style.borderColor = '#38bdf8'
+        caseFilesDropzone.style.borderColor = 'var(--c-sky)'
         caseFilesDropzone.style.background = 'rgba(56,189,248,0.12)'
       })
     })
@@ -3280,9 +3743,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       resultsContainer.classList.remove('hide')
       resultsContainer.innerHTML = `
-        <div style="padding:22px; text-align:center; color:#94a3b8; background:rgba(15,23,42,0.6); border-radius:12px; border:1px solid rgba(56,189,248,0.25);">
+        <div style="padding:22px; text-align:center; color:var(--text-muted); background:var(--bg-card); border-radius:12px; border:1px solid rgba(56,189,248,0.25);">
           <div style="width:22px; height:22px; border:2px solid #38bdf8; border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 10px auto;"></div>
-          <span style="font-size:0.85rem; color:#e2e8f0; font-weight:600;">Analyzing Magic ${product.toUpperCase()} runtime logs${caseUploadedAttachments.length > 0 ? ` (${caseUploadedAttachments.length} file(s) attached)` : ''}, cross-referencing Knowledge Base & official Help manuals, and synthesizing Root Cause Analysis...</span>
+          <span style="font-size:0.85rem; color:var(--text-soft); font-weight:600;">Analyzing Magic ${product.toUpperCase()} runtime logs${caseUploadedAttachments.length > 0 ? ` (${caseUploadedAttachments.length} file(s) attached)` : ''}, cross-referencing Knowledge Base & official Help manuals, and synthesizing Root Cause Analysis...</span>
         </div>
       `
 
@@ -3311,7 +3774,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchCaseSessions()
       } catch (err) {
         resultsContainer.innerHTML = `
-          <div style="padding:14px; border-radius:8px; background:rgba(244,63,94,0.15); color:#f43f5e; font-size:0.85rem;">
+          <div style="padding:14px; border-radius:8px; background:rgba(244,63,94,0.15); color:var(--c-rose); font-size:0.85rem;">
             ✗ Diagnostic failed: ${err.message}
           </div>
         `
@@ -3580,7 +4043,7 @@ ${content}
       if (feedback) {
         feedback.className = ''
         feedback.style.background = 'rgba(0,141,199,0.15)'
-        feedback.style.color = '#38bdf8'
+        feedback.style.color = 'var(--c-sky)'
         feedback.textContent = 'Saving configuration...'
         feedback.classList.remove('hide')
       }
@@ -3609,14 +4072,14 @@ ${content}
 
         if (feedback) {
           feedback.style.background = 'rgba(16,185,129,0.15)'
-          feedback.style.color = '#34d399'
+          feedback.style.color = 'var(--c-emerald)'
           feedback.textContent = '✓ AI Configuration saved successfully! Active Engine: ' + (savedData.provider || prov).toUpperCase() + ' (' + (savedData.model_name || model) + ')'
         }
         updateEngineIndicator()
       } catch (err) {
         if (feedback) {
           feedback.style.background = 'rgba(16,185,129,0.15)'
-          feedback.style.color = '#34d399'
+          feedback.style.color = 'var(--c-emerald)'
           feedback.textContent = '✓ AI Configuration saved with Groq AI (' + model + ') active.'
         }
         updateEngineIndicator()
@@ -3648,7 +4111,7 @@ ${content}
       if (feedback) {
         feedback.className = ''
         feedback.style.background = 'rgba(0,141,199,0.15)'
-        feedback.style.color = '#38bdf8'
+        feedback.style.color = 'var(--c-sky)'
         feedback.textContent = 'Testing connection with ' + prov.toUpperCase() + '...'
         feedback.classList.remove('hide')
       }
@@ -3668,21 +4131,21 @@ ${content}
         if (feedback) {
           if (data.success) {
             feedback.style.background = 'rgba(16,185,129,0.15)'
-            feedback.style.color = '#34d399'
+            feedback.style.color = 'var(--c-emerald)'
             feedback.textContent = '✓ ' + data.message
             if (data.model_name && document.getElementById('ai-setting-model')) {
               document.getElementById('ai-setting-model').value = data.model_name
             }
           } else {
             feedback.style.background = 'rgba(244,63,94,0.15)'
-            feedback.style.color = '#f43f5e'
+            feedback.style.color = 'var(--c-rose)'
             feedback.textContent = '✗ ' + data.message
           }
         }
       } catch (err) {
         if (feedback) {
           feedback.style.background = 'rgba(244,63,94,0.15)'
-          feedback.style.color = '#f43f5e'
+          feedback.style.color = 'var(--c-rose)'
           feedback.textContent = '✗ Connection test failed: ' + err.message
         }
       }
@@ -3702,7 +4165,7 @@ ${content}
     if (val.trim()) {
       previewContainer.innerHTML = safeRenderMarkdown(val)
     } else {
-      previewContainer.innerHTML = '<p style="color:#64748b; font-style:italic;">Live rendered article preview will appear here as you type...</p>'
+      previewContainer.innerHTML = '<p style="color:var(--text-faint); font-style:italic;">Live rendered article preview will appear here as you type...</p>'
     }
 
     if (wordCountEl) {
@@ -4215,7 +4678,7 @@ spec:
 | **Case #** | \`#104928\` |
 | **Product** | Magic xpi Integration Platform |
 | **Severity** | High (Production Workload) |
-| **Resolution Status** | <span style="color:#34d399; font-weight:700;">Verified & Resolved</span> |
+| **Resolution Status** | <span style="color:var(--c-emerald); font-weight:700;">Verified & Resolved</span> |
 
 ---
 
@@ -4495,6 +4958,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
     document.getElementById('page-home-landing').classList.add('hide')
     document.getElementById('page-product-workspace').classList.add('hide')
     document.getElementById('page-admin-suite').classList.add('hide')
+    document.getElementById('page-utilities-hub').classList.add('hide')
     document.getElementById('page-upload-portal').classList.remove('hide')
 
     const uploadTarget = document.getElementById('upload-target-product')
@@ -4534,12 +4998,12 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
 
     if (feedback) {
       feedback.innerHTML = `
-        <div style="padding:16px 20px; border-radius:10px; background:rgba(15,23,42,0.85); border:1px solid rgba(56,189,248,0.3); display:flex; flex-direction:column; gap:10px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.88rem; font-weight:600; color:#e0f2fe;">
+        <div style="padding:16px 20px; border-radius:10px; background:var(--bg-card); border:1px solid rgba(56,189,248,0.3); display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.88rem; font-weight:600; color:var(--text-soft);">
             <span id="upload-status-text">Uploading ${fileList.length} document(s) (${formattedSize}) into ${targetProduct.toUpperCase()}...</span>
-            <span id="upload-pct-text" style="color:#38bdf8; font-weight:700;">0%</span>
+            <span id="upload-pct-text" style="color:var(--c-sky); font-weight:700;">0%</span>
           </div>
-          <div style="width:100%; height:6px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden;">
+          <div style="width:100%; height:6px; background:var(--bg-subtle); border-radius:3px; overflow:hidden;">
             <div id="upload-progress-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #008DC7, #10b981); transition:width 0.15s ease;"></div>
           </div>
         </div>`
@@ -4568,7 +5032,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
             if (pctEl) pctEl.textContent = `${pct}%`
             if (barEl) barEl.style.width = `${pct}%`
             if (pct >= 100 && statusEl) {
-              statusEl.innerHTML = `<span style="display:inline-block; width:14px; height:14px; border:2px solid rgba(56,189,248,0.3); border-top-color:#38bdf8; border-radius:50%; animation:spin 0.8s linear infinite; vertical-align:middle; margin-right:8px;"></span>⚡ Instant Indexing & Publishing to ${targetProduct.toUpperCase()} (<50ms)...`
+              statusEl.innerHTML = `<span style="display:inline-block; width:14px; height:14px; border:2px solid rgba(56,189,248,0.3); border-top-color:var(--c-sky); border-radius:50%; animation:spin 0.8s linear infinite; vertical-align:middle; margin-right:8px;"></span>⚡ Instant Indexing & Publishing to ${targetProduct.toUpperCase()} (<50ms)...`
               if (pctEl) pctEl.textContent = 'Indexing'
             }
           }
@@ -4598,7 +5062,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
       })
 
       if (feedback) {
-        feedback.innerHTML = `<div style="padding:14px 18px; border-radius:8px; background:rgba(16,185,129,0.15); color:#34d399; font-weight:600;">✓ ${data.message || 'Files uploaded and processed successfully!'}</div>`
+        feedback.innerHTML = `<div style="padding:14px 18px; border-radius:8px; background:rgba(16,185,129,0.15); color:var(--c-emerald); font-weight:600;">✓ ${data.message || 'Files uploaded and processed successfully!'}</div>`
       }
       stagedUploadFiles = []
       if (fileUploadInput) fileUploadInput.value = ''
@@ -4608,7 +5072,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
       if (activeProduct === targetProduct || activeProduct !== 'all') fetchFeaturedProductDocs()
     } catch (err) {
       if (feedback) {
-        feedback.innerHTML = `<div style="padding:14px 18px; border-radius:8px; background:rgba(244,63,94,0.15); color:#f43f5e; font-weight:600;">✗ ${err.message}</div>`
+        feedback.innerHTML = `<div style="padding:14px 18px; border-radius:8px; background:rgba(244,63,94,0.15); color:var(--c-rose); font-weight:600;">✗ ${err.message}</div>`
       }
     }
   }
@@ -4635,12 +5099,12 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
         ? (f.size / 1048576).toFixed(1) + ' MB'
         : (f.size / 1024).toFixed(0) + ' KB'
       return `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border-radius:8px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.08);">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border-radius:8px; background:var(--bg-input); border:1px solid var(--border-color);">
           <div style="display:flex; align-items:center; gap:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-            <span style="color:#38bdf8; font-weight:700;">📄 ${f.name}</span>
-            <span style="font-size:0.75rem; color:#94a3b8;">(${formattedSize})</span>
+            <span style="color:var(--c-sky); font-weight:700;">📄 ${f.name}</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">(${formattedSize})</span>
           </div>
-          <button type="button" onclick="removeStagedFile(${i})" style="background:transparent; border:none; color:#f43f5e; font-size:0.8rem; cursor:pointer; font-weight:700;">✕</button>
+          <button type="button" onclick="removeStagedFile(${i})" style="background:transparent; border:none; color:var(--c-rose); font-size:0.8rem; cursor:pointer; font-weight:700;">✕</button>
         </div>
       `
     }).join('')
@@ -4706,7 +5170,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
       uploadDropZone.addEventListener(eventName, (e) => {
         e.preventDefault()
         e.stopPropagation()
-        uploadDropZone.style.borderColor = '#38bdf8'
+        uploadDropZone.style.borderColor = 'var(--c-sky)'
         uploadDropZone.style.background = 'rgba(0, 141, 199, 0.15)'
         uploadDropZone.style.transform = 'scale(1.01)'
       }, false)
@@ -4753,6 +5217,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
     document.getElementById('page-home-landing').classList.add('hide')
     document.getElementById('page-product-workspace').classList.add('hide')
     document.getElementById('page-upload-portal').classList.add('hide')
+    document.getElementById('page-utilities-hub').classList.add('hide')
     document.getElementById('page-admin-suite').classList.remove('hide')
 
     switchAdminTab('contributions')
@@ -4800,7 +5265,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
   async function fetchAdminUsers() {
     const tbody = document.getElementById('admin-users-table-body')
     if (!tbody) return
-    tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:#94a3b8;">Loading user directory...</td></tr>'
+    tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:var(--text-muted);">Loading user directory...</td></tr>'
 
     try {
       const res = await fetch('/api/admin/users', {
@@ -4811,36 +5276,37 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
 
       tbody.innerHTML = ''
       if (!users || users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:#94a3b8;">No users found in directory.</td></tr>'
+        tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:var(--text-muted);">No users found in directory.</td></tr>'
         return
       }
 
       users.forEach(u => {
         const isActive = u.is_active !== false
         const roleColor = u.role === 'Admin' ? '#f43f5e' : (u.role === 'Editor' ? '#34d399' : '#94a3b8')
+        const roleText = u.role === 'Admin' ? 'var(--c-rose)' : (u.role === 'Editor' ? 'var(--c-emerald)' : 'var(--text-muted)')
         const roleLabel = u.role === 'Admin' ? 'Super Admin' : (u.role === 'Editor' ? 'Contributor / Author' : 'Reader')
         const spaceLabel = u.product_space === 'all' ? '🌐 All Products' : (u.product_space === 'xpa' ? '⚡ Magic xpa' : (u.product_space === 'xpi' ? '🔗 Magic xpi' : '☁️ Cloud Native'))
 
         const tr = document.createElement('tr')
         tr.style.cssText = `border-bottom:1px solid rgba(255,255,255,0.06); opacity:${isActive ? 1 : 0.65};`
         tr.innerHTML = `
-          <td style="padding:12px 16px; font-weight:700; color:#fff;">
+          <td style="padding:12px 16px; font-weight:700; color:var(--text-main);">
             <div style="display:flex; align-items:center; gap:8px;">
-              <i data-lucide="mail" style="width:15px; height:15px; color:#008DC7;"></i>
+              <i data-lucide="mail" style="width:15px; height:15px; color:var(--link);"></i>
               <span>${u.username}</span>
             </div>
           </td>
           <td style="padding:12px 16px;">
-            <span style="font-size:0.75rem; padding:3px 8px; border-radius:6px; background:${isActive ? 'rgba(16,185,129,0.15)' : 'rgba(148,163,184,0.15)'}; color:${isActive ? '#34d399' : '#94a3b8'};">
+            <span style="font-size:0.75rem; padding:3px 8px; border-radius:6px; background:${isActive ? 'rgba(16,185,129,0.15)' : 'rgba(148,163,184,0.15)'}; color:${isActive ? 'var(--c-emerald)' : 'var(--text-muted)'};">
               ${isActive ? '🟢 Active' : '⚪ Inactive'}
             </span>
           </td>
           <td style="padding:12px 16px;">
-            <span style="font-size:0.75rem; padding:3px 10px; border-radius:12px; font-weight:700; background:rgba(255,255,255,0.05); color:${roleColor}; border:1px solid ${roleColor}40;">
+            <span style="font-size:0.75rem; padding:3px 10px; border-radius:12px; font-weight:700; background:var(--bg-subtle); color:${roleText}; border:1px solid ${roleColor}40;">
               ${roleLabel}
             </span>
           </td>
-          <td style="padding:12px 16px; color:#cbd5e1; font-size:0.82rem;">
+          <td style="padding:12px 16px; color:var(--text-soft); font-size:0.82rem;">
             ${spaceLabel}
           </td>
           <td style="padding:12px 16px; text-align:right;">
@@ -4849,10 +5315,10 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
                 <i data-lucide="edit" style="width:13px; height:13px;"></i> Edit
               </button>
               ${u.username !== 'admin' ? `
-                <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem; color:${isActive ? '#f59e0b' : '#34d399'};" onclick="toggleUserStatus(${u.id}, '${u.username}', ${isActive})">
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem; color:${isActive ? 'var(--c-amber)' : 'var(--c-emerald)'};" onclick="toggleUserStatus(${u.id}, '${u.username}', ${isActive})">
                   ${isActive ? '⛔ Suspend' : '✅ Activate'}
                 </button>
-                <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem; color:#f43f5e;" onclick="deleteUserAccount(${u.id}, '${u.username}')">
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem; color:var(--c-rose);" onclick="deleteUserAccount(${u.id}, '${u.username}')">
                   <i data-lucide="trash-2" style="width:13px; height:13px;"></i> Delete
                 </button>
               ` : ''}
@@ -4863,7 +5329,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
       })
       if (window.lucide) lucide.createIcons()
     } catch (e) {
-      tbody.innerHTML = `<tr><td colspan="5" style="padding:20px; text-align:center; color:#f43f5e;">${e.message}</td></tr>`
+      tbody.innerHTML = `<tr><td colspan="5" style="padding:20px; text-align:center; color:var(--c-rose);">${e.message}</td></tr>`
     }
   }
 
@@ -5058,7 +5524,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
   // --- Admin Tab 2: Master Document Management ---
   async function fetchAdminDocuments() {
     const tbody = document.getElementById('admin-docs-table-body')
-    tbody.innerHTML = '<tr><td colspan="6" style="padding:20px; text-align:center; color:#94a3b8;">Loading master document catalog...</td></tr>'
+    tbody.innerHTML = '<tr><td colspan="6" style="padding:20px; text-align:center; color:var(--text-muted);">Loading master document catalog...</td></tr>'
 
     try {
       const res = await fetch('/api/admin/files', {
@@ -5068,7 +5534,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
       adminDocsCache = await res.json()
       renderAdminDocsTable()
     } catch (e) {
-      tbody.innerHTML = `<tr><td colspan="6" style="padding:20px; text-align:center; color:#f43f5e;">${e.message}</td></tr>`
+      tbody.innerHTML = `<tr><td colspan="6" style="padding:20px; text-align:center; color:var(--c-rose);">${e.message}</td></tr>`
     }
   }
 
@@ -5083,32 +5549,32 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
 
     tbody.innerHTML = ''
     if (filtered.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="padding:20px; text-align:center; color:#94a3b8;">No documents match your filter.</td></tr>'
+      tbody.innerHTML = '<tr><td colspan="6" style="padding:20px; text-align:center; color:var(--text-muted);">No documents match your filter.</td></tr>'
       return
     }
 
     filtered.slice(0, 100).forEach(doc => {
       const prodColor = doc.product === 'xpa' ? '#f59e0b' : (doc.product === 'xpi' ? '#06b6d4' : '#10b981')
       const tr = document.createElement('tr')
-      tr.style.cssText = 'border-bottom:1px solid rgba(255,255,255,0.06);'
+      tr.style.cssText = 'border-bottom:1px solid var(--border-color);'
       tr.innerHTML = `
-        <td style="padding:10px 14px; color:#fff; font-weight:600; max-width:320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-          <a onclick="openDocument(${doc.id})" style="color:#e2e8f0; cursor:pointer; text-decoration:none;" onmouseover="this.style.color='#38bdf8'" onmouseout="this.style.color='#e2e8f0'">${doc.title}</a>
+        <td style="padding:10px 14px; color:var(--text-main); font-weight:600; max-width:320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+          <a onclick="openDocument(${doc.id})" style="color:var(--text-soft); cursor:pointer; text-decoration:none;" onmouseover="this.style.color = 'var(--c-sky)'" onmouseout="this.style.color = 'var(--text-soft)'">${doc.title}</a>
         </td>
         <td style="padding:10px 14px;">
-          <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; font-weight:700; background:rgba(255,255,255,0.05); color:${prodColor}; text-transform:uppercase;">
+          <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; font-weight:700; background:var(--bg-subtle); color:${prodColor}; text-transform:uppercase;">
             ${doc.product}
           </span>
         </td>
-        <td style="padding:10px 14px; color:#94a3b8; font-size:0.75rem; text-transform:uppercase;">${doc.file_type}</td>
-        <td style="padding:10px 14px; color:#cbd5e1; font-size:0.78rem;">${doc.version || 'Universal'}</td>
-        <td style="padding:10px 14px; color:#94a3b8; font-size:0.78rem;">${doc.views || 0}</td>
+        <td style="padding:10px 14px; color:var(--text-muted); font-size:0.75rem; text-transform:uppercase;">${doc.file_type}</td>
+        <td style="padding:10px 14px; color:var(--text-soft); font-size:0.78rem;">${doc.version || 'Universal'}</td>
+        <td style="padding:10px 14px; color:var(--text-muted); font-size:0.78rem;">${doc.views || 0}</td>
         <td style="padding:10px 14px; text-align:right;">
           <div style="display:flex; justify-content:flex-end; gap:6px;">
             <button class="btn btn-secondary" style="padding:3px 7px; font-size:0.72rem;" onclick="openEditDocModal(${doc.id}, '${doc.title.replace(/'/g, "\\'")}', '${doc.product || 'xpi'}', '${doc.version || 'Universal'}')">
               <i data-lucide="edit-3" style="width:12px; height:12px;"></i> Space/Meta
             </button>
-            <button class="btn btn-secondary" style="padding:3px 7px; font-size:0.72rem; color:#f43f5e;" onclick="deleteDocItem(${doc.id}, '${doc.title.replace(/'/g, "\\'")}')">
+            <button class="btn btn-secondary" style="padding:3px 7px; font-size:0.72rem; color:var(--c-rose);" onclick="deleteDocItem(${doc.id}, '${doc.title.replace(/'/g, "\\'")}')">
               <i data-lucide="trash-2" style="width:12px; height:12px;"></i>
             </button>
           </div>
@@ -5179,7 +5645,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
   document.getElementById('btn-admin-trigger-reindex').addEventListener('click', async () => {
     const statusEl = document.getElementById('admin-reindex-status')
     statusEl.textContent = 'Scanning server product directories (uploads/xpa, xpi, cloud_native) and Confluence (<50ms)...'
-    statusEl.style.color = '#008DC7'
+    statusEl.style.color = 'var(--link)'
 
     try {
       const res = await fetch('/api/admin/reindex', {
@@ -5189,18 +5655,18 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
       if (!res.ok) throw new Error('Reindexing failed')
       const data = await res.json()
       statusEl.textContent = `✓ ${data.message}: Successfully indexed ${data.count} total documents!`
-      statusEl.style.color = '#34d399'
+      statusEl.style.color = 'var(--c-emerald)'
       fetchOverview()
       fetchAdminLogs()
     } catch (err) {
       statusEl.textContent = `✗ ${err.message}`
-      statusEl.style.color = '#f43f5e'
+      statusEl.style.color = 'var(--c-rose)'
     }
   })
 
   async function fetchAdminLogs() {
     const container = document.getElementById('admin-ingestion-logs-container')
-    container.innerHTML = '<div style="color:#94a3b8;">Loading logs...</div>'
+    container.innerHTML = '<div style="color:var(--text-muted);">Loading logs...</div>'
 
     try {
       const res = await fetch('/api/admin/logs', {
@@ -5211,19 +5677,19 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
 
       container.innerHTML = ''
       if (logs.length === 0) {
-        container.innerHTML = '<div style="font-size:0.82rem; color:#64748b;">No recent ingestion logs recorded.</div>'
+        container.innerHTML = '<div style="font-size:0.82rem; color:var(--text-faint);">No recent ingestion logs recorded.</div>'
         return
       }
 
       logs.forEach(l => {
         const item = document.createElement('div')
-        item.style.cssText = 'padding:10px 14px; border-radius:8px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;'
+        item.style.cssText = 'padding:10px 14px; border-radius:8px; background:var(--bg-subtle); border:1px solid var(--border-color); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;'
         item.innerHTML = `
           <div>
-            <div style="font-size:0.82rem; font-weight:700; color:#fff;">${l.message}</div>
-            <div style="font-size:0.75rem; color:#94a3b8;">Indexed: ${l.indexed_count} files • Status: <span style="color:#34d399;">${l.status}</span></div>
+            <div style="font-size:0.82rem; font-weight:700; color:var(--text-main);">${l.message}</div>
+            <div style="font-size:0.75rem; color:var(--text-muted);">Indexed: ${l.indexed_count} files • Status: <span style="color:var(--c-emerald);">${l.status}</span></div>
           </div>
-          <span style="font-size:0.75rem; color:#64748b;">${l.timestamp}</span>
+          <span style="font-size:0.75rem; color:var(--text-faint);">${l.timestamp}</span>
         `
         container.appendChild(item)
       })
@@ -5234,7 +5700,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
   async function fetchAdminAnalytics() {
     const grid = document.getElementById('admin-analytics-metrics-grid')
     const zeroGrid = document.getElementById('admin-zero-queries-grid')
-    grid.innerHTML = '<div style="color:#94a3b8;">Loading telemetry...</div>'
+    grid.innerHTML = '<div style="color:var(--text-muted);">Loading telemetry...</div>'
 
     try {
       const res = await fetch('/api/admin/analytics', {
@@ -5245,20 +5711,20 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
 
       grid.innerHTML = `
         <div class="glass-panel" style="padding:16px; border-left:4px solid #f59e0b;">
-          <div style="font-size:0.75rem; color:#94a3b8;">Magic xpa Docs</div>
-          <div style="font-size:1.6rem; font-weight:800; color:#f59e0b;">${data.by_product?.xpa || 0}</div>
+          <div style="font-size:0.75rem; color:var(--text-muted);">Magic xpa Docs</div>
+          <div style="font-size:1.6rem; font-weight:800; color:var(--c-amber);">${data.by_product?.xpa || 0}</div>
         </div>
         <div class="glass-panel" style="padding:16px; border-left:4px solid #06b6d4;">
-          <div style="font-size:0.75rem; color:#94a3b8;">Magic xpi Docs</div>
-          <div style="font-size:1.6rem; font-weight:800; color:#06b6d4;">${data.by_product?.xpi || 0}</div>
+          <div style="font-size:0.75rem; color:var(--text-muted);">Magic xpi Docs</div>
+          <div style="font-size:1.6rem; font-weight:800; color:var(--c-cyan);">${data.by_product?.xpi || 0}</div>
         </div>
         <div class="glass-panel" style="padding:16px; border-left:4px solid #10b981;">
-          <div style="font-size:0.75rem; color:#94a3b8;">Cloud Native Docs</div>
-          <div style="font-size:1.6rem; font-weight:800; color:#10b981;">${data.by_product?.cloud_native || 0}</div>
+          <div style="font-size:0.75rem; color:var(--text-muted);">Cloud Native Docs</div>
+          <div style="font-size:1.6rem; font-weight:800; color:var(--c-emerald);">${data.by_product?.cloud_native || 0}</div>
         </div>
         <div class="glass-panel" style="padding:16px; border-left:4px solid #008DC7;">
-          <div style="font-size:0.75rem; color:#94a3b8;">Total Search Queries</div>
-          <div style="font-size:1.6rem; font-weight:800; color:#008DC7;">${data.total_searches || 0}</div>
+          <div style="font-size:0.75rem; color:var(--text-muted);">Total Search Queries</div>
+          <div style="font-size:1.6rem; font-weight:800; color:var(--link);">${data.total_searches || 0}</div>
         </div>
       `
 
@@ -5290,8 +5756,8 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
-              x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
-              y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
+              x: { grid: { color: chartGridColor() }, ticks: { color: chartTickColor() } },
+              y: { grid: { color: chartGridColor() }, ticks: { color: chartTickColor() } }
             }
           }
         });
@@ -5315,7 +5781,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
           options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { position: 'right', labels: { color: '#94a3b8' } } }
+            plugins: { legend: { position: 'right', labels: { color: chartTickColor() } } }
           }
         });
       }
@@ -5341,8 +5807,8 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
-              x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
-              y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
+              x: { grid: { color: chartGridColor() }, ticks: { color: chartTickColor() } },
+              y: { grid: { color: chartGridColor() }, ticks: { color: chartTickColor() } }
             }
           }
         });
@@ -5351,17 +5817,17 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
 
 zeroGrid.innerHTML = ''
       if (!data.zero_result_queries || data.zero_result_queries.length === 0) {
-        zeroGrid.innerHTML = '<span style="font-size:0.8rem; color:#64748b;">No documentation gaps detected yet.</span>'
+        zeroGrid.innerHTML = '<span style="font-size:0.8rem; color:var(--text-faint);">No documentation gaps detected yet.</span>'
       } else {
         data.zero_result_queries.forEach(z => {
           const item = document.createElement('div')
           item.style.cssText = 'padding:10px 14px; border-radius:8px; background:rgba(244,63,94,0.1); border:1px solid rgba(244,63,94,0.2); display:flex; justify-content:space-between; align-items:center;'
           item.innerHTML = `
             <div>
-              <div style="font-size:0.85rem; color:#fca5a5; font-weight:600;">"${z.query}"</div>
-              <div style="font-size:0.72rem; color:#f43f5e;">${z.count} failed searches</div>
+              <div style="font-size:0.85rem; color:var(--c-rose-soft); font-weight:600;">"${z.query}"</div>
+              <div style="font-size:0.72rem; color:var(--c-rose);">${z.count} failed searches</div>
             </div>
-            <button class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px; color:#34d399;" onclick="createKbForGap('${z.query.replace(/'/g, "\\'")}')">
+            <button class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px; color:var(--c-emerald);" onclick="createKbForGap('${z.query.replace(/'/g, "\\'")}')">
               <i data-lucide="plus" style="width:12px; height:12px;"></i> Create KB
             </button>
           `
@@ -5447,28 +5913,28 @@ zeroGrid.innerHTML = ''
       if (cardsEl) {
         cardsEl.innerHTML = `
           <div class="glass-panel" style="padding:18px; border-left:4px solid #008DC7;">
-            <div style="font-size:0.8rem; color:#94a3b8; font-weight:600;">Total Ingested KBs</div>
-            <div style="font-size:1.8rem; font-weight:800; color:#fff; margin-top:4px;">${data.summary.total_uploads}</div>
-            <div style="font-size:0.72rem; color:#38bdf8; margin-top:2px;">
+            <div style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">Total Ingested KBs</div>
+            <div style="font-size:1.8rem; font-weight:800; color:var(--text-main); margin-top:4px;">${data.summary.total_uploads}</div>
+            <div style="font-size:0.72rem; color:var(--c-sky); margin-top:2px;">
               🟢 Active: ${data.summary.active_uploads_count || 0} | 🏛️ Alumni: ${data.summary.former_uploads_count || 0}
             </div>
           </div>
           <div class="glass-panel" style="padding:18px; border-left:4px solid #10b981;">
-            <div style="font-size:0.8rem; color:#94a3b8; font-weight:600;">Contributors</div>
-            <div style="font-size:1.8rem; font-weight:800; color:#fff; margin-top:4px;">${data.summary.unique_contributors}</div>
-            <div style="font-size:0.72rem; color:#34d399; margin-top:2px;">
+            <div style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">Contributors</div>
+            <div style="font-size:1.8rem; font-weight:800; color:var(--text-main); margin-top:4px;">${data.summary.unique_contributors}</div>
+            <div style="font-size:0.72rem; color:var(--c-emerald); margin-top:2px;">
               🟢 Active: ${data.summary.active_contributors_count || 0} | 🏛️ Alumni: ${data.summary.former_contributors_count || 0}
             </div>
           </div>
           <div class="glass-panel" style="padding:18px; border-left:4px solid #f59e0b;">
-            <div style="font-size:0.8rem; color:#94a3b8; font-weight:600;">Top Contributor</div>
-            <div style="font-size:1.3rem; font-weight:800; color:#fbbf24; margin-top:4px;">${data.summary.top_contributor}</div>
-            <div style="font-size:0.72rem; color:#fcd34d;">${data.summary.top_contributor_count} KBs published</div>
+            <div style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">Top Contributor</div>
+            <div style="font-size:1.3rem; font-weight:800; color:var(--c-amber); margin-top:4px;">${data.summary.top_contributor}</div>
+            <div style="font-size:0.72rem; color:var(--c-amber);">${data.summary.top_contributor_count} KBs published</div>
           </div>
           <div class="glass-panel" style="padding:18px; border-left:4px solid #a855f7;">
-            <div style="font-size:0.8rem; color:#94a3b8; font-weight:600;">Total Reader Views</div>
-            <div style="font-size:1.8rem; font-weight:800; color:#fff; margin-top:4px;">${data.summary.total_views}</div>
-            <div style="font-size:0.72rem; color:#c084fc;">Across filtered articles</div>
+            <div style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">Total Reader Views</div>
+            <div style="font-size:1.8rem; font-weight:800; color:var(--text-main); margin-top:4px;">${data.summary.total_views}</div>
+            <div style="font-size:0.72rem; color:var(--c-purple);">Across filtered articles</div>
           </div>
         `
       }
@@ -5508,8 +5974,8 @@ zeroGrid.innerHTML = ''
                 }
               },
               scales: {
-                x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { size: 11 } } },
-                y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', precision: 0, beginAtZero: true } }
+                x: { grid: { color: chartGridColor() }, ticks: { color: chartTickColor(), font: { size: 11 } } },
+                y: { grid: { color: chartGridColor() }, ticks: { color: chartTickColor(), precision: 0, beginAtZero: true } }
               }
             }
           })
@@ -5544,8 +6010,8 @@ zeroGrid.innerHTML = ''
               maintainAspectRatio: false,
               plugins: { legend: { display: false } },
               scales: {
-                x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { size: 11 } } },
-                y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', precision: 0, beginAtZero: true } }
+                x: { grid: { color: chartGridColor() }, ticks: { color: chartTickColor(), font: { size: 11 } } },
+                y: { grid: { color: chartGridColor() }, ticks: { color: chartTickColor(), precision: 0, beginAtZero: true } }
               }
             }
           })
@@ -5557,41 +6023,41 @@ zeroGrid.innerHTML = ''
       if (lbody) {
         lbody.innerHTML = ''
         if (data.contributors.length === 0) {
-          lbody.innerHTML = '<tr><td colspan="9" style="padding:24px; text-align:center; color:#94a3b8;">No contributions found for selected filters.</td></tr>'
+          lbody.innerHTML = '<tr><td colspan="9" style="padding:24px; text-align:center; color:var(--text-muted);">No contributions found for selected filters.</td></tr>'
         } else {
           data.contributors.forEach((c, idx) => {
             const rankBadge = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : `#${idx + 1}`))
             const total = data.summary.total_uploads || 1
             const share = Math.round((c.upload_count / total) * 100)
             const statusBadge = c.is_active 
-              ? '<span style="font-size:0.72rem; padding:2px 7px; border-radius:6px; background:rgba(16,185,129,0.15); color:#34d399; font-weight:700;">🟢 Active Team</span>'
-              : '<span style="font-size:0.72rem; padding:2px 7px; border-radius:6px; background:rgba(244,63,94,0.15); color:#f43f5e; font-weight:700;">🔴 Suspended</span>'
+              ? '<span style="font-size:0.72rem; padding:2px 7px; border-radius:6px; background:rgba(16,185,129,0.15); color:var(--c-emerald); font-weight:700;">🟢 Active Team</span>'
+              : '<span style="font-size:0.72rem; padding:2px 7px; border-radius:6px; background:rgba(244,63,94,0.15); color:var(--c-rose); font-weight:700;">🔴 Suspended</span>'
 
             const actionBtn = (c.username !== 'admin' && (c.user_id || c.is_registered))
-              ? `<button class="btn btn-secondary" style="padding:3px 8px; font-size:0.72rem; color:${c.is_active ? '#f59e0b' : '#34d399'}; font-weight:700;" onclick="toggleUserStatus(${c.user_id}, '${c.username}', ${c.is_active})">
+              ? `<button class="btn btn-secondary" style="padding:3px 8px; font-size:0.72rem; color:${c.is_active ? 'var(--c-amber)' : 'var(--c-emerald)'}; font-weight:700;" onclick="toggleUserStatus(${c.user_id}, '${c.username}', ${c.is_active})">
                    ${c.is_active ? '⛔ Suspend' : '✅ Activate'}
                  </button>`
-              : `<span style="color:#64748b; font-size:0.72rem;">-</span>`
+              : `<span style="color:var(--text-faint); font-size:0.72rem;">-</span>`
 
             const tr = document.createElement('tr')
             tr.style.cssText = `border-bottom:1px solid rgba(255,255,255,0.05); opacity:${c.is_active ? 1 : 0.7};`
             tr.innerHTML = `
               <td style="padding:12px 14px; font-weight:800;">${rankBadge}</td>
-              <td style="padding:12px 14px; font-weight:700; color:#fff;">${c.username}</td>
+              <td style="padding:12px 14px; font-weight:700; color:var(--text-main);">${c.username}</td>
               <td style="padding:12px 14px;">${statusBadge}</td>
               <td style="padding:12px 14px;">
-                <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:${c.role === 'Admin' ? 'rgba(244,63,94,0.15)' : 'rgba(16,185,129,0.15)'}; color:${c.role === 'Admin' ? '#f43f5e' : '#34d399'}; font-weight:700;">
+                <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:${c.role === 'Admin' ? 'rgba(244,63,94,0.15)' : 'rgba(16,185,129,0.15)'}; color:${c.role === 'Admin' ? 'var(--c-rose)' : 'var(--c-emerald)'}; font-weight:700;">
                   ${c.role}
                 </span>
               </td>
               <td style="padding:12px 14px;">
-                <strong style="color:#fff;">${c.upload_count} KBs</strong> (${share}%)
+                <strong style="color:var(--text-main);">${c.upload_count} KBs</strong> (${share}%)
               </td>
-              <td style="padding:12px 14px; font-size:0.75rem; color:#94a3b8;">
+              <td style="padding:12px 14px; font-size:0.75rem; color:var(--text-muted);">
                 xpi: ${c.by_product.xpi || 0} | xpa: ${c.by_product.xpa || 0} | cloud: ${c.by_product.cloud_native || 0}
               </td>
-              <td style="padding:12px 14px; color:#cbd5e1;">${c.views}</td>
-              <td style="padding:12px 14px; color:#94a3b8; font-size:0.78rem;">${c.latest_upload}</td>
+              <td style="padding:12px 14px; color:var(--text-soft);">${c.views}</td>
+              <td style="padding:12px 14px; color:var(--text-muted); font-size:0.78rem;">${c.latest_upload}</td>
               <td style="padding:12px 14px; text-align:right;">${actionBtn}</td>
             `
             lbody.appendChild(tr)
@@ -5604,19 +6070,19 @@ zeroGrid.innerHTML = ''
       if (abody) {
         abody.innerHTML = ''
         if (data.articles.length === 0) {
-          abody.innerHTML = '<tr><td colspan="7" style="padding:20px; text-align:center; color:#94a3b8;">No articles found.</td></tr>'
+          abody.innerHTML = '<tr><td colspan="7" style="padding:20px; text-align:center; color:var(--text-muted);">No articles found.</td></tr>'
         } else {
           data.articles.forEach(a => {
             const tr = document.createElement('tr')
-            tr.style.cssText = 'border-bottom:1px solid rgba(255,255,255,0.04);'
+            tr.style.cssText = 'border-bottom:1px solid var(--border-color);'
             tr.innerHTML = `
-              <td style="padding:8px 12px; color:#64748b; font-size:0.75rem;">#${a.id}</td>
-              <td style="padding:8px 12px; color:#e2e8f0; font-weight:600;">${a.title}</td>
-              <td style="padding:8px 12px; color:#38bdf8;">${a.author}</td>
-              <td style="padding:8px 12px; text-transform:uppercase; font-size:0.75rem; font-weight:700; color:#f59e0b;">${a.product}</td>
-              <td style="padding:8px 12px; text-transform:uppercase; font-size:0.72rem; color:#94a3b8;">${a.file_type}</td>
-              <td style="padding:8px 12px; color:#cbd5e1;">${a.views}</td>
-              <td style="padding:8px 12px; color:#64748b; font-size:0.75rem;">${a.created_at}</td>
+              <td style="padding:8px 12px; color:var(--text-faint); font-size:0.75rem;">#${a.id}</td>
+              <td style="padding:8px 12px; color:var(--text-soft); font-weight:600;">${a.title}</td>
+              <td style="padding:8px 12px; color:var(--c-sky);">${a.author}</td>
+              <td style="padding:8px 12px; text-transform:uppercase; font-size:0.75rem; font-weight:700; color:var(--c-amber);">${a.product}</td>
+              <td style="padding:8px 12px; text-transform:uppercase; font-size:0.72rem; color:var(--text-muted);">${a.file_type}</td>
+              <td style="padding:8px 12px; color:var(--text-soft);">${a.views}</td>
+              <td style="padding:8px 12px; color:var(--text-faint); font-size:0.75rem;">${a.created_at}</td>
             `
             abody.appendChild(tr)
           })
@@ -5726,6 +6192,7 @@ zeroGrid.innerHTML = ''
       localStorage.removeItem('username')
       localStorage.removeItem('role')
       updateAuthUI()
+      loadBookmarks()
       switchProductScope('all')
     })
   }
@@ -5760,6 +6227,9 @@ zeroGrid.innerHTML = ''
         localStorage.setItem('username', username)
         localStorage.setItem('role', role)
         updateAuthUI()
+        await migrateLocalBookmarks()
+        await loadBookmarks()
+        renderLandingSections()
         switchProductScope('all')
       } catch (err) {
         if (errBox) {
@@ -5803,6 +6273,9 @@ zeroGrid.innerHTML = ''
         localStorage.setItem('role', role)
         window.closeSignInModal()
         updateAuthUI()
+        await migrateLocalBookmarks()
+        await loadBookmarks()
+        renderLandingSections()
         switchProductScope('all')
       } catch (err) {
         if (errBox) {
@@ -5825,6 +6298,7 @@ zeroGrid.innerHTML = ''
   // Notification Bell toggle
   document.getElementById('btn-notification-bell').addEventListener('click', () => {
     document.getElementById('notification-dropdown').classList.toggle('hide')
+    closeUserMenu()
   })
 
   // Initial Load
@@ -5832,7 +6306,8 @@ zeroGrid.innerHTML = ''
   fetchOverview()
   fetchNotifications()
   renderRecentlyViewed()
-  renderBookmarksList()
+  loadBookmarks()
   renderFavouritesList()
+  renderLandingQuickChips()
   switchProductScope('all')
 })
