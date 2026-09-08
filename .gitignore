@@ -44,3 +44,6 @@ copy_log.txt
 scratch/
 Mock Images/
 863301644/
+
+# AI tool output: reports and audits about the repo, not part of the product
+Claude outputs/
