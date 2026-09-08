@@ -830,17 +830,39 @@ def scan_and_index(db: Session):
             indexed_count += 1
             db.commit()
             
-    # 3. Clean up deleted files from DB
+    # 3. Clean up documents whose underlying file is genuinely gone.
+    #
+    # This used to delete anything absent from processed_paths, which treats "not
+    # seen in this scan" as "deleted". Those are not the same thing: a scan that
+    # races a folder reorganisation, gets interrupted, or skips a subtree after an
+    # error leaves live files unprocessed. That cost 1,093 CSO articles whose HTML
+    # was still sitting on disk. A missing index entry is not evidence of
+    # deletion — a missing file is, so check the filesystem before removing a row.
     db_docs = db.query(Document).all()
-    deleted_count = 0
-    for doc in db_docs:
-        if doc.file_path not in processed_paths:
+    missing = [d for d in db_docs
+               if d.file_path not in processed_paths and not os.path.exists(d.file_path)]
+
+    # Safety valve: when a whole tree is unreachable (a share not mounted yet, a
+    # folder mid-move) every document under it looks missing at once. Pruning the
+    # index in bulk on that basis is far more destructive than leaving stale rows
+    # for one cycle, so refuse and let the next healthy scan handle it.
+    PRUNE_ABORT_MIN = 100
+    PRUNE_ABORT_RATIO = 0.25
+    if db_docs and len(missing) > PRUNE_ABORT_MIN and len(missing) / len(db_docs) > PRUNE_ABORT_RATIO:
+        pct = len(missing) * 100 // len(db_docs)
+        log_msg.append(
+            f"Skipped pruning {len(missing)} documents ({pct}% of the index). That "
+            f"looks like an unavailable or half-moved folder rather than deleted "
+            f"files; re-run indexing once the repository is complete."
+        )
+        print(f"[Indexer] Prune aborted as a safety measure: {len(missing)} of {len(db_docs)} documents appeared missing.")
+    else:
+        deleted_count = len(missing)
+        for doc in missing:
             db.delete(doc)
-            deleted_count += 1
-            
-    if deleted_count > 0:
-        db.commit()
-        log_msg.append(f"Removed {deleted_count} stale documents from search index.")
+        if deleted_count > 0:
+            db.commit()
+            log_msg.append(f"Removed {deleted_count} documents whose files no longer exist.")
         
     # Also index official product Help topics into dedicated HelpTopic storage
     try:
