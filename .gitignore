@@ -47,3 +47,6 @@ Mock Images/
 
 # AI tool output: reports and audits about the repo, not part of the product
 Claude outputs/
+
+# Temporary probe written by tools/smoke.py (always cleaned up, ignored as a safety net)
+frontend/_smoke_probe.html
