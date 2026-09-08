@@ -3,7 +3,7 @@ import json
 import base64
 import shutil
 import re
-from typing import List, Optional
+from typing import List, Optional, Union, Any
 from datetime import datetime, timedelta
 
 from fastapi import FastAPI, Depends, HTTPException, status, File, UploadFile, Form, BackgroundTasks, Request
@@ -219,6 +219,31 @@ UPLOADS_ASSETS = os.path.join(UPLOADS_DIR, "assets")
 os.makedirs(UPLOADS_ASSETS, exist_ok=True)
 app.mount("/api/kb/assets", StaticFiles(directory=UPLOADS_ASSETS), name="kb_assets")
 
+def log_enterprise_action(
+    db: Session,
+    username: str,
+    role: str,
+    ip_address: str,
+    action_category: str,
+    action: str,
+    details: str,
+    target_id: Optional[Union[str, int]] = None
+):
+    try:
+        log_entry = EnterpriseAuditLog(
+            username=username or "Anonymous",
+            user_role=role or "Viewer",
+            ip_address=ip_address or "127.0.0.1",
+            action_category=(action_category or "SYSTEM").upper(),
+            action=action,
+            details=details,
+            target_id=str(target_id) if target_id is not None else None
+        )
+        db.add(log_entry)
+        db.commit()
+    except Exception as e:
+        print(f"[WARN] Enterprise audit log error: {e}")
+
 # ----------------- Auth Endpoints (Case-Insensitive) -----------------
 
 @app.post("/api/auth/login")
@@ -230,22 +255,8 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db
     user = db.query(User).filter(func.lower(User.username) == uname.lower()).first()
     is_valid = False
     
-    if user:
-        if verify_password(form_data.password, user.hashed_password):
-            is_valid = True
-        elif user.username.lower() in ["admin", "superadmin"] and form_data.password in ["admin", "admin123", "admin@123"]:
-            user.hashed_password = get_password_hash(form_data.password)
-            user.role = "Admin"
-            user.is_active = True
-            db.commit()
-            is_valid = True
-    elif uname.lower() in ["admin", "superadmin"] and form_data.password in ["admin", "admin123", "admin@123"]:
-        hashed_pw = get_password_hash(form_data.password)
-        user = User(username=uname, hashed_password=hashed_pw, role="Admin", product_space="all", is_active=True)
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        is_valid = True
+    if user and user.hashed_password:
+        is_valid = verify_password(form_data.password, user.hashed_password)
             
     if not user or not is_valid:
         status_msg = "Failed - Invalid Password" if user else "Failed - User Not Found"
@@ -254,6 +265,7 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db
             db.commit()
         except Exception:
             pass
+        log_enterprise_action(db, uname, user.role if user else "Unknown", client_ip, "AUTH", "LOGIN_FAILED", f"{status_msg} for '{uname}'.")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -266,6 +278,7 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db
             db.commit()
         except Exception:
             pass
+        log_enterprise_action(db, user.username, user.role, client_ip, "AUTH", "LOGIN_BLOCKED", f"Login blocked for suspended account '{user.username}'.")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account has been suspended / deactivated. Please contact your Super Administrator.",
@@ -278,6 +291,7 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db
         db.commit()
     except Exception:
         pass
+    log_enterprise_action(db, user.username, user.role, client_ip, "AUTH", "LOGIN_SUCCESS", f"'{user.username}' logged in from {client_ip}.")
 
     access_token = create_access_token(data={"sub": user.username, "role": user.role})
     return {
@@ -2301,6 +2315,7 @@ def update_document(
 @app.post("/api/upload")
 async def upload_documents(
     background_tasks: BackgroundTasks,
+    request: Request,
     files: List[UploadFile] = File(...),
     product: Optional[str] = Form("xpi"),
     upload_mode: Optional[str] = Form("publish"), # "publish" vs "review"
@@ -2361,6 +2376,7 @@ async def upload_documents(
                                 zdoc.status = target_status
                                 zdoc.author = author_name
                                 zdoc.product = prod
+                                zdoc.is_legacy_import = False
                                 zdoc.created_at = datetime.utcnow()
                                 db.commit()
                                 saved_docs.append(zdoc)
@@ -2378,6 +2394,7 @@ async def upload_documents(
                 doc.status = target_status
                 doc.author = author_name
                 doc.product = prod
+                doc.is_legacy_import = False
                 doc.created_at = datetime.utcnow()
                 db.commit()
                 saved_docs.append(doc)
@@ -2400,6 +2417,19 @@ async def upload_documents(
             background_tasks.add_task(notify_document_uploaded, doc.title, prod, author_name, doc.file_type)
 
     msg = f"Uploaded {saved_count} document(s) in {prod.upper()} space with status '{target_status}'."
+
+    client_ip = request.client.host if request and request.client else "127.0.0.1"
+    file_names = [f.filename for f in files if f.filename]
+    file_preview = f": {', '.join(file_names[:4])}{' and others' if len(file_names) > 4 else ''}" if file_names else ""
+    log_enterprise_action(
+        db=db,
+        username=author_name,
+        role=user_role,
+        ip_address=client_ip,
+        action_category="KB_MANAGE",
+        action="UPLOAD",
+        details=f"{msg}{file_preview}"
+    )
 
     return {
         "message": msg,
@@ -2497,11 +2527,24 @@ async def create_kb_article(
         version=version.strip() if version else "Universal",
         doc_type=doc_type.strip() if doc_type else "troubleshooting",
         tags=tags,
+        is_legacy_import=False,
         status=target_status
     )
     db.add(new_doc)
     db.commit()
     db.refresh(new_doc)
+
+    client_ip = request.client.host if request and request.client else "127.0.0.1"
+    log_enterprise_action(
+        db=db,
+        username=author_name,
+        role=user_role,
+        ip_address=client_ip,
+        action_category="KB_MANAGE",
+        action="KB_CREATE",
+        details=f"Authored KB article '{title.strip()}' in {prod.upper()} space (status: '{target_status}').",
+        target_id=str(new_doc.id)
+    )
 
     if target_status == "pending_review":
         notif = Notification(
@@ -2532,6 +2575,7 @@ async def create_kb_article(
 
 @app.get("/api/admin/contributions")
 def get_user_contributions(
+    scope: Optional[str] = "live", # "live", "historical", "all"
     username: Optional[str] = None,
     product: Optional[str] = None,
     start_date: Optional[str] = None,
@@ -2546,14 +2590,29 @@ def get_user_contributions(
     if current_user.role != "Admin":
         raise HTTPException(status_code=403, detail="Admin permission required")
     
+    scope_clean = (scope or "live").lower().strip()
     query = db.query(Document)
     now = datetime.now()
     
-    # 0. Filter by dynamic period (this week, this month, this year)
+    # Mapping of registered users in system
+    registered_users = {u.username.lower(): u for u in db.query(User).all()}
+    active_usernames_lower = [u.username.lower() for u in registered_users.values() if getattr(u, "is_active", True)]
+
+    # 0. Scope filtering: live platform vs historical Confluence archive
+    if scope_clean == "live":
+        query = query.filter(
+            (Document.is_legacy_import == False) | (func.lower(Document.author).in_(active_usernames_lower))
+        )
+    elif scope_clean in ["historical", "legacy"]:
+        query = query.filter(
+            (Document.is_legacy_import == True) | (~func.lower(Document.author).in_(active_usernames_lower))
+        )
+    # else "all": no restriction
+
+    # 0.1 Filter by dynamic period (this week, this month, this year)
     if period and period.lower() not in ["all", ""]:
         p_clean = period.lower().strip()
         if p_clean in ["week", "this_week"]:
-            # Last 7 days or start of current week
             week_start = now - timedelta(days=now.weekday())
             week_start = week_start.replace(hour=0, minute=0, second=0, microsecond=0)
             query = query.filter(Document.created_at >= week_start)
@@ -2605,9 +2664,6 @@ def get_user_contributions(
             pass
 
     all_matching_docs = query.order_by(Document.created_at.desc()).all()
-    
-    # Registered active users mapping
-    registered_users = {u.username.lower(): u for u in db.query(User).all()}
     
     def is_active_contributor(author_name: str) -> bool:
         if not author_name:
@@ -2667,6 +2723,11 @@ def get_user_contributions(
         reg_user = registered_users.get(auth.lower())
         user_id = reg_user.id if reg_user else None
         active_flag = is_active_contributor(auth)
+        
+        # If in live mode, skip non-registered legacy authors
+        if scope_clean == "live" and not active_flag and not reg_user:
+            continue
+
         user_list.append({
             "user_id": user_id,
             "username": auth,
@@ -2684,27 +2745,26 @@ def get_user_contributions(
             "latest_upload": stats["latest_upload"].strftime("%Y-%m-%d %H:%M") if stats["latest_upload"] else "N/A"
         })
         
-    # Include all registered users in the leaderboard so Super Admin sees their team status
-    if contributor_status != "former":
+    # For live scope, ensure all active registered users appear in the leaderboard
+    if scope_clean == "live" and contributor_status != "former":
         existing_usernames_lower = {u["username"].lower() for u in user_list}
         for u_obj in db.query(User).order_by(User.username.asc()).all():
-            if u_obj.username.lower() not in existing_usernames_lower:
-                active_flag = getattr(u_obj, "is_active", True) is not False
+            if getattr(u_obj, "is_active", True) and u_obj.username.lower() not in existing_usernames_lower:
                 user_list.append({
                     "user_id": u_obj.id,
                     "username": u_obj.username,
                     "role": u_obj.role,
                     "product_space": u_obj.product_space or "all",
-                    "is_active": active_flag,
+                    "is_active": True,
                     "is_registered": True,
-                    "status": "active" if active_flag else "former",
-                    "status_label": "Active Team" if active_flag else "Alumni / Legacy",
+                    "status": "active",
+                    "status_label": "Active Team",
                     "upload_count": 0,
                     "views": 0,
                     "likes": 0,
                     "by_product": {"xpi": 0, "xpa": 0, "cloud_native": 0, "general": 0},
                     "by_type": {},
-                    "latest_upload": "No uploads yet in 2026"
+                    "latest_upload": "No uploads yet"
                 })
 
     user_list.sort(key=lambda x: (x["upload_count"], 1 if x["is_active"] else 0), reverse=True)
@@ -2735,10 +2795,15 @@ def get_user_contributions(
         
     timeline = sorted(timeline_map.values(), key=lambda x: x["key"])
     
-    # Extract registered contributor/user accounts added by Super Admin
+    # Available users filter based on active scope
     reg_user_objs = db.query(User).order_by(User.username.asc()).all()
-    author_options = [u.username for u in reg_user_objs]
-    if "admin" not in author_options:
+    if scope_clean == "live":
+        author_options = [u.username for u in reg_user_objs if getattr(u, "is_active", True)]
+    elif scope_clean in ["historical", "legacy"]:
+        author_options = sorted(list(set(d.author for d in db.query(Document.author).filter(Document.is_legacy_import == True).all() if d.author)))
+    else:
+        author_options = sorted(list(set(u.username for u in reg_user_objs) | set(d.author for d in db.query(Document.author).all() if d.author)))
+    if "admin" not in author_options and scope_clean != "historical":
         author_options.insert(0, "admin")
     
     years_raw = db.query(func.strftime("%Y", Document.created_at)).distinct().all()
@@ -2759,9 +2824,10 @@ def get_user_contributions(
         "likes": d.likes or 0,
         "created_at": d.created_at.strftime("%Y-%m-%d %H:%M") if d.created_at else "N/A",
         "created_date": d.created_at.strftime("%Y-%m-%d") if d.created_at else ""
-    } for d in docs[:300]]
+    } for d in docs[:500]]
     
     return {
+        "scope": scope_clean,
         "summary": {
             "total_uploads": total_uploads,
             "unique_contributors": unique_contributors,
@@ -2781,6 +2847,11 @@ def get_user_contributions(
             "users": author_options,
             "years": available_years,
             "products": ["xpi", "xpa", "cloud_native", "general"],
+            "scopes": [
+                {"value": "live", "label": "🌟 Live Platform Users (Default)"},
+                {"value": "historical", "label": "🏛️ Historical Confluence Archive"},
+                {"value": "all", "label": "🌐 All Data (Combined)"}
+            ],
             "statuses": [
                 {"value": "all", "label": "🌟 All Contributors (Active & Alumni)"},
                 {"value": "active", "label": "🟢 Active Employees Only"},
@@ -2806,6 +2877,7 @@ def get_users(current_user: User = Depends(get_current_user), db: Session = Depe
 
 @app.post("/api/admin/users")
 def create_user(
+    request: Request,
     username: str = Form(...),
     password: str = Form(...),
     role: str = Form(...),
@@ -2830,11 +2902,24 @@ def create_user(
     )
     db.add(new_user)
     db.commit()
+    db.refresh(new_user)
+    client_ip = request.client.host if request and request.client else "127.0.0.1"
+    log_enterprise_action(
+        db=db,
+        username=current_user.username,
+        role=current_user.role,
+        ip_address=client_ip,
+        action_category="ADMIN",
+        action="USER_CREATE",
+        details=f"Created user '{username.strip()}' with role {role.strip()}.",
+        target_id=str(new_user.id)
+    )
     return {"message": f"User {username} created successfully"}
 
 @app.put("/api/admin/users/{user_id}")
 def update_user(
     user_id: int,
+    request: Request,
     role: Optional[str] = Form(None),
     product_space: Optional[str] = Form(None),
     password: Optional[str] = Form(None),
@@ -2856,10 +2941,21 @@ def update_user(
     if is_active is not None:
         user.is_active = (str(is_active).lower() in ["true", "1", "yes", "active"])
     db.commit()
+    client_ip = request.client.host if request and request.client else "127.0.0.1"
+    log_enterprise_action(
+        db=db,
+        username=current_user.username,
+        role=current_user.role,
+        ip_address=client_ip,
+        action_category="ADMIN",
+        action="USER_UPDATE",
+        details=f"Updated user '{user.username}' (active={user.is_active}, role={user.role}).",
+        target_id=str(user.id)
+    )
     return {"message": f"User {user.username} updated successfully", "is_active": user.is_active}
 
 @app.delete("/api/admin/users/{user_id}")
-def delete_user(user_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def delete_user(user_id: int, request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role != "Admin":
         raise HTTPException(status_code=403, detail="Admin permission required")
     user = db.query(User).filter(User.id == user_id).first()
@@ -2867,16 +2963,38 @@ def delete_user(user_id: int, current_user: User = Depends(get_current_user), db
         raise HTTPException(status_code=404, detail="User not found")
     if user.username.lower() == "admin":
         raise HTTPException(status_code=400, detail="Cannot delete default administrator account")
+    deleted_username = user.username
     db.delete(user)
     db.commit()
-    return {"message": f"User {user.username} deleted"}
+    client_ip = request.client.host if request and request.client else "127.0.0.1"
+    log_enterprise_action(
+        db=db,
+        username=current_user.username,
+        role=current_user.role,
+        ip_address=client_ip,
+        action_category="ADMIN",
+        action="USER_DELETE",
+        details=f"Deleted user '{deleted_username}'.",
+        target_id=str(user_id)
+    )
+    return {"message": f"User {deleted_username} deleted"}
 
 @app.post("/api/admin/reindex")
-def trigger_reindex(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def trigger_reindex(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role != "Admin":
         raise HTTPException(status_code=403, detail="Admin permission required")
     try:
         count, msg = scan_and_index(db)
+        client_ip = request.client.host if request and request.client else "127.0.0.1"
+        log_enterprise_action(
+            db=db,
+            username=current_user.username,
+            role=current_user.role,
+            ip_address=client_ip,
+            action_category="ADMIN",
+            action="REINDEX",
+            details=f"Triggered manual re-index; {count} documents synchronized."
+        )
         return {"message": "Reindexing complete", "count": count, "log": msg}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Reindexing failed: {e}")
@@ -2902,18 +3020,21 @@ def get_files(current_user: User = Depends(get_current_user), db: Session = Depe
     return [{
         "id": d.id,
         "title": d.title,
+        "author": d.author or "Engineering",
+        "status": d.status or "published",
         "product": d.product or "xpi",
         "file_type": d.file_type,
         "version": d.version or "Universal",
         "doc_type": d.doc_type or "troubleshooting",
-        "file_path": os.path.basename(d.file_path),
+        "file_path": os.path.basename(d.file_path) if d.file_path else "",
         "views": d.views or 0,
-        "created_at": d.created_at.strftime("%Y-%m-%d %H:%M")
+        "created_at": d.created_at.strftime("%Y-%m-%d %H:%M") if d.created_at else ""
     } for d in docs]
 
 @app.put("/api/admin/document/{doc_id}/product")
 def update_document_product(
     doc_id: int, 
+    request: Request,
     product: str = Form(...),
     doc_type: Optional[str] = Form(None),
     version: Optional[str] = Form(None),
@@ -2925,21 +3046,34 @@ def update_document_product(
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+    old_prod = doc.product
     doc.product = product.lower().strip()
     if doc_type:
         doc.doc_type = doc_type
     if version:
         doc.version = version
     db.commit()
+    client_ip = request.client.host if request and request.client else "127.0.0.1"
+    log_enterprise_action(
+        db=db,
+        username=current_user.username,
+        role=current_user.role,
+        ip_address=client_ip,
+        action_category="KB_MANAGE",
+        action="DOCUMENT_REASSIGN",
+        details=f"Reassigned document '{doc.title}' from {old_prod.upper() if old_prod else 'N/A'} to {product.upper()}.",
+        target_id=str(doc.id)
+    )
     return {"message": f"Document '{doc.title}' product updated to {product}"}
 
 @app.delete("/api/admin/document/{doc_id}")
-def delete_document(doc_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def delete_document(doc_id: int, request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role != "Admin":
         raise HTTPException(status_code=403, detail="Admin permission required")
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+    deleted_title = doc.title
     if os.path.exists(doc.file_path) and "uploads" in doc.file_path.lower():
         try:
             os.remove(doc.file_path)
@@ -2947,13 +3081,32 @@ def delete_document(doc_id: int, current_user: User = Depends(get_current_user),
             pass
     db.delete(doc)
     db.commit()
-    return {"message": f"Document {doc.title} deleted successfully"}
+    client_ip = request.client.host if request and request.client else "127.0.0.1"
+    log_enterprise_action(
+        db=db,
+        username=current_user.username,
+        role=current_user.role,
+        ip_address=client_ip,
+        action_category="KB_MANAGE",
+        action="DOCUMENT_DELETE",
+        details=f"Deleted document '{deleted_title}' (ID: {doc_id}).",
+        target_id=str(doc_id)
+    )
+    return {"message": f"Document {deleted_title} deleted successfully"}
 
 @app.get("/api/admin/analytics")
-def get_admin_analytics(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_admin_analytics(
+    scope: Optional[str] = "live",
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     if current_user.role != "Admin":
         raise HTTPException(status_code=403, detail="Admin permission required")
-        
+
+    scope_clean = (scope or "live").lower().strip()
+    active_users = db.query(User).filter(User.is_active == True).all()
+    active_usernames_lower = [u.username.lower() for u in active_users]
+
     top_queries = db.query(SearchAnalytic.query, func.count(SearchAnalytic.id).label("count"))\
                     .group_by(SearchAnalytic.query)\
                     .order_by(func.count(SearchAnalytic.id).desc())\
@@ -2964,7 +3117,37 @@ def get_admin_analytics(current_user: User = Depends(get_current_user), db: Sess
                      .group_by(SearchAnalytic.query)\
                      .order_by(func.count(SearchAnalytic.id).desc())\
                      .limit(10).all()
-                     
+
+    # Scope-aware Document query for top contributors
+    contrib_q = db.query(Document.author, func.count(Document.id).label("count"))
+    if scope_clean == "live":
+        contrib_q = contrib_q.filter(
+            (Document.is_legacy_import == False) | (func.lower(Document.author).in_(active_usernames_lower))
+        )
+    elif scope_clean in ["historical", "legacy"]:
+        contrib_q = contrib_q.filter(
+            (Document.is_legacy_import == True) | (~func.lower(Document.author).in_(active_usernames_lower))
+        )
+    # else "all": no filter
+
+    top_contrib_rows = contrib_q.group_by(Document.author)\
+                                .order_by(func.count(Document.id).desc())\
+                                .limit(8).all()
+
+    author_results = []
+    seen = set()
+    for auth, cnt in top_contrib_rows:
+        if auth:
+            author_results.append({"author": auth, "count": cnt})
+            seen.add(auth.lower())
+
+    if scope_clean == "live":
+        # Make sure active registered team members are represented
+        for u in active_users:
+            if u.username.lower() not in seen:
+                author_results.append({"author": u.username, "count": 0})
+        author_results = author_results[:8]
+
     by_product = {
         "xpa": db.query(Document).filter(Document.product == "xpa").count(),
         "xpi": db.query(Document).filter(Document.product == "xpi").count(),
@@ -2978,8 +3161,10 @@ def get_admin_analytics(current_user: User = Depends(get_current_user), db: Sess
         by_type[ft] = count
         
     return {
+        "scope": scope_clean,
         "top_queries": [{"query": q, "count": c} for q, c in top_queries],
         "zero_result_queries": [{"query": q, "count": c} for q, c in zero_results],
+        "top_contributors": author_results,
         "by_product": by_product,
         "by_type": by_type,
         "total_searches": db.query(SearchAnalytic).count()
@@ -3008,31 +3193,6 @@ def get_stats(db: Session = Depends(get_db)):
             "file_type": d.file_type
         } for d in trending]
     }
-
-def log_enterprise_action(
-    db: Session,
-    username: str,
-    role: str,
-    ip_address: str,
-    action_category: str,
-    action: str,
-    details: str,
-    target_id: Optional[str] = None
-):
-    try:
-        log_entry = EnterpriseAuditLog(
-            username=username or "Anonymous",
-            user_role=role or "Viewer",
-            ip_address=ip_address or "127.0.0.1",
-            action_category=(action_category or "SYSTEM").upper(),
-            action=action,
-            details=details,
-            target_id=str(target_id) if target_id is not None else None
-        )
-        db.add(log_entry)
-        db.commit()
-    except Exception as e:
-        print(f"[WARN] Enterprise audit log error: {e}")
 
 @app.get("/api/review/download/{doc_id}")
 def download_pending_review_document(
@@ -3088,7 +3248,7 @@ def get_enterprise_audit_logs(
         )
         
     total = query.count()
-    logs = query.order_by(EnterpriseAuditLog.timestamp.desc()).offset(offset).limit(limit).all()
+    logs = query.order_by(EnterpriseAuditLog.id.desc()).offset(offset).limit(limit).all()
     
     return {
         "total": total,
@@ -3299,6 +3459,7 @@ def list_utilities(
 @app.post("/api/utilities/upload")
 @app.post("/api/downloads/upload")
 async def upload_utility(
+    request: Request,
     file: UploadFile = File(...),
     title: str = Form(...),
     description: Optional[str] = Form(""),
@@ -3354,11 +3515,28 @@ async def upload_utility(
     db.commit()
     db.refresh(util)
     
+    client_ip = request.client.host if request and request.client else "127.0.0.1"
+    log_enterprise_action(
+        db=db,
+        username=current_user.username,
+        role=current_user.role,
+        ip_address=client_ip,
+        action_category="DOWNLOADS",
+        action="TOOL_UPLOAD",
+        details=f"Uploaded and published support tool '{title.strip()}' ({platform}, {version}).",
+        target_id=str(util.id)
+    )
+
     return {"message": f"File '{file.filename}' published to Downloads section!", "id": util.id}
 
 @app.get("/api/utilities/download/{utility_id}")
 @app.get("/api/downloads/download/{utility_id}")
-def download_utility(utility_id: int, db: Session = Depends(get_db)):
+def download_utility(
+    utility_id: int, 
+    request: Request,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     util = db.query(SupportUtility).filter(SupportUtility.id == utility_id, SupportUtility.is_active == True).first()
     if not util or not os.path.exists(util.file_path):
         raise HTTPException(status_code=404, detail="Requested download file not found")
@@ -3366,6 +3544,20 @@ def download_utility(utility_id: int, db: Session = Depends(get_db)):
     util.download_count = (util.download_count or 0) + 1
     db.commit()
     
+    client_ip = request.client.host if request and request.client else "127.0.0.1"
+    uname = current_user.username if current_user else "User"
+    urole = current_user.role if current_user else "Viewer"
+    log_enterprise_action(
+        db=db,
+        username=uname,
+        role=urole,
+        ip_address=client_ip,
+        action_category="DOWNLOADS",
+        action="TOOL_DOWNLOAD",
+        details=f"Downloaded support tool '{util.title}' ({util.platform or 'Cross-Platform'}, {util.version or 'v1.0'}).",
+        target_id=str(util.id)
+    )
+
     return FileResponse(
         path=util.file_path,
         filename=os.path.basename(util.file_path),
@@ -3374,12 +3566,28 @@ def download_utility(utility_id: int, db: Session = Depends(get_db)):
 
 @app.delete("/api/utilities/{utility_id}")
 @app.delete("/api/downloads/{utility_id}")
-def delete_utility(utility_id: int, current_user: User = Depends(require_role(["Admin", "Reviewer"])), db: Session = Depends(get_db)):
+def delete_utility(
+    utility_id: int, 
+    request: Request,
+    current_user: User = Depends(require_role(["Admin", "Reviewer"])), 
+    db: Session = Depends(get_db)
+):
     util = db.query(SupportUtility).filter(SupportUtility.id == utility_id).first()
     if not util:
         raise HTTPException(status_code=404, detail="Download file not found")
     util.is_active = False
     db.commit()
+    client_ip = request.client.host if request and request.client else "127.0.0.1"
+    log_enterprise_action(
+        db=db,
+        username=current_user.username,
+        role=current_user.role,
+        ip_address=client_ip,
+        action_category="DOWNLOADS",
+        action="TOOL_DELETE",
+        details=f"Deactivated support tool '{util.title}' (ID: {utility_id}).",
+        target_id=str(utility_id)
+    )
     return {"message": "File removed from Downloads section"}
 
 # Serve static frontend files at the root

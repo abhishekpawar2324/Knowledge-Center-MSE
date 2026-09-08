@@ -67,6 +67,10 @@ def get_current_user_optional(request: Request, token: Optional[str] = Depends(o
     if not token or token in ["undefined", "null", ""]:
         token = request.query_params.get("token")
     if not token or token in ["undefined", "null", ""]:
+        auth_hdr = request.headers.get("authorization") or request.headers.get("Authorization")
+        if auth_hdr and auth_hdr.lower().startswith("bearer "):
+            token = auth_hdr.split(" ", 1)[1].strip()
+    if not token or token in ["undefined", "null", ""]:
         return None
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
