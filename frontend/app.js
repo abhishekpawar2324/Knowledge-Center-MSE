@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const row = document.createElement('div')
           row.className = 'sidebar-item-row'
           row.innerHTML = `
-            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-soft);">🕒 ${r.title}</span>
+            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-soft);">${r.title}</span>
             <button class="sidebar-item-remove" title="Remove from Recent">✕</button>
           `
           row.onclick = (e) => {
@@ -142,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const row = document.createElement('div')
       row.className = 'sidebar-item-row'
       row.innerHTML = `
-        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--c-amber);">⭐ ${doc.title}</span>
+        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--c-amber);">${doc.title}</span>
         <button class="sidebar-item-remove" title="Unpin SOP">✕</button>
       `
       row.onclick = (e) => {
@@ -225,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
         row.className = 'sidebar-item-row'
         row.style.borderColor = 'rgba(244,63,94,0.15)'
         row.innerHTML = `
-          <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--c-rose-soft);">❤️ ${f.title}</span>
+          <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--c-rose-soft);">${f.title}</span>
           <button class="sidebar-item-remove" title="Remove from Favourites">✕</button>
         `
         row.onclick = (e) => {
@@ -405,7 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
       row.className = 'sidebar-item-row'
       row.style.borderColor = 'rgba(0,141,199,0.15)'
       row.innerHTML = `
-        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--c-sky);">🔖 ${b.title}</span>
+        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--c-sky);">${b.title}</span>
         <button class="sidebar-item-remove" title="Remove Bookmark">✕</button>
       `
       row.onclick = (e) => {
@@ -1693,19 +1693,19 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('btn-clear-search').classList.add('hide')
 
       if (prodId === 'xpa') {
-        activeBadge.textContent = '⚡ Magic xpa Workspace'
+        activeBadge.textContent = 'Magic xpa Workspace'
         activeBadge.style.background = 'rgba(245, 158, 11, 0.15)'
         activeBadge.style.color = 'var(--c-amber)'
         activeBadge.style.border = '1px solid rgba(245, 158, 11, 0.3)'
         searchInput.placeholder = 'Search Magic xpa documentation, Studio, RIA, parameters...'
       } else if (prodId === 'xpi') {
-        activeBadge.textContent = '🔗 Magic xpi Workspace'
+        activeBadge.textContent = 'Magic xpi Workspace'
         activeBadge.style.background = 'rgba(6, 182, 212, 0.15)'
         activeBadge.style.color = 'var(--c-cyan)'
         activeBadge.style.border = '1px solid rgba(6, 182, 212, 0.3)'
         searchInput.placeholder = 'Search Magic xpi connectors, Data Mapper, JVM_ARGS, GigaSpaces...'
       } else if (prodId === 'cloud_native') {
-        activeBadge.textContent = '☁️ Cloud Native Workspace'
+        activeBadge.textContent = 'Cloud Native Workspace'
         activeBadge.style.background = 'rgba(16, 185, 129, 0.15)'
         activeBadge.style.color = 'var(--c-emerald)'
         activeBadge.style.border = '1px solid rgba(16, 185, 129, 0.3)'
@@ -5347,7 +5347,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
     // Show whoever is actually signed in. This banner used to hardcode one
     // person's name and email, so every other admin saw the wrong identity.
     const whoami = document.getElementById('admin-signed-in-as')
-    if (whoami) whoami.textContent = `👑 Signed in as: ${username || 'Unknown'} · ${role || 'Viewer'}`
+    if (whoami) whoami.textContent = `Signed in as: ${username || 'Unknown'} · ${role || 'Viewer'}`
 
     switchAdminTab('contributions')
   }
@@ -6047,7 +6047,7 @@ zeroGrid.innerHTML = ''
       if (data.available_filters) {
         if (userSel && data.available_filters.users) {
           const currentVal = userSel.value
-          userSel.innerHTML = '<option value="all">🌟 All Contributors</option>'
+          userSel.innerHTML = '<option value="all">All Contributors</option>'
           data.available_filters.users.forEach(u => {
             const opt = document.createElement('option')
             opt.value = u
@@ -6076,14 +6076,14 @@ zeroGrid.innerHTML = ''
             <div style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">Total Ingested KBs</div>
             <div style="font-size:1.8rem; font-weight:800; color:var(--text-main); margin-top:4px;">${data.summary.total_uploads}</div>
             <div style="font-size:0.72rem; color:var(--c-sky); margin-top:2px;">
-              🟢 Active: ${data.summary.active_uploads_count || 0} | 🏛️ Alumni: ${data.summary.former_uploads_count || 0}
+              Active: ${data.summary.active_uploads_count || 0} | Alumni: ${data.summary.former_uploads_count || 0}
             </div>
           </div>
           <div class="glass-panel" style="padding:18px; border-left:4px solid #10b981;">
             <div style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">Contributors</div>
             <div style="font-size:1.8rem; font-weight:800; color:var(--text-main); margin-top:4px;">${data.summary.unique_contributors}</div>
             <div style="font-size:0.72rem; color:var(--c-emerald); margin-top:2px;">
-              🟢 Active: ${data.summary.active_contributors_count || 0} | 🏛️ Alumni: ${data.summary.former_contributors_count || 0}
+              Active: ${data.summary.active_contributors_count || 0} | Alumni: ${data.summary.former_contributors_count || 0}
             </div>
           </div>
           <div class="glass-panel" style="padding:18px; border-left:4px solid #f59e0b;">

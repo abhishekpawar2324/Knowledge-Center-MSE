@@ -281,6 +281,15 @@ PROBE_JS = r"""
           t.click();
         }
         out.vendors = vendorChecks();
+
+        // lucide.createIcons() swaps every <i data-lucide="name"> for an <svg>,
+        // but silently skips a name it does not know. A misspelled icon is
+        // therefore invisible rather than broken, so anything still sitting
+        // here as an <i> is a bad icon name.
+        out.unrenderedIcons = Array.prototype.slice
+          .call(document.querySelectorAll('i[data-lucide]'))
+          .map(function (el) { return el.getAttribute('data-lucide'); });
+
         out.contrast = contrastFailures();
 
         // Open a space and check the workspace panes. The sidebar panels are
@@ -468,6 +477,9 @@ def check_browser(browser: str, base: str) -> None:
         v = r.get("vendors") or {}
         for lib in ("lucide", "marked", "chart"):
             record(v.get(lib) is True, f"{who}: {lib} loaded and working", str(v.get(lib)))
+        bad_icons = r.get("unrenderedIcons")
+        record(bad_icons == [], f"{who}: every lucide icon name resolves",
+               f"{len(bad_icons or [])} unknown -> " + ", ".join(sorted(set(bad_icons or []))[:5]))
         w = r.get("workspace") or {}
         if w.get("error"):
             record(False, f"{who}: workspace probe ran", w["error"])
