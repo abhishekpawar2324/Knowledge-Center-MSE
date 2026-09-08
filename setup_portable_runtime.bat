@@ -1,11 +1,11 @@
 @echo off
-title Magic Knowledge Center - Setup Portable Python & Git Environment
+title Magic Knowledge Center - Setup Portable Python ^& Git Environment
 echo ======================================================================
-echo     MAGIC SOFTWARE ENTERPRISES - BUILD 100% PORTABLE BUNDLE
+echo     MAGIC SOFTWARE ENTERPRISES - BUILD 100%% PORTABLE BUNDLE
 echo                 (PORTABLE PYTHON + PORTABLE GIT)
 echo ======================================================================
 echo.
-echo This script creates a 100% SELF-CONTAINED portable environment:
+echo This script creates a 100%% SELF-CONTAINED portable environment:
 echo  1. Portable Python 3.11 with all backend dependencies in 'runtime\'
 echo  2. Portable Git for Windows in 'git_tools\portable_git\'
 echo.
@@ -26,10 +26,20 @@ if not exist "temp" mkdir "temp"
 :: ======================================================================
 :: STEP A: PORTABLE PYTHON RUNTIME
 :: ======================================================================
-if exist "runtime\python.exe" (
-    echo [INFO] Portable Python runtime already exists in 'runtime' folder.
-    goto check_git
-)
+if not exist "runtime\python.exe" goto build_runtime
+"runtime\python.exe" -c "import socket, ssl, sqlite3, ctypes" >nul 2>&1
+if errorlevel 1 goto runtime_incomplete
+echo [INFO] Portable Python runtime already present and healthy.
+goto check_git
+
+:runtime_incomplete
+echo [WARN] 'runtime\python.exe' exists but cannot load its C extension modules.
+echo        That happens when the folder came from source control rather than a
+echo        real install. Repairing in place - the extract fills the gaps and
+echo        deletes nothing.
+echo.
+
+:build_runtime
 
 echo [1/4] Downloading official Python 3.11 Standalone Runtime (10MB)...
 powershell -Command "Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip' -OutFile 'temp\python-embed.zip'"
@@ -84,7 +94,7 @@ if exist "temp" rmdir /s /q "temp"
 
 echo.
 echo ======================================================================
-echo [SUCCESS] 100% PORTABLE BUNDLE IS READY!
+echo [SUCCESS] 100%% PORTABLE BUNDLE IS READY!
 echo.
 echo - Python:   runtime\python.exe (FastAPI, Uvicorn, SQLite, PDF/Docx)
 echo - Git:      git_tools\portable_git\cmd\git.exe
