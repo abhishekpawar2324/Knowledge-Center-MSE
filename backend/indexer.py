@@ -680,6 +680,39 @@ def scan_and_index(db: Session):
         db.commit()
         log_msg.append(f"Re-aligned {aligned_count} documents to their authoritative folder space.")
 
+    # 1d. One-time re-classification of documents whose folder owns no product
+    # (today: the flat isolated-fix/ and the mixed 863301644 export). These were
+    # classified by keyword, so a correction to the keyword rules leaves existing
+    # rows stale — the folder realign above cannot fix them because no folder
+    # claims them.
+    #
+    # This deliberately runs ONCE, guarded by a marker row, rather than on every
+    # startup: an Admin can move a document by hand via
+    # PUT /api/admin/document/{id}/product, and nothing records that the choice
+    # was manual, so re-running the heuristic on each boot would quietly undo it.
+    # Bump the marker suffix when the keyword rules change again.
+    KEYWORD_REALIGN_MARKER = "keyword-realign-v1"
+    already_done = db.query(IndexLog).filter(IndexLog.message == KEYWORD_REALIGN_MARKER).first()
+    if not already_done:
+        kw_count = 0
+        for doc in db.query(Document).all():
+            if product_from_path(doc.file_path):
+                continue                      # folder decides this one
+            try:
+                crumbs = json.loads(doc.breadcrumbs) if doc.breadcrumbs else []
+                if not isinstance(crumbs, list):
+                    crumbs = []
+            except Exception:
+                crumbs = []
+            target = detect_product(doc.file_path, doc.title or "", doc.content or "", crumbs)
+            if target and doc.product != target:
+                doc.product = target
+                kw_count += 1
+        db.add(IndexLog(status="Success", message=KEYWORD_REALIGN_MARKER, indexed_count=kw_count))
+        db.commit()
+        if kw_count:
+            log_msg.append(f"One-time keyword re-classification moved {kw_count} documents.")
+
     # 2. Scan for real Knowledge Base files
     all_files = []
     
