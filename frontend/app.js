@@ -5235,6 +5235,11 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
     document.getElementById('page-utilities-hub').classList.add('hide')
     document.getElementById('page-admin-suite').classList.remove('hide')
 
+    // Show whoever is actually signed in. This banner used to hardcode one
+    // person's name and email, so every other admin saw the wrong identity.
+    const whoami = document.getElementById('admin-signed-in-as')
+    if (whoami) whoami.textContent = `👑 Signed in as: ${username || 'Unknown'} · ${role || 'Viewer'}`
+
     switchAdminTab('contributions')
   }
 

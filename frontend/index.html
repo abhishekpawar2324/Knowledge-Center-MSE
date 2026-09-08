@@ -7,7 +7,7 @@
   <!-- Browser tab icon: the official logo, squared onto a transparent canvas so
        it is not distorted at 16px. Generated from magic_logo.png. -->
   <link rel="icon" href="/favicon.ico" sizes="any">
-  <link rel="icon" type="image/png" href="/favicon.png?v=34.0">
+  <link rel="icon" type="image/png" href="/favicon.png?v=35.0">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,7 +17,7 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link rel="stylesheet" href="styles.css?v=34.0">
+  <link rel="stylesheet" href="styles.css?v=35.0">
   <script>
     function openAddUserModal() {
       var modal = document.getElementById('modal-admin-add-user');
@@ -590,8 +590,8 @@
           <h1 style="font-size:1.8rem; font-weight:800; color:var(--text-main); margin:0;">Enterprise Administration & Control Center</h1>
         </div>
         <div style="display:flex; align-items:center; gap:12px; margin-top:6px;">
-          <span style="font-size:0.8rem; padding:3px 10px; border-radius:8px; background:rgba(0,141,199,0.15); color:var(--c-sky); font-weight:700; border:1px solid rgba(0,141,199,0.3);">
-            👑 Super Admin: Abhishek Pawar (abhishek_pawar@magicsoftware.com)
+          <span id="admin-signed-in-as" style="font-size:0.8rem; padding:3px 10px; border-radius:8px; background:rgba(0,141,199,0.15); color:var(--c-sky); font-weight:700; border:1px solid rgba(0,141,199,0.3);">
+            👑 Signed in as: —
           </span>
           <span style="font-size:0.75rem; color:var(--c-emerald); display:flex; align-items:center; gap:4px;">
             <i data-lucide="check-circle" style="width:13px; height:13px;"></i> Real-Time Email Alerts Active
@@ -1961,6 +1961,6 @@
       if (modal) modal.classList.add('hide');
     }
   </script>
-  <script src="app.js?v=34.0"></script>
+  <script src="app.js?v=35.0"></script>
 </body>
 </html>
