@@ -7,18 +7,25 @@
   <!-- Browser tab icon: the official logo, squared onto a transparent canvas so
        it is not distorted at 16px. Generated from magic_logo.png. -->
   <link rel="icon" href="/favicon.ico" sizes="any">
-  <link rel="icon" type="image/png" href="/favicon.png?v=43.0">
+  <link rel="icon" type="image/png" href="/favicon.png?v=44.0">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <!-- Lucide Icons, Markdown Parser & Chart.js -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link rel="stylesheet" href="styles.css?v=43.0">
-  <link rel="stylesheet" href="toasts.css?v=43.0">
+  <!-- Lucide Icons, Markdown Parser & Chart.js.
+       Versions are PINNED on purpose: these were "@latest", so an upstream
+       release could change every icon, the markdown renderer or the charts
+       with no commit in this repo and no way to reproduce a past build. -->
+  <script src="https://unpkg.com/lucide@1.43.0/dist/umd/lucide.min.js"></script>
+  <!-- marked 15.0.12: this is what the unpinned URL was already serving. Later
+       releases stopped publishing marked.min.js (v18 ships only lib/marked.umd.js),
+       so jsDelivr resolved the unpinned path back to the newest version that has
+       the file. Pinning records that instead of leaving it to CDN resolution. -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="styles.css?v=44.0">
+  <link rel="stylesheet" href="toasts.css?v=44.0">
   <script>
     function openAddUserModal() {
       var modal = document.getElementById('modal-admin-add-user');
@@ -1962,7 +1969,7 @@
       if (modal) modal.classList.add('hide');
     }
   </script>
-  <script src="toasts.js?v=43.0"></script>
-  <script src="app.js?v=43.0"></script>
+  <script src="toasts.js?v=44.0"></script>
+  <script src="app.js?v=44.0"></script>
 </body>
 </html>

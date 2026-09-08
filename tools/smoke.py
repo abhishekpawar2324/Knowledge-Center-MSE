@@ -5,14 +5,16 @@ regression net: run it before and after any change to frontend/ or backend/.
 
     runtime\\python.exe tools\\smoke.py
 
-It checks four things:
+It checks five things:
 
   1. API      - the documented endpoints answer, public and authenticated
-  2. Function - the app boots, renders the right sections per auth state,
+  2. Vendors  - every third-party script is pinned to an exact version and
+                that version actually resolves on the CDN
+  3. Function - the app boots, renders the right sections per auth state,
                 navigation resolves to exactly one page, the theme toggle
-                round-trips and persists
-  3. Console  - no uncaught JS errors while the app loads and is driven
-  4. Contrast - no body text below WCAG AA against its own background
+                round-trips and persists, and lucide/marked/Chart all work
+  4. Console  - no uncaught JS errors while the app loads and is driven
+  5. Contrast - no body text below WCAG AA against its own background
 
 Exit code is 0 when everything passes, 1 otherwise, so it can be wired into a
 pipeline later. The browser checks are skipped automatically (not failed) when
@@ -195,6 +197,34 @@ PROBE_JS = r"""
     return bad;
   }
 
+  // The three CDN libraries. Each is exercised, not merely checked for
+  // existence: a script tag that 404s still leaves the page loading, and the
+  // failure only shows up later as unrendered icons or raw markdown on screen.
+  function vendorChecks() {
+    var v = {};
+    try {
+      v.lucide = false;
+      if (window.lucide && typeof lucide.createIcons === 'function') {
+        var probe = document.createElement('div');
+        probe.innerHTML = '<i data-lucide="search"></i>';
+        probe.style.cssText = 'position:absolute;left:-9999px';
+        document.body.appendChild(probe);
+        lucide.createIcons();
+        v.lucide = !!probe.querySelector('svg');
+        probe.parentNode.removeChild(probe);
+      }
+    } catch (e) { v.lucide = 'threw: ' + e.message; }
+    try {
+      var parse = window.marked && (marked.parse || marked);
+      v.marked = typeof parse === 'function' && /<strong>ok<\/strong>/.test(parse('**ok**'));
+    } catch (e) { v.marked = 'threw: ' + e.message; }
+    try {
+      v.chart = typeof window.Chart === 'function' && !!window.Chart.version;
+      v.chartVersion = window.Chart ? window.Chart.version : null;
+    } catch (e) { v.chart = 'threw: ' + e.message; }
+    return v;
+  }
+
   function visiblePages() {
     return ['page-home-landing', 'page-product-workspace', 'page-upload-portal',
             'page-utilities-hub', 'page-admin-suite', 'page-login']
@@ -249,6 +279,7 @@ PROBE_JS = r"""
           out.themeFlipped = out.themeAfterToggle !== before;
           t.click();
         }
+        out.vendors = vendorChecks();
         out.contrast = contrastFailures();
       } catch (e) {
         out.fatal = String(e && e.message || e);
@@ -311,6 +342,43 @@ def check_api(base: str) -> None:
     record(code == 401, "authed endpoint rejects anonymous", f"HTTP {code} (want 401)")
 
 
+SCRIPT_SRC_RE = re.compile(r'<script[^>]+src="(https://[^"]+)"')
+
+
+def check_vendor_urls() -> None:
+    """Every third-party <script> must name an exact version and must resolve.
+
+    Both halves have already bitten this project. An unpinned jsDelivr path
+    silently resolves to whatever version still ships that filename, so the app
+    can change underneath you with no commit; and a pin typed from the registry
+    without checking can point at a release that never published that file,
+    which 404s with no visible error beyond a missing global.
+
+    Google Fonts is deliberately not checked - its css2 endpoint is versionless
+    by design and negotiates formats per browser.
+    """
+    print("\nVendor scripts")
+    src = open(os.path.join(FRONTEND, "index.html"), encoding="utf-8").read()
+    urls = sorted(set(SCRIPT_SRC_RE.findall(src)))
+    if not urls:
+        record(True, "no third-party scripts referenced")
+        return
+
+    codes = []
+    for url in urls:
+        pkg = (url.split("/npm/", 1)[1] if "/npm/" in url else url.split("/", 4)[3]).split("/")[0]
+        record("@" in pkg.lstrip("@"), f"pinned  {pkg}",
+               "no version - the CDN picks one, so behaviour can change without a commit")
+        code, detail = http(url, timeout=25, retries=1)
+        codes.append(code)
+        if code == 0:
+            continue                      # offline; reported once below
+        record(code == 200, f"resolves  {pkg}", f"HTTP {code} for {url}")
+
+    if codes and all(c == 0 for c in codes):
+        print("  SKIP  no network - could not confirm the CDN URLs resolve")
+
+
 def check_browser(browser: str, base: str) -> None:
     for authed, theme, want_sections in ((False, "dark", 2), (True, "light", 4)):
         who = "signed in" if authed else "guest"
@@ -332,6 +400,9 @@ def check_browser(browser: str, base: str) -> None:
             record(r.get("theme") == theme, f"{who}: stored theme applied", str(r.get("theme")))
             record(r.get("themeFlipped") is True, "theme toggle flips")
             record(r.get("themeStored") == r.get("themeAfterToggle"), "theme choice persists")
+        v = r.get("vendors") or {}
+        for lib in ("lucide", "marked", "chart"):
+            record(v.get(lib) is True, f"{who}: {lib} loaded and working", str(v.get(lib)))
         errs = r.get("consoleErrors") or []
         record(not errs, f"{who}: no console errors", "; ".join(errs[:3]))
         bad = r.get("contrast") or []
@@ -357,6 +428,7 @@ def main() -> int:
     proc = start_server(base)
     try:
         check_api(base)
+        check_vendor_urls()
         if args.no_browser:
             print("\nBrowser\n  SKIP  --no-browser given")
         else:
