@@ -982,8 +982,9 @@ select option:checked, select option:hover {
 
 /* Header Title & Branding */
 .copilot-header-gradient {
-  background: linear-gradient(135deg, #ffffff 0%, #38bdf8 60%, #008DC7 100%) !important;
+  background-image: linear-gradient(135deg, #ffffff 0%, #38bdf8 60%, #008DC7 100%) !important;
   -webkit-background-clip: text !important;
+  background-clip: text !important;          /* unprefixed: Firefox and spec-compliant engines */
   -webkit-text-fill-color: transparent !important;
   font-weight: 800 !important;
   letter-spacing: -0.02em !important;
@@ -1627,7 +1628,15 @@ select option:checked, select option:hover {
 [data-theme="light"] .user-menu-item-danger:hover { color: #991b1b; }
 /* Gradient-clipped title: its white stop disappears against a white shell. */
 [data-theme="light"] .copilot-header-gradient {
-  background: linear-gradient(135deg, #0f172a 0%, #0369a1 55%, #008DC7 100%) !important;
+  /* Must be background-IMAGE, not the background shorthand: the shorthand resets
+     background-clip back to border-box, which stopped the gradient being clipped
+     to the glyphs and painted it across the whole box instead — a dark bar with
+     invisible text. The clip is re-declared here so this cannot regress if the
+     base rule is edited. */
+  background-image: linear-gradient(135deg, #0f172a 0%, #0369a1 55%, #008DC7 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
 }
 /* The modal scrim was tuned for a dark page; lighten it so it reads as a scrim. */
 [data-theme="light"] .modal-overlay { background: rgba(15, 23, 42, 0.45); }
