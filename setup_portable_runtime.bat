@@ -90,9 +90,9 @@ echo - Python:   runtime\python.exe (FastAPI, Uvicorn, SQLite, PDF/Docx)
 echo - Git:      git_tools\portable_git\cmd\git.exe
 echo.
 echo You can now copy this entire folder to your Windows VM and double-click:
-echo  -> run.bat               (To run interactively)
-echo  -> install_service.bat   (To run 24/7 as Windows Service)
-echo  -> git_tools\1_commit_and_push.bat (To sync via Git with ZERO install)
+echo  -^> run.bat               (To run interactively)
+echo  -^> install_service.bat   (To run 24/7 as Windows Service)
+echo  -^> git_tools\1_commit_and_push.bat (To sync via Git with ZERO install)
 echo ======================================================================
 echo.
 pause

@@ -42,10 +42,10 @@ if "%PY_CMD%"=="" (
     )
 )
 
-:: NOTE: Do NOT add a "npm run build" step here. The live application is the
-:: hand-written frontend in frontend\ (index.html, app.js, styles.css). Vite is
-:: configured with emptyOutDir into that same folder, so building would delete
-:: the running app and replace it with the unbuilt React source in src\.
+:: NOTE: There is no frontend build step, and none should be added. The live
+:: application is the hand-written UI in frontend\ (index.html, app.js,
+:: styles.css), served directly by FastAPI. A build that outputs into that
+:: folder would delete the running app.
 
 echo [1/2] Using Python Runtime: %PY_CMD%
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8000 ^| findstr LISTENING') do (

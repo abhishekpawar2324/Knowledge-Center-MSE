@@ -46,52 +46,46 @@ Knowledge-Center-MSE/
 │   ├── database.py           # SQLAlchemy DB Models (Products, Notifications, Analytics)
 │   ├── indexer.py            # Multi-Format Parser & Product-Aware Auto-Indexer
 │   └── main.py               # FastAPI App & Endpoints
-├── src/                      # React 18 + Vite Frontend Source Code
-│   ├── components/
-│   │   ├── ProductTabs.jsx      # Product Navigation Switcher (xpa, xpi, Cloud Native)
-│   │   ├── ProductHub.jsx       # Space Overview, Pinned SOPs & Trending Guides
-│   │   ├── SearchPortal.jsx     # Omnibox Search with Product Scopes & Filters
-│   │   ├── AICopilotModal.jsx   # ROVO-Style AI Knowledge Assistant
-│   │   ├── KBAuthorModal.jsx    # In-App Article Authoring Studio
-│   │   ├── NotificationFeed.jsx # Real-Time Notification Center
-│   │   ├── UploadPortal.jsx     # Multi-File Drag-and-Drop Ingestion
-│   │   └── AdminPanel.jsx       # User Management, Analytics & Diagnostics
-│   ├── App.jsx               # Main React Application Container
-│   ├── main.jsx              # Entry Point
-│   └── index.css             # Glassmorphism Design System (MSE Cyan/Blue Palette)
+├── frontend/                 # The application UI (served by FastAPI at /)
+│   ├── index.html            # All screens and modals
+│   ├── app.js                # Application logic
+│   ├── styles.css            # Design tokens + light/dark themes
+│   └── magic_logo.png        # Official Magic Software logo
 ├── uploads/                  # Product-Segregated File Storage
-│   ├── xpa/                  # Magic xpa documents & attachments
-│   ├── xpi/                  # Magic xpi documents & connector manuals
-│   ├── cloud_native/         # Cloud Native articles & guides
-│   └── general/              # General enterprise SOPs
+│   ├── cso/                  # Cloud Service Ops runbooks -> Cloud Native space
+│   ├── xpa-windows/          # Magic xpa documents (any *xpa* folder maps to xpa)
+│   ├── xpi-windows/          # Magic xpi documents (any *xpi* folder maps to xpi)
+│   └── isolated-fix-xpa/     # Isolated fixes, split per product
 ├── 863301644/                # Seed Confluence Knowledge Base repository
-├── package.json              # Frontend Node Dependencies
-├── vite.config.js            # Vite Build & Proxy Configuration
 ├── requirements.txt          # Python Backend Dependencies
 ├── run.bat                   # 1-Click Launch Script
 └── README.md                 # Project Documentation
 ```
+
+> **Note on the UI.** The interface is plain HTML/CSS/JS in `frontend/`, served
+> directly by FastAPI. There is no build step and no Node toolchain — do not add
+> one that outputs into `frontend/`, as that folder *is* the running application.
+> An earlier React prototype under `src/` was removed once it had fallen well
+> behind the live UI; it remains in git history if ever needed.
 
 ---
 
 ## 🛠️ Quick Start
 
 ### 1. Prerequisites
-- Python 3.9+
-- Node.js 18+ & npm
+- Python 3.9+ — or nothing at all: `run.bat` sets up a self-contained portable
+  runtime automatically if no interpreter is found.
 
 ### 2. Launching the Application
-Simply double-click `run.bat` or run:
+Double-click `run.bat`, or run the server directly:
 
 ```bash
-# Terminal 1 - Backend
 python -m uvicorn backend.main:app --reload --port 8000
-
-# Terminal 2 - Frontend
-npm run dev:frontend
 ```
 
+The UI is served by the same process, so there is nothing else to start.
+
 Open your browser at:
-- **Frontend Portal**: `http://localhost:5173`
+- **Knowledge Center**: `http://localhost:8000`
 - **Backend API Docs**: `http://localhost:8000/docs`
 - **Default Administrator**: `superadmin` / `admin@123`
