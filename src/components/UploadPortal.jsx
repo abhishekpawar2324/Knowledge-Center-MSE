@@ -16,6 +16,7 @@ import {
 
 export default function UploadPortal({ token, onOpenKBAuthor }) {
   const [selectedProduct, setSelectedProduct] = useState('xpi')
+  const [uploadMode, setUploadMode] = useState('review') // 'publish' vs 'review'
   const [selectedFiles, setSelectedFiles] = useState([])
   const [uploadLoading, setUploadLoading] = useState(false)
   const [uploadResult, setUploadResult] = useState(null)
@@ -61,6 +62,7 @@ export default function UploadPortal({ token, onOpenKBAuthor }) {
     
     const formData = new FormData()
     formData.append('product', selectedProduct)
+    formData.append('upload_mode', uploadMode)
     selectedFiles.forEach(file => {
       formData.append('files', file)
     })
@@ -158,6 +160,58 @@ export default function UploadPortal({ token, onOpenKBAuthor }) {
               </button>
             )
           })}
+        </div>
+      </div>
+
+      {/* Publication Workflow Mode Selector */}
+      <div className="glass-panel" style={{ padding: '16px 20px', borderRadius: '12px' }}>
+        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#e2e8f0', marginBottom: '10px' }}>
+          Select Publication & Review Workflow:
+        </label>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <button
+            type="button"
+            onClick={() => setUploadMode('review')}
+            style={{
+              padding: '12px 16px',
+              borderRadius: '10px',
+              background: uploadMode === 'review' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+              border: uploadMode === 'review' ? '1px solid #fbbf24' : '1px solid rgba(255, 255, 255, 0.08)',
+              color: uploadMode === 'review' ? '#fbbf24' : '#94a3b8',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              fontWeight: 600,
+              fontSize: '0.88rem'
+            }}
+          >
+            <Clock size={18} />
+            <span>Send for Review (Reviewer Queue)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setUploadMode('publish')}
+            style={{
+              padding: '12px 16px',
+              borderRadius: '10px',
+              background: uploadMode === 'publish' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+              border: uploadMode === 'publish' ? '1px solid #34d399' : '1px solid rgba(255, 255, 255, 0.08)',
+              color: uploadMode === 'publish' ? '#34d399' : '#94a3b8',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              fontWeight: 600,
+              fontSize: '0.88rem'
+            }}
+          >
+            <Zap size={18} />
+            <span>Directly Publish (Instant Ingestion)</span>
+          </button>
         </div>
       </div>
 
@@ -272,7 +326,7 @@ export default function UploadPortal({ token, onOpenKBAuthor }) {
               }}
             >
               <Upload size={18} />
-              <span>{uploadLoading ? 'Uploading & Indexing (<50ms)...' : `Upload & Index ${selectedFiles.length} File(s)`}</span>
+              <span>{uploadLoading ? 'Uploading & Indexing (<50ms)...' : (uploadMode === 'review' ? `Proceed & Send for Review (${selectedFiles.length} File(s))` : `Proceed & Directly Publish (${selectedFiles.length} File(s))`)}</span>
             </button>
           </div>
         )}

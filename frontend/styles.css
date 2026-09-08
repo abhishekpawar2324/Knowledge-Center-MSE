@@ -192,6 +192,57 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.left-sidebar-pane.expanded {
+  width: 440px;
+}
+
+.left-sidebar-pane.expanded .doc-title-text {
+  white-space: normal !important;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.badge-kb-doc {
+  background: rgba(14, 165, 233, 0.18) !important;
+  color: #38bdf8 !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  font-weight: 700;
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge-help-doc {
+  background: rgba(168, 85, 247, 0.18) !important;
+  color: #c084fc !important;
+  border: 1px solid rgba(192, 132, 252, 0.3) !important;
+  font-weight: 700;
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.syntax-pill {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 0.75rem;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(192, 132, 252, 0.25);
+  color: #e2e8f0;
+  padding: 3px 8px;
+  border-radius: 4px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .center-content-pane {
   flex: 1;
@@ -824,3 +875,145 @@ select option:checked, select option:hover {
   margin-bottom: 0.5rem !important;
   color: #cbd5e1 !important;
 }
+
+/* AI Copilot Document-First Top Source Cards */
+.ai-source-card:hover {
+  border-color: rgba(56, 189, 248, 0.6) !important;
+  background: rgba(15, 23, 42, 0.95) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 141, 199, 0.25) !important;
+}
+
+.doc-badge-xpa {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #34d399 !important;
+  border: 1px solid rgba(16, 185, 129, 0.3) !important;
+}
+
+.doc-badge-xpi {
+  background: rgba(0, 141, 199, 0.2) !important;
+  color: #38bdf8 !important;
+  border: 1px solid rgba(0, 141, 199, 0.3) !important;
+}
+
+.doc-badge-cloud_native {
+  background: rgba(168, 85, 247, 0.2) !important;
+  color: #c084fc !important;
+  border: 1px solid rgba(168, 85, 247, 0.3) !important;
+}
+
+/* ==========================================================================
+   ENTERPRISE AI COPILOT & CASE ANALYZER GLASSMORPHIC STYLING (MOCKUP ACCURACY)
+   ========================================================================== */
+
+#modal-copilot {
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+#modal-copilot > div {
+  background: linear-gradient(145deg, rgba(6, 4, 13, 0.95), rgba(15, 23, 42, 0.95)) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(0, 141, 199, 0.3) !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+}
+
+/* Header Title & Branding */
+.copilot-header-gradient {
+  background: linear-gradient(135deg, #ffffff 0%, #38bdf8 60%, #008DC7 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em !important;
+}
+
+/* Copilot Tab Navigation Buttons */
+.copilot-tab-btn {
+  padding: 6px 14px !important;
+  border-radius: 8px !important;
+  border: 1px solid transparent !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: #94a3b8 !important;
+  font-size: 0.82rem !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.copilot-tab-btn:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(56, 189, 248, 0.3) !important;
+}
+
+.copilot-tab-btn.active {
+  background: linear-gradient(135deg, #008DC7 0%, #2DBCEE 100%) !important;
+  color: #ffffff !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 4px 15px rgba(0, 141, 199, 0.4), 0 0 10px rgba(45, 188, 238, 0.3) !important;
+}
+
+/* Sidebar Session List Items */
+.sidebar-item-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 8px 10px !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  cursor: pointer !important;
+  transition: all 0.18s ease !important;
+}
+
+.sidebar-item-row:hover {
+  background: rgba(0, 141, 199, 0.18) !important;
+  border-color: rgba(56, 189, 248, 0.35) !important;
+  transform: translateX(3px) !important;
+}
+
+/* Quick Prompt Suggestion Pills */
+.quick-pill {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #cbd5e1 !important;
+  font-size: 0.75rem !important;
+  padding: 5px 12px !important;
+  border-radius: 20px !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  transition: all 0.2s ease !important;
+}
+
+.quick-pill:hover {
+  background: rgba(0, 141, 199, 0.2) !important;
+  border-color: #38bdf8 !important;
+  color: #38bdf8 !important;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.25) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Glowing Indicator & Action Buttons */
+.pulse-emerald-dot {
+  box-shadow: 0 0 10px #10b981, 0 0 20px #10b981 !important;
+  animation: pulse-emerald 2s infinite !important;
+}
+
+@keyframes pulse-emerald {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+
+
+

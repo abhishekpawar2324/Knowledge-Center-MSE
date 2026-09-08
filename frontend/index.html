@@ -8,10 +8,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <!-- Lucide Icons & Markdown Parser -->
+  <!-- Lucide Icons, Markdown Parser & Chart.js -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <link rel="stylesheet" href="styles.css?v=10.2">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="styles.css?v=21.0">
   <script>
     function openAddUserModal() {
       var modal = document.getElementById('modal-admin-add-user');
@@ -136,11 +137,25 @@
               <i data-lucide="bell" style="width:15px; height:15px; color:#38bdf8;"></i>
               <span style="font-size:0.9rem; font-weight:700; color:#fff;">Knowledge Center Alerts</span>
             </div>
-            <button id="btn-mark-all-read" style="background:none; border:none; color:#38bdf8; font-size:0.75rem; font-weight:600; cursor:pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">Mark all read</button>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <button id="btn-mark-all-read" style="background:none; border:none; color:#38bdf8; font-size:0.75rem; font-weight:600; cursor:pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">Mark all read</button>
+              <button id="btn-close-notification-dropdown" title="Close Alerts" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#94a3b8; border-radius:6px; padding:2px 6px; cursor:pointer; font-size:0.8rem; font-weight:700; transition:all 0.2s;" onclick="document.getElementById('notification-dropdown').classList.add('hide')">✕</button>
+            </div>
           </div>
           <div id="notification-list" style="display:flex; flex-direction:column; gap:8px;"></div>
         </div>
       </div>
+
+      <!-- Downloads Section Tab (Everyone) -->
+      <button id="btn-tab-utilities" class="btn btn-secondary" style="color:#38bdf8; border-color:rgba(56,189,248,0.3); font-weight:600;">
+        <i data-lucide="download" style="width:15px; height:15px;"></i> Downloads
+      </button>
+
+      <!-- Review Queue (Reviewers & Admins) -->
+      <button id="btn-open-review-queue" class="btn hide" style="background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.3); color:#fbbf24; font-weight:700; position:relative;">
+        <i data-lucide="shield-check" style="width:15px; height:15px;"></i> Review Queue
+        <span id="review-queue-badge" class="hide" style="position:absolute; top:-4px; right:-4px; background:#ef4444; color:#fff; border-radius:10px; padding:1px 6px; font-size:0.68rem; font-weight:800;">0</span>
+      </button>
 
       <!-- Write KB (Logged-in Contributors/Admins) -->
       <button id="btn-write-kb" class="btn hide" style="background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); color:#34d399; font-weight:600;">
@@ -158,6 +173,7 @@
       </button>
 
       <!-- Auth profile & Sign in -->
+      
       <div id="user-profile-box" class="hide" style="display:flex; align-items:center; gap:8px;">
         <div style="display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08);">
           <i data-lucide="user" style="width:14px; height:14px; color:#008DC7;"></i>
@@ -270,21 +286,10 @@
   <!-- ==================== VIEW 2: DEDICATED PRODUCT SEARCH & EXPLORATION WORKSPACE ==================== -->
   <div id="page-product-workspace" class="workspace-layout hide">
     
-    <!-- Left Explorer Sidebar (Recently Viewed, Pinned, Favourites, Bookmarks) -->
+    <!-- Left Explorer Sidebar (Pinned, Favourites, Bookmarks, Space Documents) -->
     <aside class="left-sidebar-pane">
       
-      <!-- 1. Recently Viewed -->
-      <div class="glass-panel" style="padding:16px;">
-        <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px; color:#22d3ee; font-size:0.85rem; font-weight:700;">
-          <i data-lucide="clock" style="width:15px; height:15px;"></i>
-          <span>Recently Viewed</span>
-        </div>
-        <div id="left-recent-list" style="display:flex; flex-direction:column; gap:6px;">
-          <span style="font-size:0.75rem; color:#64748b;">Open any article to track it here.</span>
-        </div>
-      </div>
-
-      <!-- 2. Pinned SOPs -->
+      <!-- 1. Pinned SOPs -->
       <div class="glass-panel" style="padding:16px;">
         <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px; color:#f59e0b; font-size:0.85rem; font-weight:700;">
           <i data-lucide="star" style="width:15px; height:15px; fill:#f59e0b; color:#f59e0b;"></i>
@@ -312,6 +317,25 @@
           <span id="left-bookmarks-count" style="font-size:0.72rem; padding:1px 6px; border-radius:10px; background:rgba(0,141,199,0.15); color:#38bdf8; font-weight:700;">0</span>
         </div>
         <div id="left-favorites-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+      </div>
+
+      <!-- 5. Space Documents Tree (Confluence Style) -->
+      <div class="glass-panel" style="padding:16px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+          <div style="display:flex; align-items:center; gap:6px; color:#38bdf8; font-size:0.85rem; font-weight:700;">
+            <i data-lucide="folder-tree" style="width:15px; height:15px;"></i>
+            <span>Space Documents</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span id="left-space-docs-count" style="font-size:0.72rem; padding:1px 6px; border-radius:10px; background:rgba(0,141,199,0.15); color:#38bdf8; font-weight:700;">0</span>
+            <button id="btn-toggle-sidebar-expand" type="button" class="btn-icon" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#94a3b8; cursor:pointer; padding:3px 6px; border-radius:6px; display:flex; align-items:center; transition:all 0.2s;" title="Expand/Collapse Sidebar to view full document names">
+              <i data-lucide="maximize-2" id="sidebar-expand-icon" style="width:13px; height:13px;"></i>
+            </button>
+          </div>
+        </div>
+        <div id="left-space-tree-container" style="display:flex; flex-direction:column; gap:6px; max-height:420px; overflow-y:auto;">
+          <span style="font-size:0.75rem; color:#64748b;">Loading space tree...</span>
+        </div>
       </div>
     </aside>
 
@@ -470,6 +494,21 @@
       </div>
 
 
+      <!-- Publication Mode Selector -->
+      <div>
+        <label style="display:block; font-size:0.85rem; font-weight:700; color:#cbd5e1; margin-bottom:8px;">Publication & Workflow Mode</label>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <label id="label-mode-review" style="padding:12px; border-radius:10px; background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.3); color:#fbbf24; cursor:pointer; display:flex; align-items:center; gap:8px; font-size:0.85rem; font-weight:600;">
+            <input type="radio" name="upload_mode" value="review" checked style="accent-color:#f59e0b;">
+            <span>🛡️ Send for Review (Reviewer Queue)</span>
+          </label>
+          <label id="label-mode-publish" style="padding:12px; border-radius:10px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); color:#34d399; cursor:pointer; display:flex; align-items:center; gap:8px; font-size:0.85rem; font-weight:600;">
+            <input type="radio" name="upload_mode" value="publish" style="accent-color:#10b981;">
+            <span>🚀 Directly Publish (Instant Ingestion)</span>
+          </label>
+        </div>
+      </div>
+
       <!-- Drag and drop upload zone -->
       <div id="upload-drop-zone" class="upload-drop-zone" style="padding:40px 20px; text-align:center; border:2px dashed rgba(0,141,199,0.4); border-radius:14px; cursor:pointer; background:rgba(0,141,199,0.04); transition:all 0.25s ease;">
         <input type="file" id="file-upload-input" multiple accept=".html,.htm,.pdf,.docx,.txt,.md,.zip" style="display:none;">
@@ -480,7 +519,65 @@
         <p style="font-size:0.85rem; color:#94a3b8; pointer-events:none;">Supported formats: Help Archives (.zip), RoboHelp Topics (.htm, .html), Word (.docx), PDF manuals (.pdf), Markdown (.md), TXT</p>
       </div>
 
+      <!-- Staged File List & Proceed Button -->
+      <div id="staged-file-container" class="hide" style="padding:16px 20px; border-radius:12px; background:rgba(15,23,42,0.85); border:1px solid rgba(56,189,248,0.3); display:flex; flex-direction:column; gap:12px;">
+        <div style="font-size:0.88rem; font-weight:700; color:#e0f2fe; display:flex; justify-content:space-between; align-items:center;">
+          <span>📋 Selected File(s) Ready for Upload:</span>
+          <button type="button" id="btn-clear-staged-files" class="btn btn-secondary" style="font-size:0.75rem; padding:4px 8px; color:#f43f5e; border-color:rgba(244,63,94,0.3);">Clear Selection</button>
+        </div>
+        <div id="staged-file-list" style="display:flex; flex-direction:column; gap:6px; font-size:0.85rem; color:#cbd5e1;"></div>
+        
+        <button type="button" id="btn-proceed-upload" class="btn btn-primary" style="margin-top:6px; padding:12px 24px; font-size:0.95rem; font-weight:700; width:100%; justify-content:center; background:linear-gradient(135deg, #008DC7, #2DBCEE);">
+          <i data-lucide="arrow-right" style="width:18px; height:18px;"></i>
+          <span id="btn-proceed-upload-text">Proceed & Send for Review</span>
+        </button>
+      </div>
+
       <div id="upload-status-feedback"></div>
+    </div>
+  </div>
+
+  <!-- ==================== VIEW 3.5: INTERNAL DOWNLOADS SECTION ==================== -->
+  <div id="page-utilities-hub" class="hide animate-fade-in" style="max-width:1200px; margin:40px auto; padding:0 24px; display:flex; flex-direction:column; gap:24px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+      <div>
+        <h2 style="font-size:2rem; font-weight:800; color:#fff; margin:0 0 4px 0; display:flex; align-items:center; gap:10px;">
+          <i data-lucide="download" style="width:28px; height:28px; color:#38bdf8;"></i> Internal Downloads
+        </h2>
+        <p style="font-size:0.9rem; color:#94a3b8; margin:0;">Download internal software tools, diagnostic utilities, patches, and packages.</p>
+      </div>
+
+      <div style="display:flex; gap:10px;">
+        <button id="btn-open-upload-utility" class="btn hide" style="background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.4); color:#38bdf8; font-weight:600;">
+          <i data-lucide="plus" style="width:15px; height:15px;"></i> Upload File
+        </button>
+        <button id="btn-utilities-back-home" class="btn btn-secondary">
+          <i data-lucide="arrow-left" style="width:15px; height:15px;"></i> Back to Home
+        </button>
+      </div>
+    </div>
+
+    <!-- Clean Filter Bar -->
+    <div class="glass-panel" style="padding:18px 24px; display:flex; flex-wrap:wrap; align-items:center; gap:16px; background:rgba(15,23,42,0.85); border:1px solid rgba(56,189,248,0.25);">
+      <div style="flex:1; min-width:240px; position:relative;">
+        <i data-lucide="search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:#64748b;"></i>
+        <input type="text" id="util-search-input" placeholder="Search download files..." style="width:100%; padding:9px 12px 9px 38px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff; font-size:0.88rem; outline:none;">
+      </div>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <select id="util-filter-product" style="padding:9px 12px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff; font-size:0.85rem;">
+          <option value="all">All Products & Tools</option>
+          <option value="xpi">Magic xpi</option>
+          <option value="xpa">Magic xpa</option>
+          <option value="cloud_native">Cloud Native</option>
+          <option value="general">General Support</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Downloads Grid -->
+    <div id="utilities-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:20px;">
+      <!-- Populated dynamically via JS -->
     </div>
   </div>
 
@@ -526,6 +623,9 @@
       </button>
       <button id="admin-tab-contributions" class="btn btn-secondary" style="font-size:0.85rem; color:#38bdf8; border-color:rgba(56,189,248,0.3);">
         <i data-lucide="award" style="width:15px; height:15px;"></i> 5. User Contributions
+      </button>
+      <button id="admin-tab-loginhistory" class="btn btn-secondary" style="font-size:0.85rem; color:#34d399; border-color:rgba(52,211,153,0.3);">
+        <i data-lucide="shield-check" style="width:15px; height:15px;"></i> 6. User Audit & Login History
       </button>
     </div>
 
@@ -639,6 +739,37 @@
     <div id="admin-panel-analytics" class="hide animate-fade-in" style="display:flex; flex-direction:column; gap:20px;">
       <div id="admin-analytics-metrics-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px;"></div>
 
+      <!-- Graphical Telemetry & KB Analytics Section -->
+      <div style="display:grid; grid-template-columns: 2fr 1fr; gap:20px; margin-top:8px;">
+        <div class="glass-panel" style="padding:20px; border:1px solid rgba(0,141,199,0.3);">
+          <h3 style="font-size:1.05rem; font-weight:700; color:#fff; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+            <i data-lucide="line-chart" style="width:18px; height:18px; color:#008DC7;"></i> Search Volume & Ingestion Telemetry
+          </h3>
+          <div style="position:relative; height:240px; width:100%;">
+            <canvas id="admin-chart-telemetry"></canvas>
+          </div>
+        </div>
+
+        <div class="glass-panel" style="padding:20px; border:1px solid rgba(0,141,199,0.3);">
+          <h3 style="font-size:1.05rem; font-weight:700; color:#fff; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+            <i data-lucide="pie-chart" style="width:18px; height:18px; color:#2DBCEE;"></i> Product Space Distribution
+          </h3>
+          <div style="position:relative; height:240px; width:100%;">
+            <canvas id="admin-chart-product-dist"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-panel" style="padding:20px; border:1px solid rgba(139,92,246,0.3); margin-top:8px;">
+        <h3 style="font-size:1.05rem; font-weight:700; color:#fff; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+          <i data-lucide="award" style="width:18px; height:18px; color:#8b5cf6;"></i> Top Technical KB Contributor Leaderboard
+        </h3>
+        <div style="position:relative; height:200px; width:100%;">
+          <canvas id="admin-chart-author-leaderboard"></canvas>
+        </div>
+      </div>
+
+
       <!-- Zero-Result Documentation Gaps -->
       <div class="glass-panel" style="padding:24px; border:1px solid rgba(244,63,94,0.3);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -673,6 +804,15 @@
         </div>
 
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:12px;">
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:#38bdf8; margin-bottom:4px;">⏱️ Time Period Filter</label>
+            <select id="contrib-filter-period" style="width:100%; padding:8px 10px; border-radius:8px; background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.35); color:#38bdf8; font-weight:700; font-size:0.82rem;">
+              <option value="week">📅 This Week (Current Week Uploads)</option>
+              <option value="month">🗓️ This Month (Current Month Uploads)</option>
+              <option value="year">📆 This Year (2026 Platform Period)</option>
+              <option value="all" selected>🌟 All-Time Uploads</option>
+            </select>
+          </div>
           <div>
             <label style="display:block; font-size:0.75rem; font-weight:700; color:#cbd5e1; margin-bottom:4px;">👤 User</label>
             <select id="contrib-filter-user" style="width:100%; padding:8px 10px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; font-size:0.82rem;">
@@ -736,6 +876,33 @@
       <!-- KPI Stat Cards -->
       <div id="contrib-summary-cards" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px;"></div>
 
+      <!-- Graphical Visualization Dashboard -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:20px;">
+        <div class="glass-panel" style="padding:20px; border:1px solid rgba(0,141,199,0.3); display:flex; flex-direction:column;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h3 style="font-size:1.05rem; font-weight:700; color:#fff; margin:0; display:flex; align-items:center; gap:8px;">
+              <i data-lucide="bar-chart-2" style="width:18px; height:18px; color:#38bdf8;"></i> User KB Upload Breakdown
+            </h3>
+            <span id="contrib-chart-period-badge" style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:rgba(56,189,248,0.15); color:#38bdf8; font-weight:700;">All Time</span>
+          </div>
+          <div style="position:relative; height:240px; width:100%;">
+            <canvas id="admin-chart-contrib-users"></canvas>
+          </div>
+        </div>
+
+        <div class="glass-panel" style="padding:20px; border:1px solid rgba(16,185,129,0.3); display:flex; flex-direction:column;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h3 style="font-size:1.05rem; font-weight:700; color:#fff; margin:0; display:flex; align-items:center; gap:8px;">
+              <i data-lucide="line-chart" style="width:18px; height:18px; color:#34d399;"></i> Upload Trend & Activity Trajectory
+            </h3>
+            <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:rgba(16,185,129,0.15); color:#34d399; font-weight:700;">Timeline</span>
+          </div>
+          <div style="position:relative; height:240px; width:100%;">
+            <canvas id="admin-chart-contrib-timeline"></canvas>
+          </div>
+        </div>
+      </div>
+
       <!-- Contributor Leaderboard Table -->
       <div class="glass-panel" style="padding:24px;">
         <h3 style="font-size:1.15rem; font-weight:700; color:#fff; margin-bottom:14px; display:flex; align-items:center; gap:8px;">
@@ -751,37 +918,59 @@
                 <th style="padding:12px 14px;">Role</th>
                 <th style="padding:12px 14px;">Uploads</th>
                 <th style="padding:12px 14px;">Product Distribution</th>
-                <th style="padding:12px 14px;">Views</th>
-                <th style="padding:12px 14px;">Last Upload</th>
-                <th style="padding:12px 14px; text-align:right;">Account Action</th>
               </tr>
             </thead>
-            <tbody id="contrib-leaderboard-body"></tbody>
+            <tbody id="admin-contrib-table-body">
+              <!-- Dynamically populated -->
+            </tbody>
           </table>
         </div>
       </div>
+    </div>
 
-      <!-- Ingested Articles Drilldown -->
-      <div class="glass-panel" style="padding:24px;">
-        <h3 style="font-size:1.15rem; font-weight:700; color:#fff; margin-bottom:14px;">
-          Ingested Articles Audit Log
-        </h3>
-        <div style="overflow-x:auto; max-height:400px; overflow-y:auto;">
-          <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.84rem;">
-            <thead>
-              <tr style="border-bottom:1px solid rgba(255,255,255,0.1); color:#94a3b8; position:sticky; top:0; background:#0f172a;">
-                <th style="padding:10px 12px;">ID</th>
-                <th style="padding:10px 12px;">Title</th>
-                <th style="padding:10px 12px;">Author</th>
-                <th style="padding:10px 12px;">Space</th>
-                <th style="padding:10px 12px;">Format</th>
-                <th style="padding:10px 12px;">Views</th>
-                <th style="padding:10px 12px;">Date</th>
-              </tr>
-            </thead>
-            <tbody id="contrib-articles-body"></tbody>
-          </table>
+    <!-- TAB 6: SECURITY & ENTERPRISE SYSTEM AUDIT LOGS -->
+    <div id="admin-panel-loginhistory" class="hide animate-fade-in" style="display:flex; flex-direction:column; gap:18px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <div>
+          <h3 style="font-size:1.2rem; font-weight:700; color:#fff;">Enterprise System Audit & Activity Trail</h3>
+          <p style="font-size:0.82rem; color:#94a3b8;">ISO/SOC2 Audit Trail tracking every user login, KB publication, review action, and tool download.</p>
         </div>
+      </div>
+
+      <!-- Filter Controls for Audit Logs -->
+      <div class="glass-panel" style="padding:16px 20px; display:flex; flex-wrap:wrap; align-items:center; gap:14px; background:rgba(15,23,42,0.85); border:1px solid rgba(52,211,153,0.25);">
+        <div style="flex:1; min-width:240px; position:relative;">
+          <input type="text" id="admin-login-search-user" placeholder="Search by username, action, IP address, or details..." style="width:100%; padding:9px 12px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff; font-size:0.85rem;">
+        </div>
+
+        <div style="width:240px;">
+          <select id="admin-login-filter-status" style="width:100%; padding:9px 12px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff; font-size:0.85rem;">
+            <option value="all">🌟 All Action Categories</option>
+            <option value="REVIEW">📝 REVIEW (Approvals, Rejections)</option>
+            <option value="AUTH">🔐 AUTH (User Logins & Security)</option>
+            <option value="KB_MANAGE">📤 KB_MANAGE (Uploads & Direct Publishing)</option>
+            <option value="DOWNLOADS">📥 DOWNLOADS (Utilities & Raw Files)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Audit Logs Table -->
+      <div class="glass-panel" style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.86rem;">
+          <thead>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.1); color:#94a3b8; font-size:0.8rem; text-transform:uppercase;">
+              <th style="padding:14px 16px;">Timestamp (UTC)</th>
+              <th style="padding:14px 16px;">User / Role</th>
+              <th style="padding:14px 16px;">Category</th>
+              <th style="padding:14px 16px;">Event Action</th>
+              <th style="padding:14px 16px;">Audit Details</th>
+              <th style="padding:14px 16px;">Client IP</th>
+            </tr>
+          </thead>
+          <tbody id="admin-login-history-table-body">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -849,20 +1038,21 @@
 
   <!-- 1. Magic AI Copilot & Analyzer Modal -->
   <div id="modal-copilot" class="modal-overlay hide">
-    <div class="modal-container" style="max-width: 1060px; height: 88vh; max-height: 800px; display: flex; flex-direction: column;">
+    <div class="modal-container" style="width: 95vw; max-width: 1580px; height: 92vh; max-height: 940px; display: flex; flex-direction: column;">
       
       <!-- Top Modal Header -->
-      <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:linear-gradient(135deg, rgba(0,86,140,0.5), rgba(0,141,199,0.25)); border-bottom:1px solid rgba(0,141,199,0.3); flex-shrink:0;">
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:linear-gradient(135deg, rgba(6,4,13,0.9), rgba(15,23,42,0.95)); border-bottom:1px solid rgba(56,189,248,0.25); flex-shrink:0;">
         <div style="display:flex; align-items:center; gap:12px;">
-          <div style="width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg, #008DC7, #2DBCEE); display:flex; align-items:center; justify-content:center; color:#fff; box-shadow:0 2px 10px rgba(0,141,199,0.4);">
+          <div style="width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg, #008DC7, #2DBCEE); display:flex; align-items:center; justify-content:center; color:#fff; box-shadow:0 0 15px rgba(0,141,199,0.5);">
             <i data-lucide="sparkles" style="width:20px; height:20px;"></i>
           </div>
           <div>
             <div style="display:flex; align-items:center; gap:8px;">
-              <h3 style="font-size:1.15rem; font-weight:800; color:#fff; margin:0;">Magic AI Copilot & Analyzer</h3>
-              <span style="font-size:0.68rem; padding:2px 7px; border-radius:6px; background:rgba(0,141,199,0.25); border:1px solid rgba(45,188,238,0.4); color:#38bdf8; font-weight:800; letter-spacing:0.04em;">GPT-TIER SUPPORT</span>
+              <h3 style="font-size:1.15rem; font-weight:800; background:linear-gradient(135deg,#fff,#38bdf8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin:0;">Magic AI Copilot & Analyzer</h3>
+              <span style="font-size:0.68rem; padding:2px 8px; border-radius:6px; background:rgba(0,141,199,0.25); border:1px solid rgba(45,188,238,0.4); color:#38bdf8; font-weight:800; letter-spacing:0.04em;">GPT-TIER SUPPORT</span>
+              <span style="font-size:0.68rem; padding:2px 8px; border-radius:6px; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); color:#34d399; font-weight:700; display:inline-flex; align-items:center; gap:4px;">⏱️ 18ms Latency</span>
             </div>
-            <span style="font-size:0.75rem; color:#94a3b8;">Salesforce Case Diagnostic, Multi-Turn Chat, Attachments & Continuous Learning</span>
+            <span style="font-size:0.75rem; color:#94a3b8;">Salesforce Case Diagnostic, Multi-Turn Chat, Multi-File Log Inspector & Continuous Learning</span>
           </div>
         </div>
 
@@ -886,7 +1076,7 @@
             <button id="copilot-tab-btn-case" class="copilot-tab-btn" type="button">
               <i data-lucide="file-search" style="width:14px; height:14px;"></i> Case Analyzer
             </button>
-            <button id="copilot-tab-btn-settings" class="copilot-tab-btn" type="button">
+            <button id="copilot-tab-btn-settings" class="copilot-tab-btn hide" style="display:none !important;" type="button">
               <i data-lucide="settings" style="width:14px; height:14px;"></i> Settings
             </button>
           </div>
@@ -901,28 +1091,46 @@
       <!-- Main Modal Body with 2 Columns -->
       <div style="display:flex; flex:1; overflow:hidden;">
         
-        <!-- Left Sidebar: Chat History & Engine Status -->
-        <div style="width:250px; flex-shrink:0; background:rgba(6,4,13,0.6); border-right:1px solid rgba(255,255,255,0.06); display:flex; flex-direction:column; padding:14px; gap:12px;">
-          <button id="btn-new-copilot-chat" type="button" class="btn btn-primary" style="width:100%; padding:9px 12px; font-size:0.82rem; font-weight:700; gap:6px;">
-            <i data-lucide="plus" style="width:15px; height:15px;"></i> New Chat
+        <!-- Left Sidebar: Separated Chat History & Log Diagnostics -->
+        <div style="width:260px; flex-shrink:0; background:rgba(6,4,13,0.7); border-right:1px solid rgba(255,255,255,0.06); display:flex; flex-direction:column; padding:12px; gap:10px; overflow:hidden;">
+          <button id="btn-new-copilot-chat" type="button" class="btn btn-primary" style="width:100%; padding:8px 12px; font-size:0.8rem; font-weight:700; gap:6px;">
+            <i data-lucide="plus" style="width:14px; height:14px;"></i> New Chat
           </button>
 
-          <div style="display:flex; justify-content:space-between; align-items:center; padding-top:4px;">
-            <span id="copilot-sidebar-title" style="font-size:0.75rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em;">Recent Chats</span>
-            <button id="btn-clear-copilot-history" type="button" style="background:none; border:none; color:#64748b; font-size:0.7rem; cursor:pointer;" onmouseover="this.style.color='#f43f5e'" onmouseout="this.style.color='#64748b'">Clear</button>
+          <!-- Section 1: Recent Chats (Dedicated) -->
+          <div style="display:flex; flex-direction:column; flex:1; min-height:100px; overflow:hidden;">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:2px 0 6px 0; border-bottom:1px solid rgba(255,255,255,0.06);">
+              <span style="font-size:0.72rem; font-weight:700; color:#38bdf8; text-transform:uppercase; letter-spacing:0.04em; display:flex; align-items:center; gap:5px;">
+                <i data-lucide="message-square" style="width:12px; height:12px;"></i> Recent Chats
+              </span>
+              <button id="btn-clear-copilot-history" type="button" style="background:none; border:none; color:#64748b; font-size:0.68rem; cursor:pointer;" onmouseover="this.style.color='#f43f5e'" onmouseout="this.style.color='#64748b'">Clear</button>
+            </div>
+            <div id="copilot-chat-sessions-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:4px; padding-top:4px;">
+              <div style="padding:8px; text-align:center; color:#64748b; font-size:0.72rem;">No recent chats</div>
+            </div>
           </div>
 
-          <!-- Sessions List -->
-          <div id="copilot-sessions-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:5px;">
-            <div style="padding:10px; text-align:center; color:#64748b; font-size:0.75rem;">No recent sessions</div>
+          <!-- Section 2: Case & Log Diagnostics (Dedicated) -->
+          <div style="display:flex; flex-direction:column; flex:1; min-height:110px; border-top:1px solid rgba(255,255,255,0.08); padding-top:6px; overflow:hidden;">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:2px 0 6px 0;">
+              <span style="font-size:0.72rem; font-weight:700; color:#a78bfa; text-transform:uppercase; letter-spacing:0.04em; display:flex; align-items:center; gap:5px;">
+                <i data-lucide="file-search" style="width:12px; height:12px;"></i> Log Diagnostics
+              </span>
+              <button id="btn-clear-case-history" type="button" style="background:none; border:none; color:#64748b; font-size:0.68rem; cursor:pointer;" onmouseover="this.style.color='#f43f5e'" onmouseout="this.style.color='#64748b'">Clear</button>
+            </div>
+            <div id="copilot-case-sessions-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:4px; padding-top:4px;">
+              <div style="padding:8px; text-align:center; color:#64748b; font-size:0.72rem;">No saved diagnostics</div>
+            </div>
           </div>
 
-          <!-- Active AI Engine Pill -->
-          <div id="copilot-engine-indicator" style="padding:8px 10px; border-radius:8px; background:rgba(0,141,199,0.12); border:1px solid rgba(0,141,199,0.25); display:flex; align-items:center; gap:8px;">
-            <div style="width:8px; height:8px; border-radius:50%; background:#10b981; box-shadow:0 0 8px #10b981; flex-shrink:0;"></div>
-            <div style="flex:1; min-width:0;">
-              <div style="font-size:0.68rem; color:#94a3b8; text-transform:uppercase; font-weight:700;">ENGINE: GROQ</div>
-              <div style="font-size:0.75rem; color:#38bdf8; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="openai/gpt-oss-120b">● Active (openai/gpt-oss-120b)</div>
+          <!-- Pinned Topics & Engine Indicator -->
+          <div style="border-top:1px solid rgba(255,255,255,0.06); padding-top:6px; display:flex; flex-direction:column; gap:6px;">
+            <div id="copilot-engine-indicator" style="padding:6px 8px; border-radius:6px; background:rgba(0,141,199,0.1); border:1px solid rgba(0,141,199,0.2); display:flex; align-items:center; gap:6px;">
+              <div style="width:7px; height:7px; border-radius:50%; background:#10b981; box-shadow:0 0 6px #10b981; flex-shrink:0;"></div>
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:0.65rem; color:#94a3b8; text-transform:uppercase; font-weight:700;">ENGINE: GROQ</div>
+                <div style="font-size:0.7rem; color:#38bdf8; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="openai/gpt-oss-120b">Active (openai/gpt-oss-120b)</div>
+              </div>
             </div>
           </div>
         </div>
@@ -950,13 +1158,13 @@
 
             <!-- Chat Input Bar -->
             <form id="copilot-form" style="padding:12px 16px; border-top:1px solid rgba(255,255,255,0.08); background:rgba(6,4,13,0.7); display:flex; align-items:center; gap:10px;">
-              <input type="file" id="copilot-attach-input" multiple accept=".txt,.log,.ini,.xml,.json,.properties,.csv,.pdf,.md" class="hide">
+              <input type="file" id="copilot-attach-input" multiple accept=".txt,.log,.ini,.xml,.json,.properties,.csv,.pdf,.md,.png,.jpg,.jpeg,.webp,.bmp" class="hide">
               
-              <button id="btn-copilot-attach" type="button" title="Attach log files or configuration (.ini, .log, .xml, .txt)" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#cbd5e1; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:all 0.15s;">
+              <button id="btn-copilot-attach" type="button" title="Attach log files, configuration, or screenshots (.png, .jpg, .log, .ini, .txt)" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#cbd5e1; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:all 0.15s;">
                 <i data-lucide="paperclip" style="width:18px; height:18px;"></i>
               </button>
 
-              <input type="text" id="copilot-input" placeholder="Ask any configuration question, error code diagnosis, or paste log snippet..." autocomplete="off" style="flex:1; padding:11px 14px; border-radius:10px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:#fff; font-size:0.9rem; outline:none;">
+              <input type="text" id="copilot-input" placeholder="Ask any configuration question, error diagnosis, paste logs, or paste (Ctrl+V) screenshot..." autocomplete="off" style="flex:1; padding:11px 14px; border-radius:10px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:#fff; font-size:0.9rem; outline:none;">
 
               <button id="btn-copilot-send" type="submit" class="btn btn-primary" style="padding:11px 18px; font-weight:700; flex-shrink:0; gap:6px;">
                 <i data-lucide="send" style="width:16px; height:16px;"></i> Ask
@@ -964,73 +1172,63 @@
             </form>
           </div>
 
-          <!-- TAB 2: Case Analyzer Pane -->
-          <div id="copilot-pane-case" class="hide" style="display:flex; flex-direction:column; flex:1; overflow-y:auto; padding:20px; gap:18px;">
-            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:18px; display:flex; flex-direction:column; gap:12px;">
-              <div style="display:flex; align-items:center; gap:8px;">
-                <i data-lucide="file-text" style="width:18px; height:18px; color:#38bdf8;"></i>
-                <span style="font-size:0.95rem; font-weight:700; color:#fff;">Salesforce Case Details & Diagnostic Input</span>
-              </div>
-
-              <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
-                <div>
-                  <label style="display:block; font-size:0.75rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">Salesforce Case #</label>
-                  <input type="text" id="case-input-number" placeholder="e.g. 0863301644" style="width:100%; padding:9px 12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none;">
-                </div>
-                <div>
-                  <label style="display:block; font-size:0.75rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">Customer / Account Name</label>
-                  <input type="text" id="case-input-customer" placeholder="e.g. Enterprise Client" style="width:100%; padding:9px 12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none;">
-                </div>
-                <div>
-                  <label style="display:block; font-size:0.75rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">Target Product Space</label>
-                  <select id="case-input-product" style="width:100%;">
-                    <option value="xpi">🔗 Magic xpi</option>
-                    <option value="xpa">⚡ Magic xpa</option>
-                    <option value="cloud_native">☁️ Cloud Native</option>
-                    <option value="general">🌐 General</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label style="display:block; font-size:0.75rem; color:#cbd5e1; font-weight:600; margin-bottom:4px;">Customer Inquiries, Error Logs, and Thread History *</label>
-                <textarea id="case-input-history" rows="5" placeholder="Paste customer inquiry, Salesforce case subject/description, runtime logs, or error stack trace..." style="width:100%; padding:10px 12px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none; font-family:monospace; font-size:0.85rem; line-height:1.5;"></textarea>
-              </div>
-
-              <!-- Case Attachments Bar -->
-              <div style="background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 14px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                  <div style="display:flex; align-items:center; gap:6px;">
-                    <i data-lucide="paperclip" style="width:14px; height:14px; color:#38bdf8;"></i>
-                    <span style="font-size:0.78rem; font-weight:700; color:#e2e8f0;">Attachments & Error Logs (.log, .ini, .xml, .zip, .txt, .png, .pdf)</span>
+          <!-- TAB 2: Log & Case Analyzer Pane (ChatGPT-Style) -->
+          <div id="copilot-pane-case" class="hide" style="display:flex; flex-direction:column; flex:1; overflow-y:auto; padding:18px; gap:16px;">
+            
+            <!-- Top Log Uploader & Input Bar -->
+            <div style="background:linear-gradient(135deg, rgba(15,23,42,0.9), rgba(6,4,13,0.95)); border:1px solid rgba(56,189,248,0.25); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px; box-shadow:0 10px 30px rgba(0,0,0,0.4);">
+              
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <div style="width:28px; height:28px; border-radius:8px; background:linear-gradient(135deg, #008DC7, #2DBCEE); display:flex; align-items:center; justify-content:center; color:#fff;">
+                    <i data-lucide="file-search" style="width:16px; height:16px;"></i>
                   </div>
                   <div>
-                    <button type="button" id="btn-case-attach-trigger" class="btn btn-secondary" style="padding:4px 10px; font-size:0.75rem; gap:6px; color:#38bdf8; border-color:rgba(56,189,248,0.4);" onclick="document.getElementById('case-file-upload-input').click()">
-                      <i data-lucide="plus" style="width:12px; height:12px;"></i> Attach File(s)
-                    </button>
-                    <input type="file" id="case-file-upload-input" multiple accept=".log,.txt,.ini,.xml,.properties,.json,.sql,.zip,.png,.jpg,.jpeg,.pdf,.docx,.yaml,.yml" style="display:none;">
+                    <span style="font-size:0.92rem; font-weight:800; color:#fff;">Magic AI Log & Incident Analyzer</span>
+                    <span style="font-size:0.72rem; color:#94a3b8; display:block;">Multi-file runtime log inspection, crash diagnosis & root cause analysis</span>
                   </div>
                 </div>
 
-                <!-- Dropzone / Chip list -->
-                <div id="case-files-dropzone" style="padding:8px 12px; border:1.5px dashed rgba(56,189,248,0.3); border-radius:8px; background:rgba(56,189,248,0.03); min-height:38px; display:flex; flex-direction:column; justify-content:center; cursor:pointer; transition:all 0.2s ease;">
-                  <div id="case-files-placeholder" style="display:flex; align-items:center; justify-content:center; gap:8px; color:#94a3b8; font-size:0.75rem; pointer-events:none;">
-                    <i data-lucide="upload-cloud" style="width:14px; height:14px; color:#38bdf8;"></i>
-                    <span>Drag & drop log files, <code>Magic.ini</code>, screenshots, or click to attach</span>
+                <div style="display:flex; align-items:center; gap:12px;">
+                  <!-- Single Product Scope is controlled at the top header; keep hidden input synced for full JS compatibility -->
+                  <input type="hidden" id="case-input-product" value="all">
+                  <div style="display:flex; align-items:center; gap:6px;">
+                    <label style="font-size:0.73rem; color:#cbd5e1; font-weight:600;">Incident Time:</label>
+                    <input type="text" id="case-input-time" placeholder="e.g. 12:50:00 (optional)" style="padding:5px 8px; font-size:0.75rem; border-radius:6px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#fff; outline:none; width:150px;">
                   </div>
-                  <div id="case-files-chip-list" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
                 </div>
               </div>
 
-              <div style="display:flex; justify-content:space-between; align-items:center; padding-top:4px;">
-                <span style="font-size:0.75rem; color:#94a3b8;">Uses RAG across verified knowledge base & historical benchmarks.</span>
-                <button id="btn-run-case-diagnostic" type="button" class="btn btn-primary" style="padding:10px 20px; font-weight:700; gap:8px;">
-                  <i data-lucide="zap" style="width:16px; height:16px;"></i> Run Salesforce Case Diagnostic & Draft Email
+              <!-- Context Prompt (Primary) -->
+              <div>
+                <textarea id="case-input-history" rows="4" placeholder="Describe symptoms, paste Salesforce case details, or paste error logs here... (or press Ctrl+V to paste screenshots)" style="width:100%; padding:10px 14px; border-radius:10px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:#fff; outline:none; font-family:monospace; font-size:0.83rem; line-height:1.45; resize:vertical; min-height:85px;"></textarea>
+              </div>
+
+              <!-- At the last of prompt section: Select Files / Attachments Area -->
+              <div id="case-files-dropzone" style="padding:10px 14px; border:1.5px dashed rgba(56,189,248,0.3); border-radius:10px; background:rgba(56,189,248,0.03); min-height:42px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; cursor:pointer; transition:all 0.2s ease;">
+                <div id="case-files-placeholder" style="display:flex; align-items:center; gap:8px; color:#94a3b8; font-size:0.78rem; pointer-events:none;">
+                  <i data-lucide="paperclip" style="width:16px; height:16px; color:#38bdf8;"></i>
+                  <span><strong>Select files or attachments</strong> (.zip, .log, .ini, .pdf, images) or drag & drop / Ctrl+V here</span>
+                </div>
+                <div id="case-files-chip-list" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+                <button type="button" class="btn btn-secondary" style="padding:5px 12px; font-size:0.75rem; gap:6px; color:#38bdf8; border-color:rgba(56,189,248,0.4);" onclick="event.stopPropagation(); document.getElementById('case-file-upload-input').click()">
+                  <i data-lucide="folder-open" style="width:13px; height:13px;"></i> Select Files
+                </button>
+                <input type="file" id="case-file-upload-input" multiple accept=".log,.txt,.ini,.xml,.properties,.json,.sql,.zip,.png,.jpg,.jpeg,.webp,.gif,.bmp,.pdf,.docx,.yaml,.yml" style="display:none;">
+              </div>
+
+              <!-- Bottom Bar with Run Button -->
+              <div style="display:flex; justify-content:space-between; align-items:center; padding-top:2px;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span style="font-size:0.72rem; color:#64748b;">Supports multi-file ZIP archives, runtime logs, PDFs, ini/configs & screenshots</span>
+                </div>
+                <button id="btn-run-case-diagnostic" type="button" class="btn btn-primary" style="padding:10px 22px; font-weight:700; gap:8px; font-size:0.85rem; background:linear-gradient(135deg, #008DC7, #06b6d4);">
+                  <i data-lucide="zap" style="width:15px; height:15px;"></i> Analyze Logs & Diagnose
                 </button>
               </div>
             </div>
 
-            <!-- Case Diagnostic Results -->
+            <!-- Case Diagnostic Results Container -->
             <div id="case-results-container" class="hide" style="display:flex; flex-direction:column; gap:14px;"></div>
           </div>
 
@@ -1435,6 +1633,7 @@
           <label style="display:block; font-size:0.75rem; color:#cbd5e1; margin-bottom:4px;">Assigned Role</label>
           <select id="admin-new-user-role" style="width:100%;">
             <option value="Editor">Contributor / Author (Upload & Publish KBs)</option>
+            <option value="Reviewer">Reviewer (Review & Approve KBs)</option>
             <option value="Admin">Super Admin (Full Enterprise Access)</option>
             <option value="Viewer">Reader / End User (Search & View)</option>
           </select>
@@ -1582,6 +1781,140 @@
     </div>
   </div>
 
+  <div id="modal-review-queue" class="modal-overlay hide">
+    <div class="modal-container" style="max-width:1180px; width:95%; height:90vh; padding:0; border-radius:16px; overflow:hidden; display:flex; flex-direction:column;">
+      <div style="padding:16px 24px; background:rgba(15,23,42,0.95); border-bottom:1px solid rgba(255,255,255,0.08); display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <i data-lucide="shield-check" style="width:22px; height:22px; color:#fbbf24;"></i>
+          <div>
+            <h3 style="font-size:1.2rem; font-weight:800; color:#fff; margin:0;">KB Article Review & Approval Dashboard</h3>
+            <p style="font-size:0.8rem; color:#94a3b8; margin:0;">Review pending articles, request author revisions, or approve into production spaces.</p>
+          </div>
+        </div>
+        <button id="btn-close-review-queue" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:#cbd5e1; cursor:pointer; padding:6px 12px; border-radius:8px; font-size:0.82rem;">
+          Close
+        </button>
+      </div>
+
+      <div style="display:flex; flex:1; overflow:hidden;">
+        <!-- Left Item List -->
+        <div style="width:300px; min-width:300px; border-right:1px solid rgba(255,255,255,0.08); display:flex; flex-direction:column; background:rgba(0,0,0,0.2);">
+          <div style="padding:12px; border-bottom:1px solid rgba(255,255,255,0.06); display:flex; gap:8px;">
+            <select id="review-filter-space" style="flex:1; padding:6px 8px; font-size:0.78rem; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.12); border-radius:6px; color:#fff;">
+              <option value="all">All Spaces</option>
+              <option value="xpi">Magic xpi</option>
+              <option value="xpa">Magic xpa</option>
+              <option value="cloud_native">Cloud Native</option>
+            </select>
+          </div>
+          <div id="review-queue-list-container" style="flex:1; overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:8px;">
+            <!-- Pending items -->
+          </div>
+        </div>
+
+        <!-- Right Preview & Action Area -->
+        <div id="review-queue-detail-pane" style="flex:1; display:flex; flex-direction:column; padding:24px; overflow-y:auto; min-width:0; background:rgba(15,23,42,0.6);">
+          <div style="text-align:center; padding:60px 20px; color:#64748b;">
+            Select a pending document from the left list to review its contents.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9. Upload Utility Binary Modal -->
+  <div id="modal-upload-utility" class="modal-overlay hide">
+    <div class="modal-container" style="max-width:520px; padding:24px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:12px;">
+        <h3 style="font-size:1.15rem; font-weight:800; color:#fff; margin:0;">Publish Support Utility / Tool</h3>
+        <button id="btn-close-upload-utility" style="background:none; border:none; color:#9ca3af; cursor:pointer;">✕</button>
+      </div>
+
+      <form id="form-upload-utility" style="display:flex; flex-direction:column; gap:14px;">
+        <div>
+          <label style="display:block; font-size:0.78rem; color:#cbd5e1; margin-bottom:4px;">Utility Title</label>
+          <input type="text" id="util-input-title" placeholder="e.g. Magic xpi GigaSpaces Memory Profiler" required style="width:100%; padding:9px 12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff;">
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div>
+            <label style="display:block; font-size:0.78rem; color:#cbd5e1; margin-bottom:4px;">Target Product</label>
+            <select id="util-input-product" style="width:100%; padding:9px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff;">
+              <option value="xpi">Magic xpi</option>
+              <option value="xpa">Magic xpa</option>
+              <option value="cloud_native">Cloud Native</option>
+              <option value="general">General Support</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:0.78rem; color:#cbd5e1; margin-bottom:4px;">Category</label>
+            <select id="util-input-category" style="width:100%; padding:9px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff;">
+              <option value="Diagnostic & Logs">Diagnostic & Logs</option>
+              <option value="Database & Migration">Database & Migration</option>
+              <option value="Licensing & Security">Licensing & Security</option>
+              <option value="CLI & Scripts">CLI & Scripts</option>
+              <option value="Patches & Hotfixes">Patches & Hotfixes</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div>
+            <label style="display:block; font-size:0.78rem; color:#cbd5e1; margin-bottom:4px;">Version</label>
+            <input type="text" id="util-input-version" placeholder="v2.4.1" required style="width:100%; padding:9px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff;">
+          </div>
+          <div>
+            <label style="display:block; font-size:0.78rem; color:#cbd5e1; margin-bottom:4px;">Platform</label>
+            <select id="util-input-platform" style="width:100%; padding:9px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff;">
+              <option value="Windows (x64)">Windows (x64)</option>
+              <option value="Linux">Linux</option>
+              <option value="Cross-Platform">Cross-Platform</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label style="display:block; font-size:0.78rem; color:#cbd5e1; margin-bottom:4px;">Description & Usage Instructions</label>
+          <textarea id="util-input-desc" rows="3" placeholder="Describe utility purpose, usage flags, and SOP..." required style="width:100%; padding:9px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff; font-family:sans-serif;"></textarea>
+        </div>
+
+        <div>
+          <label style="display:block; font-size:0.78rem; color:#cbd5e1; margin-bottom:4px;">Binary File (.exe, .zip, .ps1, .py, .sh, .pdf)</label>
+          <input type="file" id="util-input-file" required style="width:100%; color:#94a3b8;">
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="padding:12px; margin-top:8px; font-weight:700;">Upload & Publish Support Tool</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 10. Utility Guide Modal -->
+  <div id="modal-utility-guide" class="modal-overlay hide">
+    <div class="modal-container" style="max-width:600px; padding:24px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:12px;">
+        <div>
+          <h3 id="guide-util-title" style="font-size:1.25rem; font-weight:800; color:#fff; margin:0 0 4px 0;">Utility Title</h3>
+          <div style="display:flex; gap:8px; font-size:0.75rem; color:#38bdf8;">
+            <span id="guide-util-ver"></span> • <span id="guide-util-platform"></span> • <span id="guide-util-size"></span>
+          </div>
+        </div>
+        <button id="btn-close-utility-guide" style="background:none; border:none; color:#9ca3af; cursor:pointer;">✕</button>
+      </div>
+
+      <div style="margin-bottom:20px;">
+        <h4 style="font-size:0.85rem; color:#cbd5e1; font-weight:700; margin-bottom:8px;">USAGE GUIDE & SOP:</h4>
+        <div id="guide-util-desc" style="padding:14px; background:rgba(0,0,0,0.4); border-radius:10px; border:1px solid rgba(255,255,255,0.08); color:#e2e8f0; font-size:0.88rem; line-height:1.6; white-space:pre-wrap; max-height:250px; overflow-y:auto;"></div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:12px;">
+        <button id="btn-close-utility-guide-bottom" class="btn btn-secondary">Close</button>
+        <button id="btn-download-utility-guide-file" class="btn btn-primary" style="background:linear-gradient(135deg, #008DC7, #2DBCEE);">
+          <i data-lucide="download" style="width:15px; height:15px;"></i> Download Tool
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
     function openLoginPage() {
       var home = document.getElementById('page-home-landing');
@@ -1641,6 +1974,6 @@
       if (modal) modal.classList.add('hide');
     }
   </script>
-  <script src="app.js?v=10.2"></script>
+  <script src="app.js?v=21.0"></script>
 </body>
 </html>

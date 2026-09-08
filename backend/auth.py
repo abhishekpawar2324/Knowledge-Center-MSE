@@ -3,7 +3,7 @@ from typing import Optional
 from jose import JWTError, jwt
 import hashlib
 import os
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -39,13 +39,15 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-def get_current_user(token: Optional[str] = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def get_current_user(request: Request, token: Optional[str] = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    if not token or token == "undefined" or token == "null":
+    if not token or token in ["undefined", "null", ""]:
+        token = request.query_params.get("token")
+    if not token or token in ["undefined", "null", ""]:
         raise credentials_exception
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -60,8 +62,10 @@ def get_current_user(token: Optional[str] = Depends(oauth2_scheme), db: Session 
         raise credentials_exception
     return user
 
-def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> Optional[User]:
+def get_current_user_optional(request: Request, token: Optional[str] = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> Optional[User]:
     """Gracefully returns the authenticated user if token is valid, or None if guest / unauthenticated."""
+    if not token or token in ["undefined", "null", ""]:
+        token = request.query_params.get("token")
     if not token or token in ["undefined", "null", ""]:
         return None
     try:

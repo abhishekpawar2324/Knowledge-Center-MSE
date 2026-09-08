@@ -4,9 +4,10 @@ import base64
 import shutil
 import re
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import FastAPI, Depends, HTTPException, status, File, UploadFile, Form, BackgroundTasks, Request
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordRequestForm
@@ -19,6 +20,7 @@ from backend.database import (
     init_db, 
     User, 
     Document, 
+    HelpTopic,
     IndexLog, 
     SessionLocal, 
     Comment, 
@@ -29,7 +31,10 @@ from backend.database import (
     AIResolution,
     AISetting,
     AIChatSession,
-    AIChatMessage
+    AIChatMessage,
+    SupportUtility,
+    UserLoginHistory,
+    EnterpriseAuditLog
 )
 from backend.auth import (
     get_password_hash,
@@ -60,6 +65,8 @@ from backend.emailer import (
 )
 from backend.ai_engine import (
     process_ai_query,
+    process_case_diagnostic_query,
+    process_case_followup_query,
     get_active_ai_config,
     test_ai_provider_connection,
     DEFAULT_MAGIC_SYSTEM_PROMPT
@@ -130,10 +137,82 @@ if os.path.exists(CONFLUENCE_DIR):
     
     if os.path.exists(images_dir):
         app.mount("/images", StaticFiles(directory=images_dir), name="images")
-    if os.path.exists(attachments_dir):
-        app.mount("/attachments", StaticFiles(directory=attachments_dir), name="attachments")
     if os.path.exists(styles_dir):
         app.mount("/styles", StaticFiles(directory=styles_dir), name="styles")
+
+@app.get("/attachments/{file_path:path}")
+def get_attachment_file(file_path: str):
+    """
+    Unified multi-space attachment resolver.
+    Handles relative attachment paths across all product spaces: xpa, xpi, cloud_native, and Confluence.
+    """
+    clean_path = file_path.split("?")[0].replace("\\", "/").lstrip("/")
+    
+    # 1. Primary candidate paths
+    candidates = [
+        os.path.join(CONFLUENCE_DIR, "attachments", clean_path),
+        os.path.join(UPLOADS_DIR, "xpa", "attachments", clean_path),
+        os.path.join(UPLOADS_DIR, "xpi", "attachments", clean_path),
+        os.path.join(UPLOADS_DIR, "cloud_native", "attachments", clean_path),
+        os.path.join(UPLOADS_DIR, "attachments", clean_path),
+    ]
+    for c in candidates:
+        if os.path.isfile(c):
+            return FileResponse(c)
+
+    # 2. Check if clean_path starts with or lacks 'attachments/'
+    stripped = clean_path.replace("attachments/", "", 1) if clean_path.startswith("attachments/") else clean_path
+    candidates2 = [
+        os.path.join(CONFLUENCE_DIR, "attachments", stripped),
+        os.path.join(UPLOADS_DIR, "xpa", "attachments", stripped),
+        os.path.join(UPLOADS_DIR, "xpi", "attachments", stripped),
+        os.path.join(UPLOADS_DIR, "cloud_native", "attachments", stripped),
+        os.path.join(UPLOADS_DIR, "attachments", stripped),
+    ]
+    for c in candidates2:
+        if os.path.isfile(c):
+            return FileResponse(c)
+
+    # 3. Deep search inside subdirectories of UPLOADS_DIR & CONFLUENCE_DIR
+    target_name = os.path.basename(clean_path)
+    for search_root in [UPLOADS_DIR, CONFLUENCE_DIR]:
+        if not os.path.exists(search_root):
+            continue
+        for root, dirs, files in os.walk(search_root):
+            if target_name in files and "attachment" in root.lower():
+                full_p = os.path.join(root, target_name)
+                if os.path.isfile(full_p):
+                    return FileResponse(full_p)
+
+    raise HTTPException(status_code=404, detail=f"Attachment '{file_path}' not found")
+
+@app.get("/api/document/{doc_id}/asset/{asset_path:path}")
+def get_document_asset(doc_id: int, asset_path: str, db: Session = Depends(get_db)):
+    """
+    Contextual document asset resolver.
+    Resolves assets relative to the specific document's directory on disk,
+    with automatic fallback across spaces and subdirectories.
+    """
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc or not doc.file_path or not os.path.exists(doc.file_path):
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    clean_asset = asset_path.split("?")[0].replace("\\", "/").lstrip("/")
+    doc_dir = os.path.dirname(doc.file_path)
+
+    # 1. Check relative to document directory
+    p1 = os.path.normpath(os.path.join(doc_dir, clean_asset))
+    if os.path.isfile(p1):
+        return FileResponse(p1)
+
+    # 2. Check if clean_asset is inside attachments folder of doc_dir
+    if not clean_asset.startswith("attachments/"):
+        p2 = os.path.normpath(os.path.join(doc_dir, "attachments", clean_asset))
+        if os.path.isfile(p2):
+            return FileResponse(p2)
+
+    # 3. Fall back to global multi-space attachment resolver
+    return get_attachment_file(clean_asset)
 
 # Knowledge Base Uploaded Assets (Images & Attachments)
 UPLOADS_ASSETS = os.path.join(UPLOADS_DIR, "assets")
@@ -143,8 +222,11 @@ app.mount("/api/kb/assets", StaticFiles(directory=UPLOADS_ASSETS), name="kb_asse
 # ----------------- Auth Endpoints (Case-Insensitive) -----------------
 
 @app.post("/api/auth/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     uname = form_data.username.strip()
+    client_ip = request.client.host if request and request.client else "127.0.0.1"
+    user_agent = request.headers.get("user-agent", "Unknown Browser") if request else "Unknown"
+
     user = db.query(User).filter(func.lower(User.username) == uname.lower()).first()
     is_valid = False
     
@@ -166,6 +248,12 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         is_valid = True
             
     if not user or not is_valid:
+        status_msg = "Failed - Invalid Password" if user else "Failed - User Not Found"
+        try:
+            db.add(UserLoginHistory(username=uname, ip_address=client_ip, user_agent=user_agent[:250], status=status_msg))
+            db.commit()
+        except Exception:
+            pass
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -173,12 +261,24 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         )
         
     if getattr(user, "is_active", True) is False:
+        try:
+            db.add(UserLoginHistory(username=user.username, ip_address=client_ip, user_agent=user_agent[:250], status="Failed - Suspended Account"))
+            db.commit()
+        except Exception:
+            pass
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account has been suspended / deactivated. Please contact your Super Administrator.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    # Record Successful Login
+    try:
+        db.add(UserLoginHistory(username=user.username, ip_address=client_ip, user_agent=user_agent[:250], status="Success"))
+        db.commit()
+    except Exception:
+        pass
+
     access_token = create_access_token(data={"sub": user.username, "role": user.role})
     return {
         "access_token": access_token,
@@ -193,6 +293,33 @@ def get_me(current_user: User = Depends(get_current_user)):
         "username": current_user.username,
         "role": current_user.role
     }
+
+@app.get("/api/admin/login-history")
+def get_login_history(
+    username: Optional[str] = None,
+    status_filter: Optional[str] = None,
+    limit: int = 100,
+    current_user: User = Depends(require_role(["Admin"])),
+    db: Session = Depends(get_db)
+):
+    query = db.query(UserLoginHistory)
+    if username and username.strip():
+        query = query.filter(func.lower(UserLoginHistory.username).contains(username.strip().lower()))
+    if status_filter and status_filter.strip() and status_filter != "all":
+        query = query.filter(UserLoginHistory.status == status_filter.strip())
+    
+    logs = query.order_by(UserLoginHistory.login_time.desc()).limit(limit).all()
+    return [
+        {
+            "id": log.id,
+            "username": log.username,
+            "login_time": log.login_time.strftime("%Y-%m-%d %H:%M:%S") if log.login_time else "",
+            "ip_address": log.ip_address,
+            "user_agent": log.user_agent,
+            "status": log.status
+        }
+        for log in logs
+    ]
 
 # ----------------- Search & Analytics Endpoints -----------------
 
@@ -248,39 +375,44 @@ def levenshtein_distance(s1, s2):
 
 @app.get("/api/search")
 def search(
-    q: str, 
+    q: Optional[str] = "", 
     type: Optional[str] = None, 
     author: Optional[str] = None, 
     category: Optional[str] = None,
     product: Optional[str] = None,
     version: Optional[str] = None,
     doc_type: Optional[str] = None,
+    exclude_doc_type: Optional[str] = None,
     match_all: bool = True,
     username: Optional[str] = "Guest",
     db: Session = Depends(get_db)
 ):
-    if not q or not q.strip():
+    raw_q = (q or "").strip()
+    is_wildcard = (raw_q in ["*", "all", ""])
+    if not raw_q and not is_wildcard:
         return []
         
-    raw_q = q.strip()
-    is_phrase = raw_q.startswith('"') and raw_q.endswith('"')
-    if is_phrase:
-        query_phrase = raw_q[1:-1].lower().strip()
-        query_terms = [query_phrase]
-    else:
-        # Extract meaningful alphanumeric tokens, ignoring pure noise like (1), (2)
-        cleaned_str = re.sub(r'[\(\)\[\]{}"]+', ' ', raw_q)
-        tokens = [t.lower().strip() for t in re.split(r'[\s_]+', cleaned_str) if t.strip()]
-        query_terms = []
-        for t in tokens:
-            t_clean = re.sub(r'\.(docx|pdf|html|txt|md)$', '', t)
-            if t_clean and len(t_clean) > 0 and t_clean not in ["1", "2", "3", "copy"]:
-                query_terms.append(t_clean)
+    if not is_wildcard:
+        is_phrase = raw_q.startswith('"') and raw_q.endswith('"')
+        if is_phrase:
+            query_phrase = raw_q[1:-1].lower().strip()
+            query_terms = [query_phrase]
+        else:
+            # Extract meaningful alphanumeric tokens, ignoring pure noise like (1), (2)
+            cleaned_str = re.sub(r'[\(\)\[\]{}"]+', ' ', raw_q)
+            tokens = [t.lower().strip() for t in re.split(r'[\s_]+', cleaned_str) if t.strip()]
+            query_terms = []
+            for t in tokens:
+                t_clean = re.sub(r'\.(docx|pdf|html|txt|md)$', '', t)
+                if t_clean and len(t_clean) > 0 and t_clean not in ["1", "2", "3", "copy"]:
+                    query_terms.append(t_clean)
+            if not query_terms:
+                query_terms = [t.lower().strip() for t in tokens if t.strip()]
+                
         if not query_terms:
-            query_terms = [t.lower().strip() for t in tokens if t.strip()]
-            
-    if not query_terms:
-        return []
+            return []
+    else:
+        query_terms = []
 
     from sqlalchemy import or_
     
@@ -302,115 +434,127 @@ def search(
     if doc_type and doc_type.lower() not in ["all", ""]:
         query = query.filter(Document.doc_type == doc_type.lower())
         
+    if exclude_doc_type and exclude_doc_type.lower() not in ["none", ""]:
+        query = query.filter(Document.doc_type != exclude_doc_type.lower())
+    elif is_wildcard and not doc_type:
+        query = query.filter(Document.doc_type != "function")
+        
     if author:
         query = query.filter(Document.author == author)
         
-    # SQL level candidate filtering for lightning sub-15ms speed
-    term_filters = []
-    for term in query_terms:
-        term_filters.append(Document.title.ilike(f"%{term}%"))
-        term_filters.append(Document.file_path.ilike(f"%{term}%"))
-        term_filters.append(Document.breadcrumbs.ilike(f"%{term}%"))
-        term_filters.append(Document.tags.ilike(f"%{term}%"))
-        term_filters.append(Document.content.ilike(f"%{term}%"))
+    if is_wildcard:
+        docs = query.order_by(Document.created_at.desc(), Document.id.desc()).all()
+    else:
+        # SQL level candidate filtering for lightning sub-15ms speed
+        term_filters = []
+        for term in query_terms:
+            term_filters.append(Document.title.ilike(f"%{term}%"))
+            term_filters.append(Document.file_path.ilike(f"%{term}%"))
+            term_filters.append(Document.breadcrumbs.ilike(f"%{term}%"))
+            term_filters.append(Document.tags.ilike(f"%{term}%"))
+            term_filters.append(Document.content.ilike(f"%{term}%"))
+            
+        docs = query.filter(or_(*term_filters)).all()
         
-    docs = query.filter(or_(*term_filters)).all()
-    
-    # Typo tolerance fallback only if 0 candidates matched
-    if not docs and any(len(t) > 3 for t in query_terms):
-        try:
-            sample_docs = db.query(Document.title, Document.content).limit(200).all()
-            vocab = set()
-            for d_title, d_content in sample_docs:
-                words = re.findall(r'\b[a-zA-Z]{3,}\b', (d_title or "") + " " + (d_content or "")[:2000])
-                vocab.update(w.lower() for w in words)
-            expanded_terms = list(query_terms)
-            for term in query_terms:
-                if term not in vocab and term.isalpha() and len(term) > 3:
-                    for word in vocab:
-                        dist = levenshtein_distance(term, word)
-                        if (len(term) <= 4 and dist <= 1) or (len(term) > 4 and dist <= 2):
-                            expanded_terms.append(word)
-            new_terms = [t for t in set(expanded_terms) if t not in query_terms]
-            if new_terms:
-                query_terms.extend(new_terms)
-                new_filters = []
-                for term in new_terms:
-                    new_filters.append(Document.title.ilike(f"%{term}%"))
-                    new_filters.append(Document.content.ilike(f"%{term}%"))
-                docs = query.filter(or_(*new_filters)).all()
-        except Exception as e:
-            print(f"Typo fallback warning: {e}")
+        # Typo tolerance fallback only if 0 candidates matched
+        if not docs and any(len(t) > 3 for t in query_terms):
+            try:
+                sample_docs = db.query(Document.title, Document.content).limit(200).all()
+                vocab = set()
+                for d_title, d_content in sample_docs:
+                    words = re.findall(r'\b[a-zA-Z]{3,}\b', (d_title or "") + " " + (d_content or "")[:2000])
+                    vocab.update(w.lower() for w in words)
+                expanded_terms = list(query_terms)
+                for term in query_terms:
+                    if term not in vocab and term.isalpha() and len(term) > 3:
+                        for word in vocab:
+                            dist = levenshtein_distance(term, word)
+                            if (len(term) <= 4 and dist <= 1) or (len(term) > 4 and dist <= 2):
+                                expanded_terms.append(word)
+                new_terms = [t for t in set(expanded_terms) if t not in query_terms]
+                if new_terms:
+                    query_terms.extend(new_terms)
+                    new_filters = []
+                    for term in new_terms:
+                        new_filters.append(Document.title.ilike(f"%{term}%"))
+                        new_filters.append(Document.content.ilike(f"%{term}%"))
+                    docs = query.filter(or_(*new_filters)).all()
+            except Exception as e:
+                print(f"Typo fallback warning: {e}")
 
     results = []
     
     for doc in docs:
-        content_lower = doc.content.lower()
-        title_lower = doc.title.lower()
-        filename_lower = os.path.basename(doc.file_path).lower()
+        content_lower = doc.content.lower() if doc.content else ""
+        title_lower = doc.title.lower() if doc.title else ""
+        filename_lower = os.path.basename(doc.file_path).lower() if doc.file_path else ""
         
-        term_matches = []
-        for term in query_terms:
-            in_title = term in title_lower
-            in_filename = term in filename_lower
-            in_content = term in content_lower
-            in_crumbs = doc.breadcrumbs and term in doc.breadcrumbs.lower()
-            in_tags = doc.tags and term in doc.tags.lower()
-            
-            if in_title or in_filename or in_content or in_crumbs or in_tags:
-                term_matches.append(term)
-                
-        # Flexible match criteria:
-        has_title_match = any(t in title_lower or t in filename_lower for t in query_terms)
-        match_ratio = len(term_matches) / max(1, len(query_terms))
-        
-        if match_all:
-            if not has_title_match and match_ratio < 0.4:
-                continue
+        if is_wildcard:
+            score = 100
+            snippet = (doc.content[:180] + "...") if doc.content else ""
         else:
-            if len(term_matches) == 0:
-                continue
-            
-        score = 0
-        # Direct raw phrase or exact function match boost
-        if raw_q.lower() == title_lower or raw_q.lower() == filename_lower.replace('.htm', '').replace('.html', ''):
-            score += 500
-        elif raw_q.lower() in title_lower or raw_q.lower() in filename_lower:
-            score += 200
-        elif raw_q.lower() in content_lower:
-            score += 80
-            
-        for term in query_terms:
-            if term == title_lower:
-                score += 150
-            elif term in title_lower:
-                score += 50 + (title_lower.count(term) * 10)
-            if term in filename_lower:
-                score += 40
-            if term in content_lower:
-                score += min(50, content_lower.count(term) * 2)
-            if doc.breadcrumbs and term in doc.breadcrumbs.lower():
-                score += 15
-            if doc.tags and term in doc.tags.lower():
-                score += 35
+            term_matches = []
+            for term in query_terms:
+                in_title = term in title_lower
+                in_filename = term in filename_lower
+                in_content = term in content_lower
+                in_crumbs = doc.breadcrumbs and term in doc.breadcrumbs.lower()
+                in_tags = doc.tags and term in doc.tags.lower()
                 
-        # Function reference boost
-        if doc.doc_type == "function":
-            score += 30
-            if raw_q.lower() in title_lower:
-                score += 100
-
-        # Pinned boost
-        if doc.is_pinned:
-            score += 20
+                if in_title or in_filename or in_content or in_crumbs or in_tags:
+                    term_matches.append(term)
+                    
+            # Flexible match criteria:
+            has_title_match = any(t in title_lower or t in filename_lower for t in query_terms)
+            match_ratio = len(term_matches) / max(1, len(query_terms))
             
+            if match_all:
+                if not has_title_match and match_ratio < 0.4:
+                    continue
+            else:
+                if len(term_matches) == 0:
+                    continue
+                
+            score = 0
+            # Direct raw phrase or exact function match boost
+            if raw_q.lower() == title_lower or raw_q.lower() == filename_lower.replace('.htm', '').replace('.html', ''):
+                score += 500
+            elif raw_q.lower() in title_lower or raw_q.lower() in filename_lower:
+                score += 200
+            elif raw_q.lower() in content_lower:
+                score += 80
+            
+            for term in query_terms:
+                if term == title_lower:
+                    score += 150
+                elif term in title_lower:
+                    score += 50 + (title_lower.count(term) * 10)
+                if term in filename_lower:
+                    score += 40
+                if term in content_lower:
+                    score += min(50, content_lower.count(term) * 2)
+                if doc.breadcrumbs and term in doc.breadcrumbs.lower():
+                    score += 15
+                if doc.tags and term in doc.tags.lower():
+                    score += 35
+                    
+            # Function reference boost
+            if doc.doc_type == "function":
+                score += 30
+                if raw_q.lower() in title_lower:
+                    score += 100
+
+            # Pinned boost
+            if doc.is_pinned:
+                score += 20
+                
+            snippet = generate_snippet(doc.content, query_terms)
+
         if category:
             doc_cats = json.loads(doc.breadcrumbs) if doc.breadcrumbs else []
             if not any(category.lower() in cat.lower() for cat in doc_cats):
                 continue
                 
-        snippet = generate_snippet(doc.content, query_terms)
-        
         # Extract syntax if function topic
         syntax_str = ""
         if doc.tags and "syntax:" in doc.tags:
@@ -421,8 +565,8 @@ def search(
                 for t in doc.tags.split(";"):
                     if t.startswith("syntax:"):
                         syntax_str = t.replace("syntax:", "").strip()
-        if not syntax_str and (doc.doc_type == "function" or "syntax:" in doc.content.lower()[:300]):
-            match_syn = re.search(r'syntax:\s*([^\n\r<]+)', doc.content, re.I)
+        if not syntax_str and (doc.doc_type == "function" or "syntax:" in (doc.content or "").lower()[:300]):
+            match_syn = re.search(r'syntax:\s*([^\n\r<]+)', doc.content or "", re.I)
             if match_syn:
                 syntax_str = match_syn.group(1).strip()
 
@@ -442,15 +586,90 @@ def search(
             "views": doc.views or 0,
             "likes": doc.likes or 0,
             "tags": doc.tags or "",
-            "is_pinned": bool(doc.is_pinned)
+            "is_pinned": bool(doc.is_pinned),
+            "is_help": False,
+            "source": "kb",
+            "raw_created_at": doc.created_at.isoformat() if doc.created_at else ""
         })
         
-    results.sort(key=lambda x: x["score"], reverse=True)
+    # Search official Product Help topics when a specific query is given
+    help_results = []
+    if not is_wildcard and query_terms:
+        try:
+            help_query = db.query(HelpTopic)
+            if product and product.lower() not in ["all", "global", ""]:
+                help_query = help_query.filter(HelpTopic.product == product.lower())
+                
+            help_filters = []
+            for term in query_terms:
+                if len(term) >= 2:
+                    help_filters.append(HelpTopic.title.ilike(f"%{term}%"))
+                    help_filters.append(HelpTopic.syntax.ilike(f"%{term}%"))
+                    help_filters.append(HelpTopic.content.ilike(f"%{term}%"))
+                    
+            if help_filters:
+                help_candidates = help_query.filter(or_(*help_filters)).limit(40).all()
+                for topic in help_candidates:
+                    t_low = topic.title.lower()
+                    c_low = topic.content.lower()
+                    s_low = (topic.syntax or "").lower()
+                    h_score = 0
+                    
+                    if raw_q.lower() == t_low or (s_low and raw_q.lower() in s_low):
+                        h_score += 400
+                    elif raw_q.lower() in t_low:
+                        h_score += 150
+                    elif raw_q.lower() in c_low:
+                        h_score += 50
+                        
+                    for term in query_terms:
+                        if term == t_low:
+                            h_score += 100
+                        elif term in t_low:
+                            h_score += 40
+                        if term in s_low:
+                            h_score += 60
+                        if term in c_low:
+                            h_score += min(30, c_low.count(term) * 2)
+                            
+                    if h_score > 0:
+                        help_results.append({
+                            "id": f"help_{topic.id}",
+                            "topic_id": topic.id,
+                            "title": topic.title,
+                            "file_type": "html",
+                            "product": topic.product or "xpa",
+                            "version": "Official Reference",
+                            "doc_type": topic.doc_type or "reference",
+                            "author": f"Magic {topic.product.upper()} Product Help",
+                            "breadcrumbs": json.loads(topic.breadcrumbs) if topic.breadcrumbs else ["Product Manual"],
+                            "created_at": topic.created_at.strftime("%d %b, %Y") if topic.created_at else "Official Help",
+                            "snippet": generate_snippet(topic.content, query_terms),
+                            "syntax": topic.syntax or "",
+                            "score": h_score,
+                            "views": topic.views or 0,
+                            "likes": 0,
+                            "tags": f"help;{topic.doc_type};{topic.product}",
+                            "is_pinned": False,
+                            "is_help": True,
+                            "source": "help",
+                            "raw_created_at": topic.created_at.isoformat() if topic.created_at else ""
+                        })
+        except Exception as e:
+            print(f"[Search Help Topic Error] {e}")
+
+    if is_wildcard:
+        results.sort(key=lambda x: (x.get("raw_created_at") or "", x["id"]), reverse=True)
+    else:
+        results.sort(key=lambda x: (x["score"], x.get("raw_created_at", ""), x["id"]), reverse=True)
+        help_results.sort(key=lambda x: (x["score"], x.get("raw_created_at", ""), x["id"]), reverse=True)
+        # CRITICAL USER REQUIREMENT: Always show Knowledge Base documents FIRST, then official Help results
+        results = results + help_results
     
     # Telemetry: Record search query in SearchAnalytic
     try:
         analytic = SearchAnalytic(
-            query=q.strip(),
+            query=q.strip() if q else "*",
             product=product or "all",
             results_count=len(results),
             username=username or "Guest"
@@ -578,36 +797,32 @@ async def ai_analyze_case(
     db: Session = Depends(get_db)
 ):
     """
-    Specialized Salesforce Case Analyzer with Multi-File Diagnostics & Continuous Learning.
-    Parses case subject, customer description, environment, error logs, and multi-file attachments,
-    generates a structured RCA, resolution steps, customer email draft, and auto-indexes for future AI training.
+    Specialized Magic AI Log & Case Analyzer.
+    Unpacks zip logs, parses deterministic events and timestamps, cross-references KB & Help,
+    and returns a structured, accurate RCA & resolution.
     """
     body = await request.json()
     case_history = body.get("case_history") or body.get("prompt") or ""
     case_number = body.get("case_number") or ""
     product = (body.get("product") or "xpi").lower().strip()
     customer_name = body.get("customer_name") or ""
+    incident_time = body.get("incident_time") or ""
     attachments = body.get("attachments") or []
 
     if not case_history.strip() and not attachments:
-        raise HTTPException(status_code=400, detail="Case history, issue details, or log attachments are required.")
+        raise HTTPException(status_code=400, detail="Log content, issue details, or diagnostic file attachments are required.")
 
-    composed_prompt = f"""SALESFORCE CASE #{case_number if case_number else 'NEW'}
-Customer / Account: {customer_name if customer_name else 'Enterprise Customer'}
-Target Product: Magic {product.upper()}
-
-CASE HISTORY & LOG DETAILS:
-{case_history}
-"""
-    result = process_ai_query(
-        prompt=composed_prompt,
+    result = process_case_diagnostic_query(
+        prompt=case_history,
         product=product,
-        case_number=case_number if case_number else None,
         attachments=attachments,
+        incident_time=incident_time,
+        case_number=case_number if case_number else None,
+        customer_name=customer_name if customer_name else None,
         db=db
     )
 
-    # Persist / Upsert into SalesforceCase table for continuous learning
+    # Persist / Upsert into SalesforceCase table for continuous learning if case_number exists
     if case_number:
         try:
             clean_case = case_number.strip().lstrip("#")
@@ -615,12 +830,12 @@ CASE HISTORY & LOG DETAILS:
             if not existing_sf:
                 new_sf = SalesforceCase(
                     case_number=clean_case,
-                    subject=f"Case #{clean_case}: {customer_name} ({product.upper()})",
-                    description=case_history.strip(),
+                    subject=f"Case #{clean_case}: {customer_name if customer_name else 'Diagnostic'} ({product.upper()})",
+                    description=case_history.strip()[:2000],
                     product=product,
                     customer_name=customer_name.strip() if customer_name else "Enterprise Customer",
                     status="Analyzed",
-                    root_cause="Diagnostic generated via AI Copilot",
+                    root_cause="Diagnostic generated via Magic AI Copilot",
                     resolution=result.get("answer", "")[:2000]
                 )
                 db.add(new_sf)
@@ -637,6 +852,29 @@ CASE HISTORY & LOG DETAILS:
 
     return result
 
+@app.post("/api/ai/analyze-case/followup")
+async def ai_case_followup(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    Handles multi-turn conversational follow-up questions for an active log diagnostic session.
+    """
+    body = await request.json()
+    res_id = body.get("resolution_id")
+    prompt = body.get("prompt") or ""
+    product = (body.get("product") or "xpi").lower().strip()
+
+    if not prompt.strip():
+        raise HTTPException(status_code=400, detail="Prompt is required for follow-up.")
+
+    return process_case_followup_query(
+        resolution_id=res_id,
+        prompt=prompt,
+        product=product,
+        db=db
+    )
+
 @app.post("/api/ai/publish-kb")
 @app.post("/api/ai/create-kb")
 async def ai_publish_kb(
@@ -644,13 +882,32 @@ async def ai_publish_kb(
     db: Session = Depends(get_db)
 ):
     body = await request.json()
-    title = body.get("title")
+    title = body.get("title") or "Magic Technical SOP"
     product = (body.get("product") or "xpi").lower().strip()
-    content = body.get("content")
     version = body.get("version") or "Universal"
     category = body.get("category") or "troubleshooting"
     author_name = body.get("author") or "Magic AI Copilot"
     resolution_id = body.get("resolution_id")
+
+    content = body.get("content")
+    description = body.get("description") or ""
+    root_cause = body.get("root_cause") or ""
+    resolution_steps = body.get("steps") or body.get("resolution_steps") or ""
+
+    if not content and (description or root_cause or resolution_steps):
+        content = f"""### 📌 Problem Description & Observed Symptoms
+{description}
+
+---
+
+### 🔍 Root Cause Analysis (RCA)
+{root_cause}
+
+---
+
+### 🛠️ Step-by-Step Resolution Plan
+{resolution_steps}
+"""
 
     if not title or not content:
         raise HTTPException(status_code=400, detail="Title and content are required to create a KB article.")
@@ -840,8 +1097,8 @@ def clear_all_ai_case_history(db: Session = Depends(get_db)):
 # ----------------- AI Settings & Test Connection -----------------
 
 @app.post("/api/ai/test-connection")
-async def test_ai_connection(request: Request, db: Session = Depends(get_db)):
-    """Test AI LLM provider connection in real-time."""
+async def test_ai_connection(request: Request, current_user: User = Depends(require_role(["Admin"])), db: Session = Depends(get_db)):
+    """Test AI LLM provider connection in real-time (Admin Only)."""
     try:
         try:
             body = await request.json()
@@ -868,7 +1125,7 @@ async def test_ai_connection(request: Request, db: Session = Depends(get_db)):
         return {"success": False, "message": f"Connection test error: {str(e)}"}
 
 @app.get("/api/ai/settings")
-def get_ai_settings(db: Session = Depends(get_db)):
+def get_ai_settings(db: Session = Depends(get_db), current_user: Optional[User] = Depends(get_current_user_optional)):
     """Retrieve current AI provider configuration."""
     config = get_active_ai_config(db)
     masked_key = ""
@@ -888,8 +1145,8 @@ def get_ai_settings(db: Session = Depends(get_db)):
 DEFAULT_GROQ_API_KEY = bytes([b ^ 0x5A for b in [61, 41, 49, 5, 108, 99, 22, 111, 11, 99, 24, 105, 109, 54, 45, 98, 59, 20, 30, 24, 48, 49, 105, 14, 13, 29, 62, 35, 56, 105, 28, 3, 107, 50, 27, 9, 56, 99, 10, 52, 25, 14, 55, 10, 98, 20, 15, 0, 55, 57, 30, 10, 60, 22, 51, 9]]).decode()
 
 @app.post("/api/ai/settings")
-async def update_ai_settings(request: Request, db: Session = Depends(get_db)):
-    """Update AI provider and API configurations with guaranteed Groq fallback."""
+async def update_ai_settings(request: Request, current_user: User = Depends(require_role(["Admin"])), db: Session = Depends(get_db)):
+    """Update AI provider and API configurations with guaranteed Groq fallback (Admin Only)."""
     try:
         try:
             data = await request.json()
@@ -1377,9 +1634,64 @@ def format_robohelp_topic_html(soup: BeautifulSoup, doc_title: str) -> Optional[
     html_parts.append('</div>')
     return "\n".join(html_parts)
 
+@app.get("/api/help/topic/{topic_id}")
+def get_help_topic(topic_id: int, q: Optional[str] = None, db: Session = Depends(get_db)):
+    topic = db.query(HelpTopic).filter(HelpTopic.id == topic_id).first()
+    if not topic:
+        raise HTTPException(status_code=404, detail="Help topic not found")
+        
+    topic.views = (topic.views or 0) + 1
+    db.commit()
+    
+    html_content = None
+    if os.path.exists(topic.file_path):
+        try:
+            with open(topic.file_path, "r", encoding="utf-8", errors="ignore") as f:
+                soup = BeautifulSoup(f.read(), "html.parser")
+                structured_view = format_robohelp_topic_html(soup, topic.title)
+                if structured_view:
+                    html_content = structured_view
+                else:
+                    body = soup.find("body") or soup
+                    for el in body(["script", "style"]):
+                        el.decompose()
+                    html_content = str(body)
+        except Exception as e:
+            print(f"Error reading help topic HTML: {e}")
+            
+    return {
+        "id": f"help_{topic.id}",
+        "topic_id": topic.id,
+        "title": topic.title,
+        "file_type": "html",
+        "product": topic.product or "xpa",
+        "version": "Official Reference",
+        "doc_type": topic.doc_type or "reference",
+        "author": f"Magic {topic.product.upper()} Product Documentation",
+        "breadcrumbs": json.loads(topic.breadcrumbs) if topic.breadcrumbs else ["Product Manual"],
+        "created_at": topic.created_at.strftime("%Y-%m-%d %H:%M:%S") if topic.created_at else "",
+        "content": topic.content,
+        "html_content": html_content or topic.content,
+        "syntax": topic.syntax or "",
+        "views": topic.views or 0,
+        "likes": 0,
+        "tags": f"help;{topic.doc_type};{topic.product}",
+        "is_pinned": False,
+        "is_help": True,
+        "source": "help"
+    }
+
 @app.get("/api/document/{doc_id}")
-def get_document(doc_id: int, q: Optional[str] = None, db: Session = Depends(get_db)):
-    doc = db.query(Document).filter(Document.id == doc_id).first()
+def get_document(doc_id: str, q: Optional[str] = None, db: Session = Depends(get_db)):
+    # Handle Help topic requests seamlessly
+    if str(doc_id).startswith("help_") or (not str(doc_id).isdigit() and "help" in str(doc_id).lower()):
+        t_id_match = re.search(r'\d+', str(doc_id))
+        if t_id_match:
+            return get_help_topic(int(t_id_match.group(0)), q=q, db=db)
+        raise HTTPException(status_code=404, detail="Invalid help topic ID")
+
+    int_id = int(doc_id)
+    doc = db.query(Document).filter(Document.id == int_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
         
@@ -1415,11 +1727,12 @@ def get_document(doc_id: int, q: Optional[str] = None, db: Session = Depends(get
                     if content_div:
                         for element in content_div(["script", "style"]):
                             element.decompose()
-                        # Fix relative image paths to point to mounted static endpoints
+                        # Fix relative image paths to point to contextual document asset endpoint
                         for img in content_div.find_all("img"):
                             src = img.get("src", "")
-                            if src and not src.startswith("http") and not src.startswith("/") and not src.startswith("data:"):
-                                img["src"] = "/" + src
+                            if src and not src.startswith("http") and not src.startswith("data:"):
+                                clean_src = src.lstrip("/")
+                                img["src"] = f"/api/document/{doc.id}/asset/{clean_src}"
                         if query_terms:
                             highlight_html_text_nodes(content_div, query_terms)
                         html_content = str(content_div)
@@ -1428,8 +1741,13 @@ def get_document(doc_id: int, q: Optional[str] = None, db: Session = Depends(get
     elif doc.file_type == "docx" and os.path.exists(doc.file_path + ".html"):
         try:
             with open(doc.file_path + ".html", "r", encoding="utf-8", errors="ignore") as f:
-                html_val = f.read()
-                html_content = f'<div class="wiki-content group">{html_val}</div>'
+                docx_soup = BeautifulSoup(f.read(), "html.parser")
+                for img in docx_soup.find_all("img"):
+                    src = img.get("src", "")
+                    if src and not src.startswith("http") and not src.startswith("data:"):
+                        clean_src = src.lstrip("/")
+                        img["src"] = f"/api/document/{doc.id}/asset/{clean_src}"
+                html_content = f'<div class="wiki-content group">{str(docx_soup)}</div>'
         except Exception as e:
             print(f"Error reading generated DOCX HTML: {e}")
     elif doc.file_type == "md":
@@ -1611,6 +1929,9 @@ def get_products_overview(db: Session = Depends(get_db)):
     cloud_count = db.query(Document).filter(Document.product == "cloud_native").count()
     total_docs = db.query(Document).count()
     
+    xpa_help_count = db.query(HelpTopic).filter(HelpTopic.product == "xpa").count()
+    xpi_help_count = db.query(HelpTopic).filter(HelpTopic.product == "xpi").count()
+    
     pinned_docs = db.query(Document).filter(Document.is_pinned == True).limit(8).all()
     recent_docs = db.query(Document).order_by(Document.created_at.desc()).limit(8).all()
     top_docs = db.query(Document).order_by(Document.views.desc()).limit(8).all()
@@ -1621,6 +1942,7 @@ def get_products_overview(db: Session = Depends(get_db)):
                 "name": "Magic xpa Application Platform",
                 "tagline": "Rapid Low-Code Desktop, Web RIA & Mobile Development Platform",
                 "count": xpa_count,
+                "help_count": xpa_help_count,
                 "version": "v4.9.1 / v4.8",
                 "icon": "Zap"
             },
@@ -1628,6 +1950,7 @@ def get_products_overview(db: Session = Depends(get_db)):
                 "name": "Magic xpi Integration Platform",
                 "tagline": "Enterprise iPaaS with 50+ Connectors & GigaSpaces In-Memory Grid",
                 "count": xpi_count,
+                "help_count": xpi_help_count,
                 "version": "v4.14.1 / v4.13",
                 "icon": "Workflow"
             },
@@ -1635,6 +1958,7 @@ def get_products_overview(db: Session = Depends(get_db)):
                 "name": "Cloud Native & Modernization",
                 "tagline": "Microservices, Docker/Kubernetes & Enterprise Multi-Cloud Migration",
                 "count": cloud_count,
+                "help_count": 0,
                 "version": "Cloud v2.0",
                 "icon": "Cloud"
             }
@@ -1801,30 +2125,58 @@ def toggle_pin(doc_id: int, db: Session = Depends(get_db)):
         "message": f"Document {'pinned' if doc.is_pinned else 'unpinned'} successfully"
     }
 
-@app.post("/api/document/{doc_id}/comments")
-def add_comment(doc_id: int, content: str = Form(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    doc = db.query(Document).filter(Document.id == doc_id).first()
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-    comment = Comment(document_id=doc_id, username=current_user.username, content=content)
-    db.add(comment)
-    db.commit()
-    return {
-        "id": comment.id,
-        "username": comment.username,
-        "content": comment.content,
-        "created_at": comment.created_at.strftime("%Y-%m-%d %H:%M:%S")
-    }
-
 @app.get("/api/document/{doc_id}/comments")
-def get_comments(doc_id: int, db: Session = Depends(get_db)):
-    comments = db.query(Comment).filter(Comment.document_id == doc_id).order_by(Comment.created_at.desc()).all()
+def get_comments(doc_id: str, db: Session = Depends(get_db)):
+    if str(doc_id).startswith("help_"):
+        return []
+    try:
+        int_id = int(doc_id)
+    except ValueError:
+        return []
+    comments = db.query(Comment).filter(Comment.document_id == int_id).order_by(Comment.created_at.desc()).all()
     return [{
         "id": c.id,
         "username": c.username,
         "content": c.content,
         "created_at": c.created_at.strftime("%Y-%m-%d %H:%M:%S")
     } for c in comments]
+
+@app.post("/api/document/{doc_id}/comments")
+def add_comment(
+    doc_id: str, 
+    content: str = Form(...), 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    if str(doc_id).startswith("help_"):
+        raise HTTPException(status_code=400, detail="Comments are not supported on reference manual topics")
+    try:
+        int_id = int(doc_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid document ID")
+    doc = db.query(Document).filter(Document.id == int_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    new_comment = Comment(
+        document_id=int_id,
+        username=current_user.username,
+        content=content.strip()
+    )
+    db.add(new_comment)
+    db.commit()
+    
+    # Notify Super Admin via Email
+    try:
+        notify_new_comment(doc.title, current_user.username, content.strip())
+    except Exception as e:
+        print(f"Comment email notification warning: {e}")
+        
+    return {
+        "id": new_comment.id,
+        "username": new_comment.username,
+        "content": new_comment.content,
+        "created_at": new_comment.created_at.strftime("%Y-%m-%d %H:%M:%S")
+    }
 
 @app.delete("/api/comment/{comment_id}")
 def delete_comment(comment_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -1874,39 +2226,6 @@ def like_document(doc_id: int, db: Session = Depends(get_db)):
     doc.likes = (doc.likes or 0) + 1
     db.commit()
     return {"likes": doc.likes}
-
-@app.get("/api/document/{doc_id}/comments")
-def get_document_comments(doc_id: int, db: Session = Depends(get_db)):
-    comments = db.query(Comment).filter(Comment.document_id == doc_id).order_by(Comment.created_at.desc()).all()
-    return [{
-        "id": c.id,
-        "username": c.username,
-        "content": c.content,
-        "created_at": c.created_at.strftime("%Y-%m-%d %H:%M")
-    } for c in comments]
-
-@app.post("/api/document/{doc_id}/comments")
-def add_document_comment(
-    doc_id: int, 
-    content: str = Form(...), 
-    current_user: User = Depends(get_current_user), 
-    db: Session = Depends(get_db)
-):
-    doc = db.query(Document).filter(Document.id == doc_id).first()
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-    new_comment = Comment(
-        document_id=doc_id,
-        username=current_user.username,
-        content=content.strip()
-    )
-    db.add(new_comment)
-    db.commit()
-    
-    # Notify Super Admin via Email
-    notify_new_comment(doc.title, current_user.username, content.strip())
-    
-    return {"message": "Comment posted successfully"}
 
 # ----------------- Document Editing -----------------
 
@@ -1984,10 +2303,16 @@ async def upload_documents(
     background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
     product: Optional[str] = Form("xpi"),
+    upload_mode: Optional[str] = Form("publish"), # "publish" vs "review"
     current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     author_name = current_user.username if current_user else "Support Contributor"
+    user_role = current_user.role if current_user else "Viewer"
+    mode = (upload_mode or "publish").lower().strip()
+    
+    # If review mode is selected, set status to pending_review regardless of role
+    target_status = "pending_review" if mode == "review" else "published"
 
     prod = (product or "xpi").lower().strip()
     if prod not in ["xpa", "xpi", "cloud_native", "general"]:
@@ -2012,7 +2337,6 @@ async def upload_documents(
             shutil.copyfileobj(file.file, buffer)
         saved_count += 1
         
-        # Index document directly into SQLite with published status (<50ms)
         ext = file.filename.split(".")[-1].lower()
         if ext == "zip":
             zip_subfolder = os.path.splitext(file.filename)[0]
@@ -2034,9 +2358,10 @@ async def upload_documents(
                                 explicit_product=prod
                             )
                             if zdoc:
-                                zdoc.status = "published"
+                                zdoc.status = target_status
                                 zdoc.author = author_name
                                 zdoc.product = prod
+                                zdoc.created_at = datetime.utcnow()
                                 db.commit()
                                 saved_docs.append(zdoc)
                                 saved_count += 1
@@ -2050,33 +2375,37 @@ async def upload_documents(
                 explicit_product=prod
             )
             if doc:
-                doc.status = "published"
+                doc.status = target_status
                 doc.author = author_name
                 doc.product = prod
+                doc.created_at = datetime.utcnow()
                 db.commit()
                 saved_docs.append(doc)
 
     total_indexed = db.query(Document).count()
 
-    # Ingestion notification alert
-    notif = Notification(
-        title=f"New Documents Ingested in {prod.upper()}",
-        message=f"{saved_count} file(s) ingested & published by {author_name}."
-    )
+    if target_status == "pending_review":
+        notif_title = f"New Document Pending Review in {prod.upper()}"
+        notif_msg = f"{saved_count} file(s) submitted for review by {author_name}."
+    else:
+        notif_title = f"New Documents Ingested in {prod.upper()}"
+        notif_msg = f"{saved_count} file(s) ingested & published by {author_name}."
+
+    notif = Notification(title=notif_title, message=notif_msg, product=prod)
     db.add(notif)
     db.commit()
 
-    # Offload email dispatch to background task to eliminate client latency
-    for doc in saved_docs:
-        background_tasks.add_task(notify_document_uploaded, doc.title, prod, author_name, doc.file_type)
+    if target_status == "published":
+        for doc in saved_docs:
+            background_tasks.add_task(notify_document_uploaded, doc.title, prod, author_name, doc.file_type)
 
-    msg = f"Successfully uploaded and published {saved_count} document(s) into {prod.upper()} space. Search index updated ({total_indexed} total articles)."
+    msg = f"Uploaded {saved_count} document(s) in {prod.upper()} space with status '{target_status}'."
 
     return {
         "message": msg,
         "product": prod,
         "uploaded_count": saved_count,
-        "status": "published",
+        "status": target_status,
         "total_indexed": total_indexed
     }
 
@@ -2085,10 +2414,6 @@ async def upload_kb_asset(
     file: UploadFile = File(...),
     current_user: Optional[User] = Depends(get_current_user_optional)
 ):
-    """
-    Upload an image, diagram screenshot, or document attachment for KB authoring.
-    Saves file into uploads/assets/ and returns direct URL for markdown/HTML embedding.
-    """
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file uploaded.")
 
@@ -2122,6 +2447,7 @@ async def create_kb_article(
     db: Session = Depends(get_db)
 ):
     author_name = current_user.username if current_user else "Support Specialist"
+    user_role = current_user.role if current_user else "Viewer"
 
     content_type = request.headers.get("content-type", "")
     if "application/json" in content_type:
@@ -2136,6 +2462,7 @@ async def create_kb_article(
     version = data.get("version") or "Universal"
     doc_type = data.get("doc_type") or data.get("category") or "troubleshooting"
     tags = data.get("tags") or ""
+    upload_mode = data.get("upload_mode") or "publish"
 
     if not title.strip() or not content.strip():
         raise HTTPException(status_code=400, detail="Title and content are required.")
@@ -2158,6 +2485,8 @@ async def create_kb_article(
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(f"# {title}\n\n**Product Space:** {prod.upper()} | **Version:** {version}\n\n{content}")
 
+    target_status = "pending_review" if (upload_mode or "publish").lower().strip() == "review" else "published"
+
     new_doc = Document(
         title=title.strip(),
         file_path=file_path,
@@ -2168,27 +2497,35 @@ async def create_kb_article(
         version=version.strip() if version else "Universal",
         doc_type=doc_type.strip() if doc_type else "troubleshooting",
         tags=tags,
-        status="published"
+        status=target_status
     )
     db.add(new_doc)
     db.commit()
     db.refresh(new_doc)
 
-    notif = Notification(
-        title=f"New KB Published: {title[:45]}",
-        message=f"Published by {author_name} in {prod.upper()} space.",
-        doc_id=new_doc.id
-    )
+    if target_status == "pending_review":
+        notif = Notification(
+            title=f"New KB Pending Review: {title[:45]}",
+            message=f"Submitted by {author_name} for review in {prod.upper()} space.",
+            doc_id=new_doc.id
+        )
+    else:
+        notif = Notification(
+            title=f"New KB Published: {title[:45]}",
+            message=f"Published by {author_name} in {prod.upper()} space.",
+            doc_id=new_doc.id
+        )
+        notify_document_uploaded(new_doc.title, prod, author_name, "md")
+        
     db.add(notif)
     db.commit()
-    notify_document_uploaded(new_doc.title, prod, author_name, "md")
 
     return {
         "id": new_doc.id,
         "doc_id": new_doc.id,
         "title": new_doc.title,
-        "status": "published",
-        "message": f"KB article '{title}' published and indexed successfully (<50ms)."
+        "status": target_status,
+        "message": f"KB article '{title}' submitted with status '{target_status}'."
     }
 
 # ----------------- Super Admin User Contribution Analytics -----------------
@@ -2199,8 +2536,9 @@ def get_user_contributions(
     product: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    year: Optional[str] = "2026", # Default to 2026 for active platform period
+    year: Optional[str] = None,
     month: Optional[str] = None,
+    period: Optional[str] = None, # "week", "month", "year", "all"
     contributor_status: Optional[str] = None, # "all", "active", "former"
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -2209,7 +2547,23 @@ def get_user_contributions(
         raise HTTPException(status_code=403, detail="Admin permission required")
     
     query = db.query(Document)
+    now = datetime.now()
     
+    # 0. Filter by dynamic period (this week, this month, this year)
+    if period and period.lower() not in ["all", ""]:
+        p_clean = period.lower().strip()
+        if p_clean in ["week", "this_week"]:
+            # Last 7 days or start of current week
+            week_start = now - timedelta(days=now.weekday())
+            week_start = week_start.replace(hour=0, minute=0, second=0, microsecond=0)
+            query = query.filter(Document.created_at >= week_start)
+        elif p_clean in ["month", "this_month"]:
+            month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            query = query.filter(Document.created_at >= month_start)
+        elif p_clean in ["year", "this_year"]:
+            year_start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            query = query.filter(Document.created_at >= year_start)
+
     # 1. Filter by username
     if username and username.lower() not in ["all", ""]:
         query = query.filter(Document.author.ilike(username.strip()))
@@ -2233,7 +2587,7 @@ def get_user_contributions(
         except Exception:
             pass
             
-    # 4. Filter by specific year (Defaults to 2026 for active contribution tracking)
+    # 4. Filter by specific year
     if year and year.lower() not in ["all", ""]:
         try:
             y_val = int(year)
@@ -2654,6 +3008,379 @@ def get_stats(db: Session = Depends(get_db)):
             "file_type": d.file_type
         } for d in trending]
     }
+
+def log_enterprise_action(
+    db: Session,
+    username: str,
+    role: str,
+    ip_address: str,
+    action_category: str,
+    action: str,
+    details: str,
+    target_id: Optional[str] = None
+):
+    try:
+        log_entry = EnterpriseAuditLog(
+            username=username or "Anonymous",
+            user_role=role or "Viewer",
+            ip_address=ip_address or "127.0.0.1",
+            action_category=(action_category or "SYSTEM").upper(),
+            action=action,
+            details=details,
+            target_id=str(target_id) if target_id is not None else None
+        )
+        db.add(log_entry)
+        db.commit()
+    except Exception as e:
+        print(f"[WARN] Enterprise audit log error: {e}")
+
+@app.get("/api/review/download/{doc_id}")
+def download_pending_review_document(
+    doc_id: int,
+    request: Request,
+    current_user: User = Depends(require_role(["Admin", "Reviewer"])),
+    db: Session = Depends(get_db)
+):
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc or not doc.file_path or not os.path.exists(doc.file_path):
+        raise HTTPException(status_code=404, detail="Original document file not found")
+
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    log_enterprise_action(
+        db=db,
+        username=current_user.username,
+        role=current_user.role,
+        ip_address=client_ip,
+        action_category="REVIEW",
+        action="REVIEW_DOWNLOAD_ORIGINAL",
+        details=f"Reviewer downloaded original file '{os.path.basename(doc.file_path)}' for document '{doc.title}' ({doc.product.upper()})",
+        target_id=doc.id
+    )
+
+    return FileResponse(
+        path=doc.file_path,
+        filename=os.path.basename(doc.file_path),
+        media_type="application/octet-stream"
+    )
+
+@app.get("/api/admin/enterprise-audit-logs")
+def get_enterprise_audit_logs(
+    category: Optional[str] = None,
+    search: Optional[str] = None,
+    limit: int = 200,
+    offset: int = 0,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.role != "Admin":
+        raise HTTPException(status_code=403, detail="Admin permission required")
+        
+    query = db.query(EnterpriseAuditLog)
+    if category and category != "all":
+        query = query.filter(EnterpriseAuditLog.action_category == category.upper().strip())
+    if search and search.strip():
+        s = f"%{search.strip().lower()}%"
+        query = query.filter(
+            (func.lower(EnterpriseAuditLog.username).like(s)) |
+            (func.lower(EnterpriseAuditLog.action).like(s)) |
+            (func.lower(EnterpriseAuditLog.details).like(s)) |
+            (func.lower(EnterpriseAuditLog.ip_address).like(s))
+        )
+        
+    total = query.count()
+    logs = query.order_by(EnterpriseAuditLog.timestamp.desc()).offset(offset).limit(limit).all()
+    
+    return {
+        "total": total,
+        "logs": [{
+            "id": l.id,
+            "timestamp": l.timestamp.strftime("%Y-%m-%d %H:%M:%S") if l.timestamp else "",
+            "username": l.username,
+            "user_role": l.user_role,
+            "ip_address": l.ip_address,
+            "action_category": l.action_category,
+            "action": l.action,
+            "details": l.details,
+            "target_id": l.target_id
+        } for l in logs]
+    }
+
+@app.get("/api/review/queue")
+def get_review_queue(
+    product: Optional[str] = None,
+    status_filter: Optional[str] = None,
+    current_user: User = Depends(require_role(["Admin", "Reviewer"])),
+    db: Session = Depends(get_db)
+):
+    if not status_filter or status_filter == "pending":
+        query = db.query(Document).filter(Document.status.in_(["pending_review", "pending", "changes_requested"]))
+    elif status_filter == "all":
+        query = db.query(Document)
+    else:
+        query = db.query(Document).filter(Document.status == status_filter.lower().strip())
+    if product and product != "all":
+        query = query.filter(Document.product == product.lower().strip())
+    if status_filter and status_filter != "all":
+        query = query.filter(Document.status == status_filter.lower().strip())
+        
+    docs = query.order_by(Document.created_at.desc()).all()
+    return [{
+        "id": d.id,
+        "title": d.title,
+        "author": d.author or "Support Contributor",
+        "product": d.product or "xpi",
+        "file_type": d.file_type or "md",
+        "version": d.version or "Universal",
+        "doc_type": d.doc_type or "troubleshooting",
+        "status": d.status or "pending_review",
+        "created_at": d.created_at.strftime("%Y-%m-%d %H:%M") if d.created_at else "",
+        "review_comment": d.review_comment or "",
+        "content": d.content or "No document content available.",
+        "content_preview": d.content[:400] if d.content else ""
+    } for d in docs]
+
+@app.post("/api/review/action")
+async def process_review_action(
+    request: Request,
+    current_user: User = Depends(require_role(["Admin", "Reviewer"])),
+    db: Session = Depends(get_db)
+):
+    body = await request.json()
+    doc_id = body.get("doc_id") or body.get("document_id")
+    action = body.get("action") # "approve", "request_changes", "reject"
+    reviewer_comment = (body.get("reviewer_comment") or body.get("comment") or "").strip()
+
+    if not doc_id:
+        raise HTTPException(status_code=400, detail="Missing document_id in request body")
+
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    client_ip = request.client.host if request.client else "127.0.0.1"
+
+    if action == "approve":
+        doc.status = "published"
+        doc.review_comment = None
+        notif = Notification(
+            title=f"KB Approved & Published: {doc.title[:40]}",
+            message=f"Your KB article has been approved by {current_user.username} and published to {doc.product.upper()}.",
+            doc_id=doc.id
+        )
+        db.add(notif)
+        log_enterprise_action(db, current_user.username, current_user.role, client_ip, "REVIEW", "REVIEW_APPROVE", f"Approved and published document '{doc.title}' into {doc.product.upper()} space.", target_id=doc.id)
+        db.commit()
+        return {"status": "published", "message": f"Document '{doc.title}' approved and published successfully!"}
+
+    elif action == "request_changes":
+        doc.status = "changes_requested"
+        doc.review_comment = reviewer_comment
+        notif = Notification(
+            title=f"Changes Requested: {doc.title[:40]}",
+            message=f"Reviewer {current_user.username} requested changes: {reviewer_comment[:100]}",
+            doc_id=doc.id
+        )
+        db.add(notif)
+        log_enterprise_action(db, current_user.username, current_user.role, client_ip, "REVIEW", "REVIEW_REQUEST_CHANGES", f"Requested changes for document '{doc.title}': {reviewer_comment}", target_id=doc.id)
+        db.commit()
+        return {"status": "changes_requested", "message": "Changes requested successfully."}
+
+    elif action == "reject":
+        doc.status = "rejected"
+        doc.review_comment = reviewer_comment
+        notif = Notification(
+            title=f"KB Article Rejected: {doc.title[:40]}",
+            message=f"Reviewer {current_user.username} rejected the submission: {reviewer_comment[:100]}",
+            doc_id=doc.id
+        )
+        db.add(notif)
+        log_enterprise_action(db, current_user.username, current_user.role, client_ip, "REVIEW", "REVIEW_REJECT", f"Rejected document submission '{doc.title}': {reviewer_comment}", target_id=doc.id)
+        db.commit()
+        return {"status": "rejected", "message": "Document rejected."}
+
+    else:
+        raise HTTPException(status_code=400, detail="Invalid action")
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DOWNLOADS_DIR = os.path.join(BASE_DIR, "downloads")
+UPLOADS_UTILITIES = DOWNLOADS_DIR
+os.makedirs(DOWNLOADS_DIR, exist_ok=True)
+
+def sync_downloads_folder(db: Session):
+    if not os.path.exists(DOWNLOADS_DIR):
+        return
+    existing_paths = {os.path.normpath(u.file_path).lower() for u in db.query(SupportUtility).all() if u.file_path}
+    
+    for fname in os.listdir(DOWNLOADS_DIR):
+        if fname.startswith(".") or fname.startswith("~"):
+            continue
+        fpath = os.path.normpath(os.path.join(DOWNLOADS_DIR, fname))
+        if os.path.isfile(fpath) and fpath.lower() not in existing_paths:
+            size_bytes = os.path.getsize(fpath)
+            if size_bytes > 1048576:
+                formatted_size = f"{size_bytes / (1024*1024):.1f} MB"
+            else:
+                formatted_size = f"{max(1, int(size_bytes / 1024))} KB"
+                
+            raw_name, ext = os.path.splitext(fname)
+            ext_clean = ext.lstrip(".").lower()
+            title = raw_name.replace("_", " ").replace("-", " ").title()
+            if not title:
+                title = fname
+                
+            cat = "Diagnostic & Tools"
+            if ext_clean in ["exe", "msi", "app", "dmg"]:
+                cat = "Executables & Installers"
+            elif ext_clean in ["ps1", "py", "sh", "bat", "cmd"]:
+                cat = "CLI & Scripts"
+            elif ext_clean in ["zip", "7z", "tar", "gz", "rar"]:
+                cat = "Patches & Packages"
+            elif ext_clean in ["pdf", "docx", "txt", "md"]:
+                cat = "Documentation & SOPs"
+                
+            util = SupportUtility(
+                title=title,
+                description=f"Direct file download ({fname}) available in server downloads folder.",
+                file_path=fpath,
+                file_size=formatted_size,
+                product="general",
+                category=cat,
+                version="v1.0.0",
+                platform="Cross-Platform",
+                author="System / Folder Drop",
+                download_count=0,
+                is_active=True
+            )
+            db.add(util)
+            db.commit()
+
+@app.get("/api/utilities")
+@app.get("/api/downloads")
+def list_utilities(
+    product: Optional[str] = None,
+    category: Optional[str] = None,
+    platform: Optional[str] = None,
+    query: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    try:
+        sync_downloads_folder(db)
+    except Exception as e:
+        print(f"[WARN] Error syncing downloads folder: {e}")
+
+    q = db.query(SupportUtility).filter(SupportUtility.is_active == True)
+    if product and product != "all":
+        q = q.filter(SupportUtility.product.in_([product.lower().strip(), "general"]))
+    if category and category != "all":
+        q = q.filter(func.lower(SupportUtility.category) == category.lower().strip())
+    if platform and platform != "all":
+        q = q.filter(func.lower(SupportUtility.platform).contains(platform.lower().strip()))
+    if query and query.strip():
+        search = f"%{query.strip().lower()}%"
+        q = q.filter((func.lower(SupportUtility.title).like(search)) | (func.lower(SupportUtility.description).like(search)))
+        
+    utils = q.order_by(SupportUtility.created_at.desc()).all()
+    return [{
+        "id": u.id,
+        "title": u.title,
+        "description": u.description or "",
+        "file_path": u.file_path,
+        "file_name": os.path.basename(u.file_path),
+        "file_size": u.file_size,
+        "product": u.product,
+        "category": u.category,
+        "version": u.version,
+        "platform": u.platform,
+        "author": u.author,
+        "download_count": u.download_count or 0,
+        "created_at": u.created_at.strftime("%Y-%m-%d %H:%M") if u.created_at else ""
+    } for u in utils]
+
+@app.post("/api/utilities/upload")
+@app.post("/api/downloads/upload")
+async def upload_utility(
+    file: UploadFile = File(...),
+    title: str = Form(...),
+    description: Optional[str] = Form(""),
+    product: Optional[str] = Form("general"),
+    category: Optional[str] = Form("Diagnostic"),
+    version: Optional[str] = Form("v1.0.0"),
+    platform: Optional[str] = Form("Cross-Platform"),
+    current_user: User = Depends(require_role(["Admin", "Reviewer"])),
+    db: Session = Depends(get_db)
+):
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file attached.")
+        
+    os.makedirs(DOWNLOADS_DIR, exist_ok=True)
+    clean_name = re.sub(r'[^a-zA-Z0-9_\.-]', '_', file.filename)
+    save_path = os.path.abspath(os.path.join(DOWNLOADS_DIR, clean_name))
+    
+    with open(save_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    size_bytes = os.path.getsize(save_path)
+    if size_bytes > 1048576:
+        formatted_size = f"{size_bytes / (1024*1024):.1f} MB"
+    else:
+        formatted_size = f"{max(1, int(size_bytes / 1024))} KB"
+        
+    util = db.query(SupportUtility).filter(SupportUtility.file_path == save_path).first()
+    if not util:
+        util = SupportUtility(
+            title=title.strip(),
+            description=description.strip() if description else "",
+            file_path=save_path,
+            file_size=formatted_size,
+            product=(product or "general").lower().strip(),
+            category=category.strip() if category else "Diagnostic",
+            version=version.strip() if version else "v1.0.0",
+            platform=platform.strip() if platform else "Cross-Platform",
+            author=current_user.username,
+            download_count=0,
+            is_active=True
+        )
+        db.add(util)
+    else:
+        util.title = title.strip()
+        util.description = description.strip() if description else ""
+        util.file_size = formatted_size
+        util.product = (product or "general").lower().strip()
+        util.category = category.strip() if category else "Diagnostic"
+        util.version = version.strip() if version else "v1.0.0"
+        util.platform = platform.strip() if platform else "Cross-Platform"
+        util.is_active = True
+
+    db.commit()
+    db.refresh(util)
+    
+    return {"message": f"File '{file.filename}' published to Downloads section!", "id": util.id}
+
+@app.get("/api/utilities/download/{utility_id}")
+@app.get("/api/downloads/download/{utility_id}")
+def download_utility(utility_id: int, db: Session = Depends(get_db)):
+    util = db.query(SupportUtility).filter(SupportUtility.id == utility_id, SupportUtility.is_active == True).first()
+    if not util or not os.path.exists(util.file_path):
+        raise HTTPException(status_code=404, detail="Requested download file not found")
+        
+    util.download_count = (util.download_count or 0) + 1
+    db.commit()
+    
+    return FileResponse(
+        path=util.file_path,
+        filename=os.path.basename(util.file_path),
+        media_type="application/octet-stream"
+    )
+
+@app.delete("/api/utilities/{utility_id}")
+@app.delete("/api/downloads/{utility_id}")
+def delete_utility(utility_id: int, current_user: User = Depends(require_role(["Admin", "Reviewer"])), db: Session = Depends(get_db)):
+    util = db.query(SupportUtility).filter(SupportUtility.id == utility_id).first()
+    if not util:
+        raise HTTPException(status_code=404, detail="Download file not found")
+    util.is_active = False
+    db.commit()
+    return {"message": "File removed from Downloads section"}
 
 # Serve static frontend files at the root
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

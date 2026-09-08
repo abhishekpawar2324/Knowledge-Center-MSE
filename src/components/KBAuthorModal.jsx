@@ -35,8 +35,8 @@ export default function KBAuthorModal({ isOpen, onClose, token, onKBCreated, def
     setContent((prev) => prev + '\n' + snippet + '\n')
   }
 
-  const handlePublish = async (e) => {
-    e.preventDefault()
+  const handlePublish = async (e, mode = 'publish') => {
+    if (e) e.preventDefault()
     setError('')
     setSuccess('')
 
@@ -55,6 +55,7 @@ export default function KBAuthorModal({ isOpen, onClose, token, onKBCreated, def
       formData.append('version', version)
       formData.append('doc_type', docType)
       formData.append('tags', tags)
+      formData.append('upload_mode', mode)
 
       const res = await fetch('/api/kb/create', {
         method: 'POST',
@@ -64,11 +65,14 @@ export default function KBAuthorModal({ isOpen, onClose, token, onKBCreated, def
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}))
-        throw new Error(errData.detail || 'Failed to publish Knowledge Base article')
+        throw new Error(errData.detail || 'Failed to submit Knowledge Base article')
       }
 
       const data = await res.json()
-      setSuccess(`Article "${title}" published and indexed successfully into ${product.toUpperCase()}!`)
+      const statusMsg = mode === 'review' 
+        ? `Article "${title}" submitted for review into ${product.toUpperCase()} Queue!`
+        : `Article "${title}" published and indexed successfully into ${product.toUpperCase()}!`
+      setSuccess(statusMsg)
       if (onKBCreated) onKBCreated(data.doc_id)
       setTimeout(() => {
         onClose()
@@ -464,7 +468,29 @@ export default function KBAuthorModal({ isOpen, onClose, token, onKBCreated, def
             </button>
             <button
               type="button"
-              onClick={handlePublish}
+              onClick={(e) => handlePublish(e, 'review')}
+              disabled={loading}
+              style={{
+                padding: '10px 18px',
+                borderRadius: '8px',
+                background: 'rgba(245, 158, 11, 0.18)',
+                border: '1px solid rgba(245, 158, 11, 0.4)',
+                color: '#fbbf24',
+                fontWeight: 600,
+                fontSize: '0.88rem',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <Clock size={16} />
+              <span>{loading ? 'Submitting...' : 'Send for Review'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => handlePublish(e, 'publish')}
               disabled={loading}
               style={{
                 padding: '10px 22px',
@@ -482,7 +508,7 @@ export default function KBAuthorModal({ isOpen, onClose, token, onKBCreated, def
               }}
             >
               <Send size={16} />
-              <span>{loading ? 'Publishing...' : 'Publish Knowledge Base Article'}</span>
+              <span>{loading ? 'Publishing...' : 'Directly Publish'}</span>
             </button>
           </div>
         </div>

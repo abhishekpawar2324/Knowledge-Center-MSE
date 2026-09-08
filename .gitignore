@@ -26,6 +26,8 @@ env/
 kb_system.db
 uploads/*
 !uploads/.gitkeep
+downloads/*
+!downloads/.gitkeep
 
 # IDE & Editor files
 .vscode/
@@ -38,3 +40,6 @@ Thumbs.db
 # Misc logs & temporary files
 copy_log.txt
 *.log
+scratch/
+Mock Images/
+863301644/

@@ -32,7 +32,7 @@ except ImportError:
 
 import markdown
 
-from backend.database import SessionLocal, Document, IndexLog, init_db
+from backend.database import SessionLocal, Document, HelpTopic, IndexLog, init_db
 
 # Constants for paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -43,42 +43,76 @@ UPLOADS_XPI = os.path.join(UPLOADS_DIR, "xpi")
 UPLOADS_CLOUD = os.path.join(UPLOADS_DIR, "cloud_native")
 UPLOADS_GENERAL = os.path.join(UPLOADS_DIR, "general")
 
+HELP_FOLDER_NAMES = {
+    "help", "help_samples", "whxdata", "mergedprojects", 
+    "template", "template_scripts", "test_help_package", "test_help_package_xpa"
+}
+
+ASSET_FOLDER_NAMES = {
+    "attachments", "images", "styles", "whxdata", "assets"
+}
+
+def is_help_path(file_path: str) -> bool:
+    """Checks if a file path belongs to product help manuals rather than user documents."""
+    norm = file_path.replace("\\", "/").lower()
+    parts = set(norm.split("/"))
+    if any(hf in parts for hf in HELP_FOLDER_NAMES):
+        return True
+    if any(k in norm for k in ["/help/", "/help_samples/", "/mergedprojects/", "/whxdata/", "/test_help_package/"]):
+        return True
+    base = os.path.basename(file_path).lower()
+    if base in ["index.htm", "index.html"] and any(p in norm for p in ["/xpa/", "/xpi/", "/cloud_native/"]):
+        return True
+    return False
+
+def is_asset_path(file_path: str) -> bool:
+    """Checks if a file path belongs to an internal attachment or asset folder rather than a primary KB article."""
+    norm = file_path.replace("\\", "/").lower()
+    parts = set(norm.split("/"))
+    if any(af in parts for af in ASSET_FOLDER_NAMES):
+        return True
+    return False
+
 # Ensure all product upload directories exist
 for p_dir in [UPLOADS_DIR, UPLOADS_XPA, UPLOADS_XPI, UPLOADS_CLOUD, UPLOADS_GENERAL]:
     os.makedirs(p_dir, exist_ok=True)
 
 def detect_product(file_path: str, title: str = "", content: str = "", breadcrumbs: list = None) -> str:
     """
-    Intelligently identifies which Magic product space an article belongs to:
+    Identifies which Magic product space an article belongs to:
     'xpa' (Application Platform), 'xpi' (Integration Platform), 'cloud_native', or 'general'.
+    Physical directory structure is strictly authoritative.
     """
     path_lower = file_path.lower().replace("\\", "/")
-    if "/xpa/" in path_lower or "/xpa" in path_lower:
-        return "xpa"
-    if "/xpi/" in path_lower or "/xpi" in path_lower:
-        return "xpi"
-    if "/cloud_native/" in path_lower or "/cloud" in path_lower:
+    
+    # 1. Folder path is strictly authoritative when placed inside product directories
+    if "/cloud_native/" in path_lower or "/cloud/" in path_lower or path_lower.endswith("/cloud_native"):
         return "cloud_native"
+    if "/xpa/" in path_lower or path_lower.endswith("/xpa"):
+        return "xpa"
+    if "/xpi/" in path_lower or path_lower.endswith("/xpi"):
+        return "xpi"
     if "/general/" in path_lower:
         return "general"
-        
+
     crumbs_text = " ".join(breadcrumbs) if breadcrumbs else ""
-    combined = (title + " " + crumbs_text + " " + content[:2500]).lower()
+    # 2. Confluence breadcrumbs check (e.g. Cloud Service Ops in root Confluence export)
+    if any(k in crumbs_text.lower() for k in ["cloud service ops", "cloud native", "cso"]):
+        return "cloud_native"
+
+    combined = (title + " " + crumbs_text + " " + (content[:3500] if content else "")).lower()
     
-    # 1. Cloud Native checks
-    if any(k in combined for k in ["cloud native", "kubernetes", "docker", "microservice", "modernization factory", "cloud migration"]):
+    # 3. Content heuristics for ambiguous root dumps (e.g. 863301644)
+    if any(k in combined for k in ["cloud native", "kubernetes", "k8s", "docker", "imm", "microservice", "modernization factory", "cloud migration"]):
         return "cloud_native"
         
-    # 2. Magic xpa checks
-    if any(k in combined for k in ["magic xpa", "xpa studio", "ria application", "unipaas", "magic.ini", "mgreq.ini", "xpa "]):
-        if "xpi" not in combined:
-            return "xpa"
-            
-    # 3. Magic xpi checks (connectors, datamapper, gigaspaces, etc.)
-    if any(k in combined for k in ["xpi", "gigaspace", "gsc", "datamapper", "data mapper", "connector", "sap b1", "salesforce connector", "sugarcrm", "dynamics", "tcp-listener", "http trigger", "rest client"]):
+    if any(k in combined for k in ["xpi", "gigaspace", "gsc", "gsm", "gsa", "datamapper", "data mapper", "connector", "sap b1", "salesforce connector", "sugarcrm", "dynamics", "tcp-listener", "http trigger", "rest client"]):
         return "xpi"
         
-    # 4. Default for historical 863301644 Confluence space
+    if any(k in combined for k in ["magic xpa", "xpa studio", "ria application", "unipaas", "magic.ini", "mgreq", "mgrb", "xpa "]):
+        if "xpi" not in combined:
+            return "xpa"
+
     if "863301644" in file_path:
         return "xpi"
         
@@ -452,6 +486,107 @@ def parse_text_file(file_path, file_type):
         print(f"Error parsing text file {file_path}: {e}")
         return None
 
+def clean_and_migrate_help_docs(db: Session) -> int:
+    """
+    Cleans up any auto-indexed Help manual HTML topics from the documents table
+    so the Space Documents tree and homepage counts strictly reflect real user documents.
+    """
+    cleaned = 0
+    try:
+        all_docs = db.query(Document).all()
+        for doc in all_docs:
+            if is_help_path(doc.file_path):
+                db.delete(doc)
+                cleaned += 1
+        if cleaned > 0:
+            db.commit()
+            print(f"[Help Cleanup] Purged {cleaned} Help manual files from regular documents table.")
+    except Exception as e:
+        db.rollback()
+        print(f"[Help Cleanup Warning] {e}")
+    return cleaned
+
+def scan_and_index_help_topics(db: Session) -> int:
+    """
+    Dedicated high-speed indexer for official MSE product Help manuals (RoboHelp/WebHelp topics).
+    Extracts function signatures, methods, syntax, parameter specs, and how-tos into HelpTopic.
+    """
+    indexed_help_count = 0
+    help_roots = [
+        ("xpa", os.path.join(UPLOADS_XPA, "Help")),
+        ("xpi", os.path.join(UPLOADS_XPI, "Help")),
+    ]
+    if os.path.exists(os.path.join(UPLOADS_CLOUD, "Help")):
+        help_roots.append(("cloud_native", os.path.join(UPLOADS_CLOUD, "Help")))
+    if os.path.exists(os.path.join(UPLOADS_XPA, "help_samples")):
+        help_roots.append(("xpa", os.path.join(UPLOADS_XPA, "help_samples")))
+
+    existing_map = {t.file_path: t for t in db.query(HelpTopic).all()}
+
+    for default_product, help_dir in help_roots:
+        if not os.path.exists(help_dir):
+            continue
+            
+        for root, dirs, files in os.walk(help_dir):
+            norm_root = root.replace("\\", "/").lower()
+            if any(p in norm_root for p in ["/whxdata", "/template", "/scripts", "/template_scripts"]):
+                continue
+                
+            for file in files:
+                ext = file.split(".")[-1].lower()
+                if ext not in ["html", "htm"]:
+                    continue
+                file_path = os.path.join(root, file)
+                normalized_path = os.path.abspath(file_path)
+
+                mtime = datetime.fromtimestamp(os.path.getmtime(file_path))
+                existing = existing_map.get(normalized_path)
+                if existing and existing.created_at >= mtime:
+                    continue
+
+                parsed = parse_html_file(file_path)
+                if not parsed or not parsed.get("content"):
+                    continue
+
+                title = parsed["title"]
+                syntax_str = parsed.get("syntax") or ""
+                crumbs_json = parsed.get("breadcrumbs") or "[]"
+                
+                doc_type = "reference"
+                if syntax_str or "syntax" in (parsed.get("tags") or ""):
+                    doc_type = "function"
+                elif "how to" in title.lower() or "getting started" in title.lower():
+                    doc_type = "how_to"
+
+                if existing:
+                    existing.title = title
+                    existing.content = parsed["content"]
+                    existing.syntax = syntax_str
+                    existing.breadcrumbs = crumbs_json
+                    existing.doc_type = doc_type
+                    existing.created_at = mtime
+                else:
+                    new_topic = HelpTopic(
+                        title=title,
+                        product=default_product,
+                        file_path=normalized_path,
+                        file_type=ext,
+                        content=parsed["content"],
+                        syntax=syntax_str,
+                        breadcrumbs=crumbs_json,
+                        doc_type=doc_type,
+                        created_at=mtime
+                    )
+                    db.add(new_topic)
+                    existing_map[normalized_path] = new_topic
+                indexed_help_count += 1
+                if indexed_help_count % 200 == 0:
+                    db.commit()
+
+    db.commit()
+    print(f"[Help Indexer] Total {len(existing_map)} official help topics active. Updated: {indexed_help_count}")
+    return len(existing_map)
+
 def scan_and_index(db: Session):
     """
     Scans directory, parses files, inserts/updates DB entries, and deletes stale ones.
@@ -463,28 +598,77 @@ def scan_and_index(db: Session):
     # Initialize DB tables
     init_db()
     
-    # 1. Scan for files
+    # 1. Clean and migrate any help manual topics previously stored in documents table
+    clean_and_migrate_help_docs(db)
+
+    # 1b. Clean up any internal attachment artifacts previously indexed as standalone documents
+    stale_attachments = db.query(Document).filter(
+        (Document.file_path.like("%/attachments/%")) | 
+        (Document.file_path.like("%\\attachments\\%")) |
+        (Document.file_path.like("%/images/%")) | 
+        (Document.file_path.like("%\\images\\%"))
+    ).all()
+    if stale_attachments:
+        for sa in stale_attachments:
+            db.delete(sa)
+        db.commit()
+        log_msg.append(f"Cleaned up {len(stale_attachments)} internal attachment artifacts from KB index.")
+
+    # 1c. Ensure all existing documents match their authoritative folder space
+    aligned_count = 0
+    for doc in db.query(Document).all():
+        p_lower = doc.file_path.lower().replace("\\", "/")
+        crumbs = doc.breadcrumbs or ""
+        target_prod = None
+        if "/cloud_native/" in p_lower or "/cloud/" in p_lower or "cloud service ops" in crumbs.lower():
+            target_prod = "cloud_native"
+        elif "/xpa/" in p_lower:
+            target_prod = "xpa"
+        elif "/xpi/" in p_lower:
+            target_prod = "xpi"
+        if target_prod and doc.product != target_prod:
+            doc.product = target_prod
+            aligned_count += 1
+    if aligned_count:
+        db.commit()
+        log_msg.append(f"Re-aligned {aligned_count} documents to their authoritative folder space.")
+
+    # 2. Scan for real Knowledge Base files
     all_files = []
     
     # Confluence folder (discover all supported file types: html, htm, docx, pdf, txt, md)
     if os.path.exists(CONFLUENCE_DIR):
-        for root, _, files in os.walk(CONFLUENCE_DIR):
+        for root, dirs, files in os.walk(CONFLUENCE_DIR):
+            dirs[:] = [d for d in dirs if d.lower() not in HELP_FOLDER_NAMES and d.lower() not in ASSET_FOLDER_NAMES]
+            if is_help_path(root) or is_asset_path(root):
+                continue
             for file in files:
                 if file in ["index.html", "index.htm"]:
                     continue
+                file_full = os.path.join(root, file)
+                if is_help_path(file_full) or is_asset_path(file_full):
+                    continue
                 ext = file.split(".")[-1].lower()
                 if ext in ["html", "htm", "pdf", "docx", "txt", "md"]:
-                    all_files.append((os.path.join(root, file), ext))
+                    all_files.append((file_full, ext))
                     
     # Uploads folder (and all product subdirectories)
     if os.path.exists(UPLOADS_DIR):
-        for root, _, files in os.walk(UPLOADS_DIR):
+        for root, dirs, files in os.walk(UPLOADS_DIR):
+            dirs[:] = [d for d in dirs if d.lower() not in HELP_FOLDER_NAMES and d.lower() not in ASSET_FOLDER_NAMES]
+            if is_help_path(root) or is_asset_path(root):
+                continue
             for file in files:
+                if file in ["index.html", "index.htm"]:
+                    continue
+                file_full = os.path.join(root, file)
+                if is_help_path(file_full) or is_asset_path(file_full):
+                    continue
                 ext = file.split(".")[-1].lower()
                 if ext in ["html", "htm", "pdf", "docx", "txt", "md"]:
-                    all_files.append((os.path.join(root, file), ext))
+                    all_files.append((file_full, ext))
 
-    log_msg.append(f"Discovered {len(all_files)} total files on disk.")
+    log_msg.append(f"Discovered {len(all_files)} real KB documents on disk.")
     
     # Track paths processed to identify deleted ones
     processed_paths = set()
@@ -577,6 +761,12 @@ def scan_and_index(db: Session):
         db.commit()
         log_msg.append(f"Removed {deleted_count} stale documents from search index.")
         
+    # Also index official product Help topics into dedicated HelpTopic storage
+    try:
+        scan_and_index_help_topics(db)
+    except Exception as e:
+        print(f"[Help Indexing Error] {e}")
+
     end_time = datetime.utcnow()
     duration = (end_time - start_time).total_seconds()
     log_msg.append(f"Successfully processed search index. Total documents indexed: {indexed_count}.")
