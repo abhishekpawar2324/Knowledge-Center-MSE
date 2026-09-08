@@ -7,7 +7,7 @@
   <!-- Browser tab icon: the official logo, squared onto a transparent canvas so
        it is not distorted at 16px. Generated from magic_logo.png. -->
   <link rel="icon" href="/favicon.ico" sizes="any">
-  <link rel="icon" type="image/png" href="/favicon.png?v=38.0">
+  <link rel="icon" type="image/png" href="/favicon.png?v=42.0">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,8 +17,8 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link rel="stylesheet" href="styles.css?v=38.0">
-  <link rel="stylesheet" href="toasts.css?v=38.0">
+  <link rel="stylesheet" href="styles.css?v=42.0">
+  <link rel="stylesheet" href="toasts.css?v=42.0">
   <script>
     function openAddUserModal() {
       var modal = document.getElementById('modal-admin-add-user');
@@ -1582,16 +1582,16 @@
         </div>
 
         <!-- Studio Footer Action Bar -->
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding:12px 20px; background:var(--bg-card); border-top:1px solid var(--border-color);">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">Templates:</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 20px; background:var(--bg-card); border-top:1px solid var(--border-color);">
+          <div class="kb-footer-templates" style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700; flex-shrink:0;">Templates:</span>
             <button type="button" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="insertDocTemplate('connector')">🔌 Connector Setup</button>
             <button type="button" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="insertDocTemplate('troubleshooting')">⚠️ Troubleshooting & RCA</button>
             <button type="button" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="insertDocTemplate('cloud_sop')">☁️ Cloud Native SOP</button>
             <button type="button" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="insertDocTemplate('salesforce_case')">📋 Salesforce Case SOP</button>
           </div>
 
-          <div style="display:flex; align-items:center; gap:10px;">
+          <div class="kb-footer-actions" style="display:flex; align-items:center; gap:10px;">
             <span id="kb-draft-save-status" style="font-size:0.75rem; color:var(--c-emerald); font-weight:600; display:none;">✓ Draft Saved</span>
             <button id="btn-discard-write-kb" type="button" class="btn btn-secondary" style="padding:8px 14px; font-size:0.82rem; color:var(--c-rose); border-color:rgba(239,68,68,0.3);" title="Discard all unsaved edits">
               <i data-lucide="trash-2" style="width:14px; height:14px;"></i> Discard Changes
@@ -1962,7 +1962,7 @@
       if (modal) modal.classList.add('hide');
     }
   </script>
-  <script src="toasts.js?v=38.0"></script>
-  <script src="app.js?v=38.0"></script>
+  <script src="toasts.js?v=42.0"></script>
+  <script src="app.js?v=42.0"></script>
 </body>
 </html>

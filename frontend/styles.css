@@ -1666,6 +1666,22 @@ select option:checked, select option:hover {
 /* The modal scrim was tuned for a dark page; lighten it so it reads as a scrim. */
 [data-theme="light"] .modal-overlay { background: rgba(15, 23, 42, 0.45); }
 
-
-
-
+/* KB studio footer.
+   The two groups together are slightly wider than the modal (measured 1263px of
+   content in a 1198px footer), so the row used to break in two even though it
+   looked like there was room. The template shortcuts are secondary, so they
+   yield: the group shrinks and scrolls, and the primary actions stay put on the
+   same line at any width. */
+.kb-footer-templates {
+  flex: 1 1 auto;
+  min-width: 0;            /* without this a flex item refuses to shrink */
+  overflow-x: auto;
+  /* Scrollbars are hidden globally, so fade the right edge to show that the
+     list continues rather than leaving a button looking cut off. */
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
+}
+.kb-footer-actions {
+  flex: 0 0 auto;
+  margin-left: auto;
+}

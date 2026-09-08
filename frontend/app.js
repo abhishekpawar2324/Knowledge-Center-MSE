@@ -3029,6 +3029,88 @@ document.addEventListener('DOMContentLoaded', () => {
       `
     }
 
+    // Evidence panel.
+    // ai_engine.py already extracts a server event timeline and duplicate
+    // classpath libraries from the uploaded logs and returns them on every
+    // analysis, but nothing rendered either field - the diagnostic data was
+    // computed and then thrown away. Log lines are raw file content, so every
+    // value here goes through escapeHtmlText().
+    const events = data.detected_events || []
+    const dupJars = data.duplicate_jars || []
+    let evidenceHtml = ''
+
+    if (events.length || dupJars.length) {
+      const EVENT_LIMIT = 12
+      const tone = (type) => {
+        const t = String(type || '').toUpperCase()
+        if (t.indexOf('ERROR') !== -1 || t.indexOf('FAIL') !== -1) return 'var(--c-rose)'
+        if (t.indexOf('SHUTDOWN') !== -1 || t.indexOf('STOP') !== -1) return 'var(--c-amber)'
+        if (t.indexOf('START') !== -1) return 'var(--c-emerald)'
+        return 'var(--c-sky)'
+      }
+
+      let timelineHtml = ''
+      if (events.length) {
+        const shown = events.slice(0, EVENT_LIMIT)
+        timelineHtml = `
+          <div style="margin-bottom:${dupJars.length ? '14px' : '0'};">
+            <div style="font-size:0.72rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:8px;">
+              Server event timeline (${events.length})
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              ${shown.map(ev => `
+                <div style="padding:8px 10px; border-radius:8px; background:var(--bg-subtle); border-left:3px solid ${tone(ev.type)};">
+                  <div style="display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                    <span style="font-size:0.8rem; font-weight:700; color:var(--text-main);">${escapeHtmlText(ev.label || ev.type)}</span>
+                    <span style="font-size:0.7rem; color:var(--text-faint); font-family:'Consolas','Courier New',monospace;">${escapeHtmlText([ev.date, ev.time].filter(Boolean).join(' '))}</span>
+                  </div>
+                  ${ev.details ? `<div style="font-size:0.73rem; color:var(--text-muted); margin-top:2px;">${escapeHtmlText(ev.details)}</div>` : ''}
+                  ${ev.line ? `<div style="font-size:0.68rem; color:var(--text-faint); margin-top:4px; font-family:'Consolas','Courier New',monospace; overflow-x:auto; white-space:pre; padding-top:4px; border-top:1px solid var(--border-color);">${escapeHtmlText(ev.line)}</div>` : ''}
+                </div>
+              `).join('')}
+            </div>
+            ${events.length > EVENT_LIMIT
+              ? `<div style="font-size:0.7rem; color:var(--text-faint); margin-top:6px;">Showing the first ${EVENT_LIMIT} of ${events.length} events.</div>`
+              : ''}
+          </div>
+        `
+      }
+
+      let jarsHtml = ''
+      if (dupJars.length) {
+        jarsHtml = `
+          <div>
+            <div style="font-size:0.72rem; color:var(--c-amber); font-weight:700; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:8px;">
+              Duplicate classpath libraries (${dupJars.length})
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              ${dupJars.map(j => `
+                <div style="padding:8px 10px; border-radius:8px; background:rgba(245,158,11,0.10); border:1px solid rgba(245,158,11,0.28);">
+                  <div style="font-size:0.8rem; font-weight:700; color:var(--text-main); font-family:'Consolas','Courier New',monospace;">${escapeHtmlText(j.library)}</div>
+                  <div style="font-size:0.72rem; color:var(--text-muted); margin-top:3px;">Versions on the classpath: ${escapeHtmlText((j.versions || []).join(', '))}</div>
+                  <div style="font-size:0.68rem; color:var(--text-faint); margin-top:3px; font-family:'Consolas','Courier New',monospace; overflow-x:auto;">${escapeHtmlText((j.files || []).join('  |  '))}</div>
+                </div>
+              `).join('')}
+            </div>
+            <div style="font-size:0.7rem; color:var(--text-muted); margin-top:6px;">
+              More than one version of the same library on the classpath is a common cause of class-loading conflicts.
+            </div>
+          </div>
+        `
+      }
+
+      evidenceHtml = `
+        <div style="margin-top:14px; padding:12px 14px; border-radius:10px; background:var(--bg-card); border:1px solid var(--border-color);">
+          <div style="font-size:0.75rem; color:var(--text-main); font-weight:700; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+            <i data-lucide="search-code" style="width:14px; height:14px; color:var(--c-sky);"></i>
+            Evidence extracted from the uploaded logs
+          </div>
+          ${timelineHtml}
+          ${jarsHtml}
+        </div>
+      `
+    }
+
     // Pre-calculate KB modal arguments
     const kbTitle = kbTpl.title || `Troubleshooting Magic ${product} Incident`
     const kbDesc = kbTpl.description || ''
@@ -3064,6 +3146,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ${formattedHtml}
           </div>
           ${sourcesHtml}
+          ${evidenceHtml}
         </div>
 
         <!-- Follow-up Multi-Turn Chat Section -->
