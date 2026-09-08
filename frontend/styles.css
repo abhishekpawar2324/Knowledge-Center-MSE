@@ -2,6 +2,13 @@
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-display: 'Outfit', sans-serif;
 
+  /* Tells the browser which scheme its NATIVE widgets should use. Without
+     this, <select> popups, date pickers, spinners and form-field defaults
+     are drawn by the OS in its own scheme and match neither theme - the
+     dropdown list is rendered by the platform, not by our CSS, so no amount
+     of styling on <option> can fix it. */
+  color-scheme: dark;
+
   /* ---- Dark theme (default): flat blue-navy, no purple cast ---- */
   --bg-main: #0d1424;
   --bg-elev: #131c2e;
@@ -55,6 +62,8 @@
 
 /* ---- Light theme ---- */
 [data-theme="light"] {
+  color-scheme: light;
+
   --bg-main: #f4f6fb;
   --bg-elev: #ffffff;
   --bg-card: #ffffff;
@@ -216,6 +225,11 @@ h1, h2, h3, h4, h5, h6 {
   border: none;
   transition: var(--transition-smooth);
   outline: none;
+  /* Labels stay on one line. Without this, "Publish & Index Article (<50ms)"
+     and the template buttons broke across two lines in the KB studio footer,
+     which left the row ragged and every button a different height. */
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .btn-primary {
   background: linear-gradient(135deg, #008DC7 0%, #2DBCEE 100%);
@@ -1621,7 +1635,18 @@ select option:checked, select option:hover {
   border-color: rgba(0, 141, 199, 0.5);
   color: #075985;
 }
-[data-theme="light"] .product-tab-btn.active { color: #ffffff; }
+/* The selected product space. Its background is a 25%/15% alpha tint, which
+   reads as solid blue over the dark ground but goes almost white over the light
+   one - so white label text became nearly invisible. Deepen the tint and use the
+   dark brand blue for the label instead of white. */
+[data-theme="light"] .product-tab-btn.active {
+  background: rgba(0, 141, 199, 0.14);
+  border-color: rgba(0, 141, 199, 0.55);
+  color: #0c4a6e;
+  font-weight: 700;
+  box-shadow: none;
+}
+[data-theme="light"] .product-tab-btn.active i { color: #0369a1; }
 [data-theme="light"] .badge-kb-doc { color: #0369a1 !important; }
 [data-theme="light"] .badge-help-doc { color: #7e22ce !important; }
 [data-theme="light"] .user-menu-item-danger { color: #b91c1c; }

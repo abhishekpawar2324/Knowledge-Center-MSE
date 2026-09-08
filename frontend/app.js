@@ -680,9 +680,34 @@ document.addEventListener('DOMContentLoaded', () => {
     let url = `/api/utilities?product=${product}`
     if (search) url += `&query=${encodeURIComponent(search)}`
 
+    // Any failure here used to `return` silently, leaving "Loading download
+    // files..." on screen forever with no way to tell a slow backend from a
+    // dead one. Always replace the loading placeholder with something.
+    const failed = (headline, detail) => {
+      grid.innerHTML = ''
+      const box = document.createElement('div')
+      box.style.cssText = 'grid-column:1/-1; padding:36px; text-align:center; color:var(--text-muted);'
+      const h = document.createElement('div')
+      h.style.cssText = 'font-weight:700; color:var(--c-rose); margin-bottom:6px;'
+      h.textContent = headline
+      const p = document.createElement('div')
+      p.style.cssText = 'font-size:0.85rem; margin-bottom:14px;'
+      p.textContent = detail
+      const retry = document.createElement('button')
+      retry.type = 'button'
+      retry.className = 'btn btn-secondary'
+      retry.textContent = 'Retry'
+      retry.onclick = () => fetchUtilities()
+      box.appendChild(h); box.appendChild(p); box.appendChild(retry)
+      grid.appendChild(box)
+    }
+
     try {
       const res = await fetch(url)
-      if (!res.ok) return
+      if (!res.ok) {
+        failed('Could not load downloads', `The server responded with ${res.status}.`)
+        return
+      }
       const items = await res.json()
 
       grid.innerHTML = ''
@@ -725,6 +750,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (window.lucide) lucide.createIcons()
     } catch (e) {
       console.error(e)
+      failed('Could not reach the server', 'Check that the Knowledge Center service is running, then retry.')
     }
   }
 

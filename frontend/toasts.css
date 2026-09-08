@@ -1,0 +1,88 @@
+/* Non-blocking notifications.
+   Colours come from the theme tokens in styles.css, so toasts follow light and
+   dark automatically. Stacked bottom-right: the header carries two dropdowns,
+   and anchoring to the top would collide with them. */
+
+.toast-stack {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1000001;            /* above .modal-overlay (999999) so errors raised
+                                  inside a modal are still visible */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+  pointer-events: none;        /* the stack never blocks clicks; toasts re-enable it */
+  max-width: min(420px, calc(100vw - 40px));
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--text-muted);
+  background: var(--bg-elev);
+  color: var(--text-main);
+  box-shadow: var(--shadow-lg);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.toast.is-in     { opacity: 1; transform: translateY(0); }
+.toast.is-out    { opacity: 0; transform: translateY(8px); }
+
+.toast-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+}
+.toast-body    { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.toast-title   { font-weight: 700; }
+.toast-detail  { margin-top: 2px; color: var(--text-muted); font-size: 0.8rem; }
+
+.toast-close {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+.toast-close:hover { background: var(--bg-subtle-hover); color: var(--text-main); }
+
+.toast-success { border-left-color: var(--c-emerald); }
+.toast-error   { border-left-color: var(--c-rose); }
+.toast-warning { border-left-color: var(--c-amber); }
+.toast-info    { border-left-color: var(--c-sky); }
+
+.toast-success .toast-icon { color: var(--c-emerald); }
+.toast-error   .toast-icon { color: var(--c-rose); }
+.toast-warning .toast-icon { color: var(--c-amber); }
+.toast-info    .toast-icon { color: var(--c-sky); }
+
+@media (max-width: 620px) {
+  .toast-stack { left: 12px; right: 12px; bottom: 12px; max-width: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast { transition: none; }
+}
