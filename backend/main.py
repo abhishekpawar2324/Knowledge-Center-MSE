@@ -1858,28 +1858,12 @@ def run_scan_and_index_bg():
         db.close()
 
 # Legacy endpoint redirect
-@app.post("/api/create-article")
-def create_article(
-    background_tasks: BackgroundTasks,
-    title: str = Form(...),
-    content: str = Form(...),
-    category: str = Form("General"),
-    product: str = Form("xpi"),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    return create_kb_article(
-        background_tasks=background_tasks,
-        title=title,
-        content=content,
-        product=product,
-        category=category,
-        version="Universal",
-        doc_type="troubleshooting",
-        tags="",
-        current_user=current_user,
-        db=db
-    )
+# NOTE: /api/create-article is the legacy alias for this. It is registered as a
+# second route on create_kb_article further down rather than wrapped here — the
+# old wrapper passed ten keyword arguments to a function that takes three
+# (request, current_user, db) and never awaited it, so every call raised
+# TypeError. create_kb_article already accepts either a JSON or a form body
+# straight off the Request, so aliasing the path is all that was needed.
 
 # ----------------- Notifications Endpoints -----------------
 
@@ -2501,6 +2485,7 @@ async def upload_kb_asset(
     }
 
 @app.post("/api/kb/create")
+@app.post("/api/create-article")   # legacy path, kept so existing callers keep working
 async def create_kb_article(
     request: Request,
     current_user: Optional[User] = Depends(get_current_user_optional),
