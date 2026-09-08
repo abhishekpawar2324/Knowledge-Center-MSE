@@ -9,6 +9,7 @@ import urllib.error
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from backend.database import Document, HelpTopic, SalesforceCase, AIResolution, AISetting
 

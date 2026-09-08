@@ -729,7 +729,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Filter Listeners
-  ['util-search-input', 'util-filter-product'].forEach(id => {
+  ;['util-search-input', 'util-filter-product'].forEach(id => {
     const el = document.getElementById(id)
     if (el) el.addEventListener('input', fetchUtilities)
     if (el) el.addEventListener('change', fetchUtilities)
@@ -1067,6 +1067,10 @@ document.addEventListener('DOMContentLoaded', () => {
           catColor = 'var(--c-emerald)'; catBg = 'rgba(52,211,153,0.15)'; catBorder = 'rgba(52,211,153,0.3)';
         } else if (item.action_category === 'DOWNLOADS') {
           catColor = 'var(--c-purple)'; catBg = 'rgba(168,85,247,0.15)'; catBorder = 'rgba(168,85,247,0.3)';
+        } else if (item.action_category === 'KB_MANAGE') {
+          catColor = 'var(--c-cyan)'; catBg = 'rgba(6,182,212,0.15)'; catBorder = 'rgba(6,182,212,0.3)';
+        } else if (item.action_category === 'ADMIN') {
+          catColor = 'var(--c-rose)'; catBg = 'rgba(244,63,94,0.15)'; catBorder = 'rgba(244,63,94,0.3)';
         }
 
         tr.innerHTML = `
@@ -1090,7 +1094,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  ['admin-login-search-user', 'admin-login-filter-status'].forEach(id => {
+  ;['admin-login-search-user', 'admin-login-filter-status'].forEach(id => {
     const el = document.getElementById(id)
     if (el) el.addEventListener('input', fetchLoginHistory)
     if (el) el.addEventListener('change', fetchLoginHistory)
@@ -2894,7 +2898,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (sources && sources.length > 0) {
             topDocsHtml = `
               <div style="margin-bottom:12px; padding:10px 12px; border-radius:8px; background:rgba(0,141,199,0.12); border:1px solid rgba(56,189,248,0.25);">
-                <div style="font-size:0.72rem; color:var(--c-sky); font-weight:700; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">📖 Tier 1: Matched Source Documents & SOPs (${sources.length})</div>
+                <div style="font-size:0.72rem; color:var(--c-sky); font-weight:700; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">📖 Matched Knowledge Center Articles (${sources.length})</div>
                 <div style="display:flex; flex-direction:column; gap:4px;">
                   ${sources.map(s => `
                     <div onclick="openDocument(${s.id})" style="padding:4px 8px; border-radius:6px; background:var(--bg-card); color:var(--c-sky); font-size:0.75rem; cursor:pointer; display:flex; align-items:center; justify-content:space-between;">
@@ -3356,26 +3360,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
         botLoading.style.color = 'var(--text-soft)'
         
+        const allSources = data.citations || data.sources || []
+        const kbDocs = allSources.filter(s => !s.is_help && !String(s.id).startsWith('help_'))
+        const helpDocs = allSources.filter(s => s.is_help || String(s.id).startsWith('help_'))
+
         let topSourcesHtml = ''
-        if (sources && sources.length > 0) {
+        let verifiedBadgeHtml = ''
+
+        if (kbDocs && kbDocs.length > 0) {
+          verifiedBadgeHtml = `
+            <div style="display:inline-flex; align-items:center; gap:6px; padding:5px 14px; border-radius:20px; background:rgba(16,185,129,0.18); border:1px solid rgba(16,185,129,0.4); color:#34d399; font-size:0.75rem; font-weight:800; margin-bottom:10px; box-shadow:0 0 12px rgba(16,185,129,0.2);">
+              <span>✓ Verified Knowledge Center Article</span>
+            </div>
+          `
           topSourcesHtml = `
             <div style="margin-bottom:14px; padding:12px 14px; border-radius:10px; background:linear-gradient(135deg, var(--primary-soft), var(--bg-card)); border:1px solid rgba(56,189,248,0.3); box-shadow:0 4px 14px rgba(0,0,0,0.3);">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                 <span style="font-size:0.75rem; color:var(--c-sky); font-weight:700; text-transform:uppercase; letter-spacing:0.04em; display:flex; align-items:center; gap:6px;">
                   <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#38bdf8; box-shadow:0 0 8px #38bdf8;"></span>
-                  Tier 1: Matched Source Documents & SOPs (${sources.length})
+                  Matched Knowledge Center Articles (${kbDocs.length})
                 </span>
                 <span style="font-size:0.68rem; color:var(--text-muted); background:var(--bg-subtle); padding:2px 8px; border-radius:12px;">Verified Knowledge Center Context</span>
               </div>
               <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:8px;">
-                ${sources.map(s => `
+                ${kbDocs.map(s => `
                   <div onclick="openDocument(${s.id})" style="padding:8px 12px; border-radius:8px; background:var(--bg-card); border:1px solid rgba(56,189,248,0.2); cursor:pointer; transition:all 0.2s ease; display:flex; flex-direction:column; gap:4px;">
                     <div style="font-size:0.78rem; font-weight:600; color:var(--text-main); line-height:1.3; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">
-                      📖 ${s.title}
+                      📄 ${s.title}
                     </div>
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-top:4px; font-size:0.68rem; color:var(--text-muted);">
                       <span style="padding:1px 6px; border-radius:4px; font-weight:700; background:rgba(0,141,199,0.2); color:var(--c-sky);">${(s.product || 'MSE').toUpperCase()}</span>
-                      <span>Match: <strong style="color:var(--c-emerald);">${s.relevance_percent || 95}%</strong></span>
+                      <span style="color:var(--text-faint); font-size:0.68rem;">Knowledge Article</span>
                     </div>
                   </div>
                 `).join('')}
@@ -3384,28 +3399,28 @@ document.addEventListener('DOMContentLoaded', () => {
           `
         } else {
           topSourcesHtml = `
-            <div style="margin-bottom:14px; padding:10px 14px; border-radius:10px; background:linear-gradient(135deg, var(--primary-soft), var(--bg-card)); border:1px solid rgba(0,141,199,0.25); box-shadow:0 4px 14px rgba(0,0,0,0.3);">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:0.75rem; color:var(--c-sky); font-weight:700; text-transform:uppercase; letter-spacing:0.04em; display:flex; align-items:center; gap:6px;">
-                  <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#38bdf8; box-shadow:0 0 8px #38bdf8;"></span>
-                  📘 Tier 2: Official Magic Product Help Documentation
+            <div style="margin-bottom:14px; padding:12px 14px; border-radius:10px; background:linear-gradient(135deg, rgba(0,141,199,0.12), rgba(15,23,42,0.7)); border:1px solid rgba(56,189,248,0.3); box-shadow:0 4px 14px rgba(0,0,0,0.3);">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                <span style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:rgba(56,189,248,0.2); color:var(--c-sky); font-size:0.75rem; font-weight:bold;">ℹ</span>
+                <span style="font-size:0.8rem; font-weight:700; color:var(--c-sky);">
+                  No matching document found for the query, and as per the product help documentation, this is the information:
                 </span>
-                <span style="font-size:0.68rem; color:var(--text-muted); background:var(--bg-subtle); padding:2px 8px; border-radius:12px;">Official Product Help Files</span>
               </div>
-              <div style="font-size:0.72rem; color:var(--text-soft); margin-top:6px; line-height:1.4;">
-                No custom local SOP was uploaded for this specific query. The resolution below is derived directly from official <strong>Magic ${(scope || 'MSE').toUpperCase()} Product Help Manuals & Architecture Specifications</strong>.
-              </div>
+              ${helpDocs.length > 0 ? `
+                <div style="display:flex; flex-direction:column; gap:4px; margin-top:8px;">
+                  <span style="font-size:0.68rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.04em;">Official Product Help Reference:</span>
+                  <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                    ${helpDocs.map(h => `
+                      <span style="padding:3px 8px; border-radius:6px; background:rgba(15,23,42,0.8); border:1px solid rgba(56,189,248,0.25); color:#7dd3fc; font-size:0.72rem; font-weight:600;">
+                        📘 ${h.title}
+                      </span>
+                    `).join('')}
+                  </div>
+                </div>
+              ` : ''}
             </div>
           `
         }
-
-        // Mockup 1 Match: Top Green Verified Match Badge
-        const matchPercent = sources.length > 0 ? (sources[0].relevance_percent || 98) : 98
-        const verifiedBadgeHtml = `
-          <div style="display:inline-flex; align-items:center; gap:6px; padding:5px 14px; border-radius:20px; background:rgba(16,185,129,0.18); border:1px solid rgba(16,185,129,0.4); color:var(--c-emerald); font-size:0.75rem; font-weight:800; margin-bottom:10px; box-shadow:0 0 12px rgba(16,185,129,0.2);">
-            <span>✓ Tier 1: Verified Knowledge Center SOP (${matchPercent}% Match)</span>
-          </div>
-        `
 
         // Mockup 1 Match: Interactive Architecture Flow Diagram Box
         const architectureFlowHtml = `
@@ -5229,7 +5244,8 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
     { btnId: 'admin-tab-docs', panelId: 'admin-panel-docs', name: 'docs' },
     { btnId: 'admin-tab-reindex', panelId: 'admin-panel-reindex', name: 'reindex' },
     { btnId: 'admin-tab-analytics', panelId: 'admin-panel-analytics', name: 'analytics' },
-    { btnId: 'admin-tab-contributions', panelId: 'admin-panel-contributions', name: 'contributions' }
+    { btnId: 'admin-tab-contributions', panelId: 'admin-panel-contributions', name: 'contributions' },
+    { btnId: 'admin-tab-loginhistory', panelId: 'admin-panel-loginhistory', name: 'loginhistory' }
   ]
 
   function switchAdminTab(tabName) {
@@ -5237,16 +5253,20 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
       const btn = document.getElementById(t.btnId)
       const panel = document.getElementById(t.panelId)
       if (t.name === tabName) {
-        btn.classList.remove('btn-secondary')
-        btn.classList.add('btn-primary')
-        panel.classList.remove('hide')
+        if (btn) {
+          btn.classList.remove('btn-secondary')
+          btn.classList.add('btn-primary')
+        }
+        if (panel) panel.classList.remove('hide')
         if (t.name === 'analytics') {
           setTimeout(() => { fetchAdminAnalytics(); }, 50);
         }
       } else {
-        btn.classList.remove('btn-primary')
-        btn.classList.add('btn-secondary')
-        panel.classList.add('hide')
+        if (btn) {
+          btn.classList.remove('btn-primary')
+          btn.classList.add('btn-secondary')
+        }
+        if (panel) panel.classList.add('hide')
       }
     })
 
@@ -5255,10 +5275,12 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
     if (tabName === 'reindex') fetchAdminLogs()
     if (tabName === 'analytics') fetchAdminAnalytics()
     if (tabName === 'contributions') fetchAdminContributions()
+    if (tabName === 'loginhistory') fetchLoginHistory()
   }
 
   adminTabs.forEach(t => {
-    document.getElementById(t.btnId).addEventListener('click', () => switchAdminTab(t.name))
+    const btn = document.getElementById(t.btnId)
+    if (btn) btn.addEventListener('click', () => switchAdminTab(t.name))
   })
 
   // --- Admin Tab 1: Users & RBAC ---
@@ -5540,26 +5562,35 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
 
   function renderAdminDocsTable() {
     const tbody = document.getElementById('admin-docs-table-body')
-    const filterQ = document.getElementById('admin-doc-filter-query').value.toLowerCase().trim()
-    const filterProd = document.getElementById('admin-doc-filter-prod').value
+    const filterQ = (document.getElementById('admin-doc-filter-query')?.value || '').toLowerCase().trim()
+    const filterProd = document.getElementById('admin-doc-filter-prod')?.value || ''
 
-    let filtered = adminDocsCache
+    let filtered = adminDocsCache || []
     if (filterProd) filtered = filtered.filter(d => d.product === filterProd)
-    if (filterQ) filtered = filtered.filter(d => d.title.toLowerCase().includes(filterQ))
+    if (filterQ) filtered = filtered.filter(d => (d.title || '').toLowerCase().includes(filterQ) || (d.author || '').toLowerCase().includes(filterQ))
 
     tbody.innerHTML = ''
     if (filtered.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="padding:20px; text-align:center; color:var(--text-muted);">No documents match your filter.</td></tr>'
+      tbody.innerHTML = '<tr><td colspan="7" style="padding:20px; text-align:center; color:var(--text-muted);">No documents match your filter criteria.</td></tr>'
       return
     }
 
     filtered.slice(0, 100).forEach(doc => {
       const prodColor = doc.product === 'xpa' ? '#f59e0b' : (doc.product === 'xpi' ? '#06b6d4' : '#10b981')
+      const isPending = (doc.status || '').toLowerCase().includes('pending')
+      const statusBg = isPending ? 'rgba(245,158,11,0.15)' : 'rgba(52,211,153,0.15)'
+      const statusColor = isPending ? '#fbbf24' : '#34d399'
+      const statusBorder = isPending ? 'rgba(245,158,11,0.3)' : 'rgba(52,211,153,0.3)'
+      const statusLabel = isPending ? 'Pending Review' : 'Published'
+
       const tr = document.createElement('tr')
       tr.style.cssText = 'border-bottom:1px solid var(--border-color);'
       tr.innerHTML = `
-        <td style="padding:10px 14px; color:var(--text-main); font-weight:600; max-width:320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+        <td style="padding:10px 14px; color:var(--text-main); font-weight:600; max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
           <a onclick="openDocument(${doc.id})" style="color:var(--text-soft); cursor:pointer; text-decoration:none;" onmouseover="this.style.color = 'var(--c-sky)'" onmouseout="this.style.color = 'var(--text-soft)'">${doc.title}</a>
+        </td>
+        <td style="padding:10px 14px; color:#38bdf8; font-weight:600; font-size:0.8rem; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+          ${doc.author || 'Engineering'}
         </td>
         <td style="padding:10px 14px;">
           <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; font-weight:700; background:var(--bg-subtle); color:${prodColor}; text-transform:uppercase;">
@@ -5567,8 +5598,12 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
           </span>
         </td>
         <td style="padding:10px 14px; color:var(--text-muted); font-size:0.75rem; text-transform:uppercase;">${doc.file_type}</td>
-        <td style="padding:10px 14px; color:var(--text-soft); font-size:0.78rem;">${doc.version || 'Universal'}</td>
-        <td style="padding:10px 14px; color:var(--text-muted); font-size:0.78rem;">${doc.views || 0}</td>
+        <td style="padding:10px 14px;">
+          <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; font-weight:700; background:${statusBg}; color:${statusColor}; border:1px solid ${statusBorder};">
+            ${statusLabel}
+          </span>
+        </td>
+        <td style="padding:10px 14px; color:var(--text-muted); font-size:0.75rem; white-space:nowrap;">${doc.created_at || '-'}</td>
         <td style="padding:10px 14px; text-align:right;">
           <div style="display:flex; justify-content:flex-end; gap:6px;">
             <button class="btn btn-secondary" style="padding:3px 7px; font-size:0.72rem;" onclick="openEditDocModal(${doc.id}, '${doc.title.replace(/'/g, "\\'")}', '${doc.product || 'xpi'}', '${doc.version || 'Universal'}')">
@@ -5700,10 +5735,12 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
   async function fetchAdminAnalytics() {
     const grid = document.getElementById('admin-analytics-metrics-grid')
     const zeroGrid = document.getElementById('admin-zero-queries-grid')
+    const scopeEl = document.getElementById('analytics-filter-scope')
+    const scope = scopeEl ? scopeEl.value : 'live'
     grid.innerHTML = '<div style="color:var(--text-muted);">Loading telemetry...</div>'
 
     try {
-      const res = await fetch('/api/admin/analytics', {
+      const res = await fetch(`/api/admin/analytics?scope=${encodeURIComponent(scope)}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (!res.ok) return
@@ -5728,7 +5765,6 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
         </div>
       `
 
-      
     // Render Real-Time Chart.js Graphs
     if (window.Chart) {
       // Chart 1: Search Telemetry Line Chart
@@ -5786,18 +5822,23 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
         });
       }
 
-      // Chart 3: Top Author Leaderboard Bar Chart
+      // Chart 3: Top Author Leaderboard Bar Chart (Real Dynamic Backend Data)
       const ctx3 = document.getElementById('admin-chart-author-leaderboard');
       if (ctx3) {
         if (window.chartAuthorLeaderboard) window.chartAuthorLeaderboard.destroy();
+        const topContribs = data.top_contributors || [];
+        const authorLabels = topContribs.length > 0 ? topContribs.map(c => c.author) : ['No Live Contributors Yet'];
+        const authorCounts = topContribs.length > 0 ? topContribs.map(c => c.count) : [0];
+        const barColors = ['#3b82f6', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ec4899', '#38bdf8', '#fbbf24'];
+
         window.chartAuthorLeaderboard = new Chart(ctx3, {
           type: 'bar',
           data: {
-            labels: ['Sarah Jenkins (Senior Eng)', 'Admin', 'Mark Suiftars (Arch)', 'Jane Hattan (Cloud)', 'David Miller'],
+            labels: authorLabels,
             datasets: [{
               label: 'KB Articles Uploaded',
-              data: [42, 35, 28, 22, 16],
-              backgroundColor: ['#3b82f6', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b'],
+              data: authorCounts,
+              backgroundColor: barColors.slice(0, Math.max(1, authorLabels.length)),
               borderRadius: 6
             }]
           },
@@ -5807,7 +5848,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
-              x: { grid: { color: chartGridColor() }, ticks: { color: chartTickColor() } },
+              x: { grid: { color: chartGridColor() }, ticks: { color: chartTickColor(), precision: 0, beginAtZero: true } },
               y: { grid: { color: chartGridColor() }, ticks: { color: chartTickColor() } }
             }
           }
@@ -5845,6 +5886,7 @@ zeroGrid.innerHTML = ''
 
   // --- Admin Tab 5: User Contributions & Uploads Analytics ---
   async function fetchAdminContributions() {
+    const scopeSel = document.getElementById('contrib-filter-scope')
     const periodSel = document.getElementById('contrib-filter-period')
     const userSel = document.getElementById('contrib-filter-user')
     const yearSel = document.getElementById('contrib-filter-year')
@@ -5855,6 +5897,7 @@ zeroGrid.innerHTML = ''
     const endInp = document.getElementById('contrib-filter-end')
 
     const params = new URLSearchParams()
+    if (scopeSel && scopeSel.value) params.append('scope', scopeSel.value)
     if (periodSel && periodSel.value !== 'all') params.append('period', periodSel.value)
     if (userSel && userSel.value !== 'all') params.append('username', userSel.value)
     
@@ -5886,13 +5929,16 @@ zeroGrid.innerHTML = ''
         badgeEl.textContent = labelMap[periodVal] || 'All Time'
       }
 
-      // 1. Populate Dropdowns if first load or needs update
+      // 1. Populate Dropdowns dynamically
       if (data.available_filters) {
-        if (userSel && userSel.options.length <= 1 && data.available_filters.users) {
+        if (userSel && data.available_filters.users) {
+          const currentVal = userSel.value
+          userSel.innerHTML = '<option value="all">🌟 All Contributors</option>'
           data.available_filters.users.forEach(u => {
             const opt = document.createElement('option')
             opt.value = u
             opt.textContent = u
+            if (u === currentVal) opt.selected = true
             userSel.appendChild(opt)
           })
         }
@@ -6095,24 +6141,30 @@ zeroGrid.innerHTML = ''
     }
   }
 
-  // Bind filter change events for live updates
-  ['contrib-filter-period', 'contrib-filter-user', 'contrib-filter-year', 'contrib-filter-month', 'contrib-filter-product', 'contrib-filter-status', 'contrib-filter-start', 'contrib-filter-end'].forEach(id => {
+  // Bind filter change events for live updates (defensive semicolon avoids ASI hazard)
+  ;['contrib-filter-scope', 'contrib-filter-period', 'contrib-filter-user', 'contrib-filter-year', 'contrib-filter-month', 'contrib-filter-product', 'contrib-filter-status', 'contrib-filter-start', 'contrib-filter-end'].forEach(id => {
     const el = document.getElementById(id)
     if (el) el.addEventListener('change', fetchAdminContributions)
   })
+
+  const scopeAnalyticsEl = document.getElementById('analytics-filter-scope')
+  if (scopeAnalyticsEl) {
+    scopeAnalyticsEl.addEventListener('change', fetchAdminAnalytics)
+  }
 
   // Reset Filters button
   const resetBtn = document.getElementById('btn-contrib-reset')
   if (resetBtn) {
     resetBtn.addEventListener('click', () => {
+      if (document.getElementById('contrib-filter-scope')) document.getElementById('contrib-filter-scope').value = 'live'
       if (document.getElementById('contrib-filter-period')) document.getElementById('contrib-filter-period').value = 'all'
-      document.getElementById('contrib-filter-user').value = 'all'
-      document.getElementById('contrib-filter-year').value = '2026'
-      document.getElementById('contrib-filter-month').value = 'all'
-      document.getElementById('contrib-filter-product').value = 'all'
+      if (document.getElementById('contrib-filter-user')) document.getElementById('contrib-filter-user').value = 'all'
+      if (document.getElementById('contrib-filter-year')) document.getElementById('contrib-filter-year').value = '2026'
+      if (document.getElementById('contrib-filter-month')) document.getElementById('contrib-filter-month').value = 'all'
+      if (document.getElementById('contrib-filter-product')) document.getElementById('contrib-filter-product').value = 'all'
       if (document.getElementById('contrib-filter-status')) document.getElementById('contrib-filter-status').value = 'all'
-      document.getElementById('contrib-filter-start').value = ''
-      document.getElementById('contrib-filter-end').value = ''
+      if (document.getElementById('contrib-filter-start')) document.getElementById('contrib-filter-start').value = ''
+      if (document.getElementById('contrib-filter-end')) document.getElementById('contrib-filter-end').value = ''
       fetchAdminContributions()
     })
   }
@@ -6121,24 +6173,46 @@ zeroGrid.innerHTML = ''
   const exportBtn = document.getElementById('btn-contrib-export')
   if (exportBtn) {
     exportBtn.addEventListener('click', () => {
-      if (!contribDataCache || !contribDataCache.articles || contribDataCache.articles.length === 0) {
-        alert('No articles available to export under current filters.')
+      const articleList = (contribDataCache && (contribDataCache.articles || contribDataCache.article_records)) || []
+      const contribList = (contribDataCache && contribDataCache.contributors) || []
+      if (articleList.length === 0 && contribList.length === 0) {
+        alert('No data available to export under current filters.')
         return
       }
-      const headers = ['ID', 'Title', 'Author', 'Product Space', 'Format', 'Views', 'Date Uploaded']
-      const rows = contribDataCache.articles.map(a => [
-        a.id,
-        `"${(a.title || '').replace(/"/g, '""')}"`,
-        `"${a.author || 'System'}"`,
-        a.product.toUpperCase(),
-        (a.file_type || '').toUpperCase(),
-        a.views || 0,
-        `"${a.created_at || ''}"`
-      ])
-      const csv = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+
+      let csv = ''
+      if (articleList.length > 0) {
+        const headers = ['ID', 'Title', 'Author', 'Author Status', 'Product Space', 'Format', 'Views', 'Likes', 'Date Uploaded']
+        const rows = articleList.map(a => [
+          a.id,
+          `"${(a.title || '').replace(/"/g, '""')}"`,
+          `"${(a.author || 'System').replace(/"/g, '""')}"`,
+          `"${a.author_status || 'active'}"`,
+          (a.product || 'xpi').toUpperCase(),
+          (a.file_type || '').toUpperCase(),
+          a.views || 0,
+          a.likes || 0,
+          `"${a.created_at || a.created_date || ''}"`
+        ])
+        csv = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+      } else {
+        const headers = ['User', 'Role', 'Status', 'Upload Count', 'Views', 'Likes', 'Latest Upload']
+        const rows = contribList.map(c => [
+          `"${(c.username || '').replace(/"/g, '""')}"`,
+          c.role || 'Contributor',
+          c.status || 'active',
+          c.upload_count || 0,
+          c.views || 0,
+          c.likes || 0,
+          `"${c.latest_upload || ''}"`
+        ])
+        csv = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+      }
+
       const link = document.createElement('a')
       link.setAttribute('href', encodeURI(csv))
-      link.setAttribute('download', 'magic_kb_user_contributions.csv')
+      const scopeVal = document.getElementById('contrib-filter-scope')?.value || 'report'
+      link.setAttribute('download', `magic_kb_${scopeVal}_contributions_${new Date().toISOString().slice(0, 10)}.csv`)
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)

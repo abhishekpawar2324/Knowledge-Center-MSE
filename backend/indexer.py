@@ -788,6 +788,7 @@ def scan_and_index(db: Session):
                     version=version_tag,
                     doc_type=doc_type_tag,
                     tags=parsed_data.get("tags"),
+                    is_legacy_import=True,
                     status="published",
                     created_at=parsed_data["created_at"]
                 )

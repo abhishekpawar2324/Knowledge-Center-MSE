@@ -59,6 +59,7 @@ class Document(Base):
     tags = Column(String, default="") # Comma-separated tags
     is_pinned = Column(Boolean, default=False)  # Admin/Editor can pin to sidebar
     review_comment = Column(Text, nullable=True) # Reviewer feedback / rejection notes
+    is_legacy_import = Column(Boolean, default=False, index=True) # True for historical Confluence/file-server exports
 
 class HelpTopic(Base):
     __tablename__ = "help_topics"
@@ -353,6 +354,9 @@ def init_db():
             cursor.execute("ALTER TABLE documents ADD COLUMN status TEXT DEFAULT 'published'")
         if "review_comment" not in columns:
             cursor.execute("ALTER TABLE documents ADD COLUMN review_comment TEXT")
+        if "is_legacy_import" not in columns:
+            cursor.execute("ALTER TABLE documents ADD COLUMN is_legacy_import INTEGER DEFAULT 0")
+            cursor.execute("UPDATE documents SET is_legacy_import = 1 WHERE author NOT IN (SELECT username FROM users)")
             
         cursor.execute("PRAGMA table_info(users)")
         user_cols = [row[1] for row in cursor.fetchall()]
@@ -376,6 +380,49 @@ def init_db():
                 "UPDATE ai_settings SET provider = 'groq', api_key = ?, model_name = 'openai/gpt-oss-120b', api_base_url = 'https://api.groq.com/openai/v1' WHERE id = ?",
                 (key_to_set, row_id)
             )
+        # Generically synchronize any existing login events into enterprise_audit_logs
+        cursor.execute("""
+            INSERT INTO enterprise_audit_logs (timestamp, username, user_role, ip_address, action_category, action, details)
+            SELECT 
+                h.login_time, 
+                h.username, 
+                COALESCE((SELECT role FROM users WHERE lower(users.username) = lower(h.username) LIMIT 1), 'Viewer'), 
+                h.ip_address, 
+                'AUTH', 
+                CASE WHEN h.status = 'Success' THEN 'LOGIN_SUCCESS' ELSE 'LOGIN_FAILED' END, 
+                h.username || ' logged in (' || h.status || ') from ' || h.ip_address
+            FROM user_login_history h
+            WHERE NOT EXISTS (
+                SELECT 1 FROM enterprise_audit_logs a 
+                WHERE a.action_category = 'AUTH' 
+                  AND a.username = h.username 
+                  AND strftime('%Y-%m-%d %H:%M', a.timestamp) = strftime('%Y-%m-%d %H:%M', h.login_time)
+            )
+        """)
+
+        # Generically synchronize any existing live document uploads into enterprise_audit_logs
+        cursor.execute("""
+            INSERT INTO enterprise_audit_logs (timestamp, username, user_role, ip_address, action_category, action, details, target_id)
+            SELECT 
+                d.created_at, 
+                d.author, 
+                COALESCE((SELECT role FROM users WHERE lower(users.username) = lower(d.author) LIMIT 1), 'Editor'), 
+                '127.0.0.1', 
+                'KB_MANAGE', 
+                'UPLOAD', 
+                'Uploaded document ''' || d.title || ''' in ' || UPPER(d.product) || ' space with status ''' || d.status || '''.',
+                CAST(d.id AS TEXT)
+            FROM documents d
+            WHERE d.is_legacy_import = 0
+              AND d.author IS NOT NULL 
+              AND d.author != '' 
+              AND d.author != 'System'
+              AND NOT EXISTS (
+                SELECT 1 FROM enterprise_audit_logs a 
+                WHERE a.action_category = 'KB_MANAGE' 
+                  AND a.target_id = CAST(d.id AS TEXT)
+            )
+        """)
             
         conn.commit()
         conn.close()

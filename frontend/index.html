@@ -12,7 +12,7 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link rel="stylesheet" href="styles.css?v=32.0">
+  <link rel="stylesheet" href="styles.css?v=33.0">
   <script>
     function openAddUserModal() {
       var modal = document.getElementById('modal-admin-add-user');
@@ -675,10 +675,11 @@
           <thead>
             <tr style="border-bottom:1px solid var(--border-strong); color:var(--text-muted);">
               <th style="padding:12px 14px;">Document Title</th>
+              <th style="padding:12px 14px;">Author</th>
               <th style="padding:12px 14px;">Product Space</th>
               <th style="padding:12px 14px;">Format</th>
-              <th style="padding:12px 14px;">Version</th>
-              <th style="padding:12px 14px;">Views</th>
+              <th style="padding:12px 14px;">Status</th>
+              <th style="padding:12px 14px;">Date Uploaded</th>
               <th style="padding:12px 14px; text-align:right;">Actions</th>
             </tr>
           </thead>
@@ -752,10 +753,20 @@
       </div>
 
       <div class="glass-panel" style="padding:20px; border:1px solid rgba(139,92,246,0.3); margin-top:8px;">
-        <h3 style="font-size:1.05rem; font-weight:700; color:var(--text-main); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
-          <i data-lucide="award" style="width:18px; height:18px; color:var(--c-purple);"></i> Top Technical KB Contributor Leaderboard
-        </h3>
-        <div style="position:relative; height:200px; width:100%;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+          <h3 style="font-size:1.05rem; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:8px; margin:0;">
+            <i data-lucide="award" style="width:18px; height:18px; color:var(--c-purple);"></i> Top Technical KB Contributor Leaderboard
+          </h3>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <label for="analytics-filter-scope" style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">Data Scope:</label>
+            <select id="analytics-filter-scope" class="select-field" style="padding:4px 10px; font-size:0.78rem; width:auto; height:32px; background:var(--bg-input); border:1px solid rgba(139,92,246,0.4); border-radius:6px; color:var(--text-main);">
+              <option value="live" selected>🌟 Live Platform Users (Default)</option>
+              <option value="historical">🏛️ Historical Confluence Archive</option>
+              <option value="all">🌐 All Time Combined</option>
+            </select>
+          </div>
+        </div>
+        <div style="position:relative; height:220px; width:100%;">
           <canvas id="admin-chart-author-leaderboard"></canvas>
         </div>
       </div>
@@ -796,8 +807,16 @@
 
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:12px;">
           <div>
-            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--c-sky); margin-bottom:4px;">⏱️ Time Period Filter</label>
-            <select id="contrib-filter-period" style="width:100%; padding:8px 10px; border-radius:8px; background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.35); color:var(--c-sky); font-weight:700; font-size:0.82rem;">
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--c-sky); margin-bottom:4px;">📊 Data Scope</label>
+            <select id="contrib-filter-scope" style="width:100%; padding:8px 10px; border-radius:8px; background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.35); color:var(--c-sky); font-weight:700; font-size:0.82rem;">
+              <option value="live" selected>🌟 Live Platform Users (Default)</option>
+              <option value="historical">🏛️ Historical Confluence Archive</option>
+              <option value="all">🌐 All Contributors (Live + Archive)</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-soft); margin-bottom:4px;">⏱️ Time Period Filter</label>
+            <select id="contrib-filter-period" style="width:100%; padding:8px 10px; border-radius:8px; background:var(--bg-subtle); border:1px solid var(--border-strong); color:var(--text-main); font-size:0.82rem;">
               <option value="week">📅 This Week (Current Week Uploads)</option>
               <option value="month">🗓️ This Month (Current Month Uploads)</option>
               <option value="year">📆 This Year (2026 Platform Period)</option>
@@ -1937,6 +1956,6 @@
       if (modal) modal.classList.add('hide');
     }
   </script>
-  <script src="app.js?v=32.0"></script>
+  <script src="app.js?v=33.0"></script>
 </body>
 </html>
