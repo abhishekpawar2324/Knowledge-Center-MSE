@@ -253,6 +253,7 @@ PROBE_JS = r"""
 
     setTimeout(function () {
       var out = {};
+      var deferred = false;          // the workspace pass emits asynchronously
       try {
         out.theme = document.documentElement.getAttribute('data-theme');
         out.signedIn = !!localStorage.getItem('token');
@@ -281,10 +282,74 @@ PROBE_JS = r"""
         }
         out.vendors = vendorChecks();
         out.contrast = contrastFailures();
+
+        // Open a space and check the workspace panes. The sidebar panels are
+        // rendered by id, so a panel that has been moved to another column
+        // still populates - which means only an explicit "is it in the pane I
+        // expect" check can catch a botched relocation.
+        var tab = document.querySelector('.product-tab-btn[data-product="xpi"]');
+        if (tab) {
+          tab.click();
+          deferred = true;
+          setTimeout(function () {
+            try {
+              var ws = document.getElementById('page-product-workspace');
+              var w = {};
+              w.visible = !!ws && !ws.classList.contains('hide');
+              w.leftPanes = document.querySelectorAll('.left-sidebar-pane').length;
+              w.rightPanes = document.querySelectorAll('.right-sidebar-pane').length;
+              var tree = document.getElementById('left-space-tree-container');
+              w.treeInLeftPane = !!(tree && tree.closest('.left-sidebar-pane'));
+              w.treeItems = tree ? tree.children.length : 0;
+              w.railPanels = ['left-pinned-list', 'left-top-favorites-list', 'left-favorites-list']
+                .filter(function (id) {
+                  var el = document.getElementById(id);
+                  return el && el.closest('.right-sidebar-pane');
+                });
+              // Nothing may be left stranded in the old column.
+              w.strayInLeftPane = ['left-pinned-list', 'left-top-favorites-list', 'left-favorites-list']
+                .filter(function (id) {
+                  var el = document.getElementById(id);
+                  return el && el.closest('.left-sidebar-pane');
+                });
+              // The expand toggle widens .left-sidebar-pane and unwraps titles
+              // via a descendant rule, so it only works while the tree is a
+              // child of that pane - the one structural coupling in the sidebar.
+              var pane = document.querySelector('.left-sidebar-pane');
+              var exp = document.getElementById('btn-toggle-sidebar-expand');
+              if (pane && exp) {
+                // The pane animates width over 0.25s, so measuring straight
+                // after the click reads the start of the transition, not the
+                // target. Suppress the transition for the measurement.
+                var prevTransition = pane.style.transition;
+                pane.style.transition = 'none';
+                var before = pane.getBoundingClientRect().width;
+                exp.click();
+                void pane.offsetWidth;                        // force reflow
+                w.expandAddsClass = pane.classList.contains('expanded');
+                w.widthBefore = Math.round(before);
+                w.widthAfter = Math.round(pane.getBoundingClientRect().width);
+                w.expandWidens = w.widthAfter > w.widthBefore;
+                var titleEl = pane.querySelector('.doc-title-text');
+                w.expandUnwrapsTitles = titleEl
+                  ? getComputedStyle(titleEl).whiteSpace === 'normal'
+                  : null;
+                exp.click();                       // leave it as we found it
+                void pane.offsetWidth;
+                pane.style.transition = prevTransition;
+              }
+              w.contrast = contrastFailures();
+              out.workspace = w;
+            } catch (e) {
+              out.workspace = { error: String(e && e.message || e) };
+            }
+            emit(out);
+          }, 2500);
+        }
       } catch (e) {
         out.fatal = String(e && e.message || e);
       }
-      emit(out);
+      if (!deferred) emit(out);
     }, 1200);
   });
 })();
@@ -403,10 +468,40 @@ def check_browser(browser: str, base: str) -> None:
         v = r.get("vendors") or {}
         for lib in ("lucide", "marked", "chart"):
             record(v.get(lib) is True, f"{who}: {lib} loaded and working", str(v.get(lib)))
+        w = r.get("workspace") or {}
+        if w.get("error"):
+            record(False, f"{who}: workspace probe ran", w["error"])
+        elif w:
+            record(w.get("visible") is True, f"{who}: opening a space shows the workspace")
+            record(w.get("leftPanes") == 1 and w.get("rightPanes") == 1,
+                   f"{who}: workspace has one left pane and one right rail",
+                   f"left={w.get('leftPanes')} right={w.get('rightPanes')}")
+            record(w.get("treeInLeftPane") is True,
+                   f"{who}: space tree is in the left pane")
+            record((w.get("treeItems") or 0) > 0,
+                   f"{who}: space tree populated", str(w.get("treeItems")))
+            record(len(w.get("railPanels") or []) == 3,
+                   f"{who}: Pinned/Favourites/Bookmarks are in the right rail",
+                   str(w.get("railPanels")))
+            record(not w.get("strayInLeftPane"),
+                   f"{who}: no sidebar panel left behind in the left pane",
+                   str(w.get("strayInLeftPane")))
+            record(w.get("expandAddsClass") is True and w.get("expandWidens") is True,
+                   f"{who}: sidebar expand toggle widens the pane",
+                   f"class={w.get('expandAddsClass')} {w.get('widthBefore')}px -> {w.get('widthAfter')}px")
+            record(w.get("expandUnwrapsTitles") is True,
+                   f"{who}: expanding unwraps document titles",
+                   str(w.get("expandUnwrapsTitles")))
+            wbad = w.get("contrast") or []
+            record(not wbad, f"{who}: workspace text contrast >= AA",
+                   f"{len(wbad)} below 3:1 -> " + "; ".join(wbad[:3]))
+        else:
+            record(False, f"{who}: workspace probe ran", "no workspace data returned")
+
         errs = r.get("consoleErrors") or []
         record(not errs, f"{who}: no console errors", "; ".join(errs[:3]))
         bad = r.get("contrast") or []
-        record(not bad, f"{who}: text contrast >= AA", f"{len(bad)} below 3:1 -> " + "; ".join(bad[:3]))
+        record(not bad, f"{who}: landing text contrast >= AA", f"{len(bad)} below 3:1 -> " + "; ".join(bad[:3]))
 
 
 # --------------------------------------------------------------------------- main

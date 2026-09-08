@@ -7,7 +7,7 @@
   <!-- Browser tab icon: the official logo, squared onto a transparent canvas so
        it is not distorted at 16px. Generated from magic_logo.png. -->
   <link rel="icon" href="/favicon.ico" sizes="any">
-  <link rel="icon" type="image/png" href="/favicon.png?v=44.0">
+  <link rel="icon" type="image/png" href="/favicon.png?v=45.0">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,8 +24,8 @@
        the file. Pinning records that instead of leaving it to CDN resolution. -->
   <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="styles.css?v=44.0">
-  <link rel="stylesheet" href="toasts.css?v=44.0">
+  <link rel="stylesheet" href="styles.css?v=45.0">
+  <link rel="stylesheet" href="toasts.css?v=45.0">
   <script>
     function openAddUserModal() {
       var modal = document.getElementById('modal-admin-add-user');
@@ -290,40 +290,16 @@
   <!-- ==================== VIEW 2: DEDICATED PRODUCT SEARCH & EXPLORATION WORKSPACE ==================== -->
   <div id="page-product-workspace" class="workspace-layout hide">
     
-    <!-- Left Explorer Sidebar (Pinned, Favourites, Bookmarks, Space Documents) -->
+    <!-- Left Explorer Sidebar - browsing the current space.
+         This pane holds ONLY the document tree. It used to carry Pinned,
+         Favourites and Bookmarks above the tree, which pushed the space's own
+         document list - the reason people open a space at all - below roughly
+         600px of secondary panels. Those three are personal collections rather
+         than navigation, so they now sit in the right rail and the tree owns
+         this column. -->
     <aside class="left-sidebar-pane">
-      
-      <!-- 1. Pinned SOPs -->
-      <div class="glass-panel" style="padding:16px;">
-        <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px; color:var(--c-amber); font-size:0.85rem; font-weight:700;">
-          <i data-lucide="star" style="width:15px; height:15px; fill:#f59e0b; color:var(--c-amber);"></i>
-          <span>Pinned SOPs</span>
-        </div>
-        <div id="left-pinned-list" style="display:flex; flex-direction:column; gap:6px;"></div>
-      </div>
 
-      <!-- 3. Favourites / Top Rated -->
-      <div class="glass-panel" style="padding:16px;">
-        <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px; color:var(--c-rose); font-size:0.85rem; font-weight:700;">
-          <i data-lucide="heart" style="width:15px; height:15px; fill:#f43f5e; color:var(--c-rose);"></i>
-          <span>Favourites & Top SOPs</span>
-        </div>
-        <div id="left-top-favorites-list" style="display:flex; flex-direction:column; gap:6px;"></div>
-      </div>
-
-      <!-- 4. My Saved Bookmarks -->
-      <div class="glass-panel" style="padding:16px;">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-          <div style="display:flex; align-items:center; gap:6px; color:var(--c-sky); font-size:0.85rem; font-weight:700;">
-            <i data-lucide="bookmark" style="width:15px; height:15px; fill:#38bdf8; color:var(--c-sky);"></i>
-            <span>My Bookmarks</span>
-          </div>
-          <span id="left-bookmarks-count" style="font-size:0.72rem; padding:1px 6px; border-radius:10px; background:rgba(0,141,199,0.15); color:var(--c-sky); font-weight:700;">0</span>
-        </div>
-        <div id="left-favorites-list" style="display:flex; flex-direction:column; gap:6px;"></div>
-      </div>
-
-      <!-- 5. Space Documents Tree (Confluence Style) -->
+      <!-- Space Documents Tree (Confluence Style) -->
       <div class="glass-panel" style="padding:16px;">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
           <div style="display:flex; align-items:center; gap:6px; color:var(--c-sky); font-size:0.85rem; font-weight:700;">
@@ -337,7 +313,9 @@
             </button>
           </div>
         </div>
-        <div id="left-space-tree-container" style="display:flex; flex-direction:column; gap:6px; max-height:420px; overflow-y:auto;">
+        <!-- The tree no longer competes with three panels for this column, so it
+             grows with the viewport instead of being capped at 420px. -->
+        <div id="left-space-tree-container" style="display:flex; flex-direction:column; gap:6px; max-height:calc(100vh - 260px); min-height:320px; overflow-y:auto;">
           <span style="font-size:0.75rem; color:var(--text-faint);">Loading space tree...</span>
         </div>
       </div>
@@ -471,6 +449,48 @@
       </div>
 
     </main>
+
+    <!-- Right rail - personal and curated collections.
+         Moved here from above the space tree. Same element ids, so
+         renderPinnedList / renderFavouritesList / renderBookmarksList keep
+         resolving their containers by getElementById and need no changes.
+         Below 1280px this rail wraps to full width beneath the workspace
+         rather than squeezing the reader; nothing is hidden. -->
+    <aside class="right-sidebar-pane">
+
+      <!-- Pinned SOPs -->
+      <div class="glass-panel" style="padding:16px;">
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px; color:var(--c-amber); font-size:0.85rem; font-weight:700;">
+          <i data-lucide="star" style="width:15px; height:15px; fill:#f59e0b; color:var(--c-amber);"></i>
+          <span>Pinned SOPs</span>
+        </div>
+        <div id="left-pinned-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+      </div>
+
+      <!-- Favourites / Top Rated -->
+      <div class="glass-panel" style="padding:16px;">
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px; color:var(--c-rose); font-size:0.85rem; font-weight:700;">
+          <i data-lucide="heart" style="width:15px; height:15px; fill:#f43f5e; color:var(--c-rose);"></i>
+          <span>Favourites &amp; Top SOPs</span>
+        </div>
+        <div id="left-top-favorites-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+      </div>
+
+      <!-- My Saved Bookmarks.
+           Note the id pairing is historically inverted: #left-favorites-list is
+           the Bookmarks list, #left-top-favorites-list is Favourites. Renaming
+           them would touch app.js in several places for no user-visible gain. -->
+      <div class="glass-panel" style="padding:16px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+          <div style="display:flex; align-items:center; gap:6px; color:var(--c-sky); font-size:0.85rem; font-weight:700;">
+            <i data-lucide="bookmark" style="width:15px; height:15px; fill:#38bdf8; color:var(--c-sky);"></i>
+            <span>My Bookmarks</span>
+          </div>
+          <span id="left-bookmarks-count" style="font-size:0.72rem; padding:1px 6px; border-radius:10px; background:rgba(0,141,199,0.15); color:var(--c-sky); font-weight:700;">0</span>
+        </div>
+        <div id="left-favorites-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+      </div>
+    </aside>
   </div>
 
   <!-- ==================== VIEW 3: UPLOAD PORTAL ==================== -->
@@ -1969,7 +1989,7 @@
       if (modal) modal.classList.add('hide');
     }
   </script>
-  <script src="toasts.js?v=44.0"></script>
-  <script src="app.js?v=44.0"></script>
+  <script src="toasts.js?v=45.0"></script>
+  <script src="app.js?v=45.0"></script>
 </body>
 </html>

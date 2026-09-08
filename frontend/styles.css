@@ -281,6 +281,40 @@ h1, h2, h3, h4, h5, h6 {
   line-height: 1.35;
 }
 
+/* Right rail: Pinned SOPs, Favourites, My Bookmarks.
+   Slightly wider than the left pane because these rows carry a title plus a
+   meta line, where the tree carries one title. */
+.right-sidebar-pane {
+  width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Three fixed columns stop paying their way once the reader gets narrow.
+   Below 1280px the rail wraps to its own full-width row underneath rather than
+   being hidden - these are the user's own saved documents, so they must stay
+   reachable. Inside that row the three panels sit side by side, which is why
+   the panels themselves get a min-width and share the space. */
+@media (max-width: 1280px) {
+  .workspace-layout { flex-wrap: wrap; }
+  .right-sidebar-pane {
+    width: 100%;
+    flex-direction: row;
+    align-items: flex-start;
+  }
+  .right-sidebar-pane > .glass-panel {
+    flex: 1 1 240px;
+    min-width: 0;
+  }
+}
+
+/* Narrow enough that three across no longer fit; let them wrap among themselves. */
+@media (max-width: 780px) {
+  .right-sidebar-pane { flex-direction: column; }
+}
+
 .badge-kb-doc {
   background: rgba(14, 165, 233, 0.18) !important;
   color: var(--c-sky) !important;
