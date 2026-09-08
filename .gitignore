@@ -21,6 +21,7 @@ venv/
 env/
 .venv/
 .pytest_cache/
+runtime/
 
 # Databases & Runtime Storage
 kb_system.db
