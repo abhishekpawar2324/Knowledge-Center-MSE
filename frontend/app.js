@@ -1100,7 +1100,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         tr.innerHTML = `
-          <td style="padding:12px 16px; color:var(--text-soft); white-space:nowrap; font-size:0.82rem;">${item.timestamp}</td>
+          <td class="mono" style="padding:12px 16px; color:var(--text-soft); white-space:nowrap; font-size:0.8rem;">${item.timestamp}</td>
           <td style="padding:12px 16px; font-weight:600; color:var(--text-main); white-space:nowrap;">
             ${item.username} <span style="font-size:0.72rem; color:var(--text-muted); font-weight:normal;">(${item.user_role})</span>
           </td>
@@ -1939,7 +1939,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         ${top.syntax ? `
           <div style="margin:12px 0 14px 0; background:var(--bg-card); border:1px solid rgba(0,141,199,0.35); border-radius:8px; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
-            <div style="font-family:'Fira Code', monospace, Consolas; font-size:0.95rem; color:var(--c-sky); overflow-x:auto; white-space:nowrap;">
+            <div style="font-family:var(--font-mono); font-size:0.95rem; color:var(--c-sky); overflow-x:auto; white-space:nowrap;">
               <span style="color:var(--text-muted); user-select:none;">Syntax: </span><strong>${top.syntax}</strong>
             </div>
             <button class="btn btn-secondary btn-sm" style="padding:4px 10px; font-size:0.75rem; white-space:nowrap;" onclick="event.stopPropagation(); navigator.clipboard.writeText('${top.syntax.replace(/'/g, "\\'")}'); showToast('Syntax copied to clipboard!', 'success');">
@@ -3062,10 +3062,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div style="padding:8px 10px; border-radius:8px; background:var(--bg-subtle); border-left:3px solid ${tone(ev.type)};">
                   <div style="display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap;">
                     <span style="font-size:0.8rem; font-weight:700; color:var(--text-main);">${escapeHtmlText(ev.label || ev.type)}</span>
-                    <span style="font-size:0.7rem; color:var(--text-faint); font-family:'Consolas','Courier New',monospace;">${escapeHtmlText([ev.date, ev.time].filter(Boolean).join(' '))}</span>
+                    <span style="font-size:0.7rem; color:var(--text-faint); font-family:var(--font-mono);">${escapeHtmlText([ev.date, ev.time].filter(Boolean).join(' '))}</span>
                   </div>
                   ${ev.details ? `<div style="font-size:0.73rem; color:var(--text-muted); margin-top:2px;">${escapeHtmlText(ev.details)}</div>` : ''}
-                  ${ev.line ? `<div style="font-size:0.68rem; color:var(--text-faint); margin-top:4px; font-family:'Consolas','Courier New',monospace; overflow-x:auto; white-space:pre; padding-top:4px; border-top:1px solid var(--border-color);">${escapeHtmlText(ev.line)}</div>` : ''}
+                  ${ev.line ? `<div style="font-size:0.68rem; color:var(--text-faint); margin-top:4px; font-family:var(--font-mono); overflow-x:auto; white-space:pre; padding-top:4px; border-top:1px solid var(--border-color);">${escapeHtmlText(ev.line)}</div>` : ''}
                 </div>
               `).join('')}
             </div>
@@ -3086,9 +3086,9 @@ document.addEventListener('DOMContentLoaded', () => {
             <div style="display:flex; flex-direction:column; gap:6px;">
               ${dupJars.map(j => `
                 <div style="padding:8px 10px; border-radius:8px; background:rgba(245,158,11,0.10); border:1px solid rgba(245,158,11,0.28);">
-                  <div style="font-size:0.8rem; font-weight:700; color:var(--text-main); font-family:'Consolas','Courier New',monospace;">${escapeHtmlText(j.library)}</div>
+                  <div style="font-size:0.8rem; font-weight:700; color:var(--text-main); font-family:var(--font-mono);">${escapeHtmlText(j.library)}</div>
                   <div style="font-size:0.72rem; color:var(--text-muted); margin-top:3px;">Versions on the classpath: ${escapeHtmlText((j.versions || []).join(', '))}</div>
-                  <div style="font-size:0.68rem; color:var(--text-faint); margin-top:3px; font-family:'Consolas','Courier New',monospace; overflow-x:auto;">${escapeHtmlText((j.files || []).join('  |  '))}</div>
+                  <div style="font-size:0.68rem; color:var(--text-faint); margin-top:3px; font-family:var(--font-mono); overflow-x:auto;">${escapeHtmlText((j.files || []).join('  |  '))}</div>
                 </div>
               `).join('')}
             </div>
@@ -5838,7 +5838,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
             <div style="font-size:0.82rem; font-weight:700; color:var(--text-main);">${l.message}</div>
             <div style="font-size:0.75rem; color:var(--text-muted);">Indexed: ${l.indexed_count} files • Status: <span style="color:var(--c-emerald);">${l.status}</span></div>
           </div>
-          <span style="font-size:0.75rem; color:var(--text-faint);">${l.timestamp}</span>
+          <span class="mono" style="font-size:0.73rem; color:var(--text-faint);">${l.timestamp}</span>
         `
         container.appendChild(item)
       })

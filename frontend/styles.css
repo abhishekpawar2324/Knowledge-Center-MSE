@@ -1,6 +1,9 @@
 :root {
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-display: 'Outfit', sans-serif;
+  /* Machine-readable data - versions, timestamps, paths, log lines, code.
+     One stack for all of it; the file previously used four different ones. */
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Consolas, 'Courier New', monospace;
 
   /* Tells the browser which scheme its NATIVE widgets should use. Without
      this, <select> popups, date pickers, spinners and form-field defaults
@@ -305,7 +308,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .syntax-pill {
-  font-family: 'Consolas', 'Courier New', monospace;
+  font-family: var(--font-mono);
   font-size: 0.75rem;
   background: var(--bg-card);
   border: 1px solid rgba(192, 132, 252, 0.25);
@@ -521,7 +524,7 @@ select option:checked, select option:hover {
   background: var(--bg-code);
   padding: 2px 6px;
   border-radius: 4px;
-  font-family: 'Consolas', monospace;
+  font-family: var(--font-mono);
   font-size: 0.85em;
   color: var(--c-sky);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -712,7 +715,7 @@ select option:checked, select option:hover {
   background: transparent;
   color: var(--text-main);
   padding: 16px;
-  font-family: 'Consolas', 'Menlo', monospace;
+  font-family: var(--font-mono);
   font-size: 0.9rem;
   line-height: 1.6;
   resize: none;
@@ -810,7 +813,7 @@ select option:checked, select option:hover {
 
 .ai-response-rendered pre code {
   color: var(--c-sky);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 0.86rem;
   line-height: 1.6;
 }
@@ -822,7 +825,7 @@ select option:checked, select option:hover {
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 0.86rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--font-mono);
 }
 
 .ai-response-rendered blockquote {
@@ -1684,4 +1687,13 @@ select option:checked, select option:hover {
 .kb-footer-actions {
   flex: 0 0 auto;
   margin-left: auto;
+}
+
+/* Machine-readable values: timestamps, versions, paths, identifiers.
+   Applied deliberately and never to prose - a monospace face helps when you are
+   comparing values or scanning a column, and hurts everywhere else. */
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
