@@ -280,6 +280,25 @@ PROBE_JS = r"""
           out.themeFlipped = out.themeAfterToggle !== before;
           t.click();
         }
+        // An admin who visited Copilot > Settings left that pane un-hidden;
+        // signing out hid the tab button but not the pane, so the modal
+        // reopened onto the configuration screen for the next visitor.
+        var copilotBtn = document.getElementById('btn-open-copilot');
+        if (copilotBtn) {
+          copilotBtn.click();
+          var sPane = document.getElementById('copilot-pane-settings');
+          var sBtn = document.getElementById('copilot-tab-btn-settings');
+          function shown(el) {
+            if (!el) return false;
+            var cs = getComputedStyle(el);
+            return !el.classList.contains('hide') && cs.display !== 'none';
+          }
+          out.copilotSettingsPaneShown = shown(sPane);
+          out.copilotSettingsBtnShown = shown(sBtn);
+          var close = document.getElementById('btn-close-copilot');
+          if (close) close.click();
+        }
+
         out.vendors = vendorChecks();
 
         // lucide.createIcons() swaps every <i data-lucide="name"> for an <svg>,
@@ -415,6 +434,24 @@ def check_api(base: str) -> None:
     code, _ = http(base + "/api/favorites")
     record(code == 401, "authed endpoint rejects anonymous", f"HTTP {code} (want 401)")
 
+    # The AI provider config is admin-only to write, but the GET was public and
+    # returned the masked provider key (its first six and last four characters)
+    # plus the whole system prompt. Anonymous callers get provider and model
+    # only - the Copilot engine badge needs those and nothing else.
+    code, body = http(base + "/api/ai/settings")
+    try:
+        payload = json.loads(body) if code == 200 else {}
+    except ValueError:
+        payload = {}
+    secret = [k for k in ("masked_api_key", "system_prompt", "api_base_url", "temperature")
+              if k in payload]
+    record(code == 200 and not secret,
+           "anonymous AI settings withhold key and prompt",
+           f"HTTP {code}, exposed: {', '.join(secret) or 'none'}")
+    for path in ("/api/ai/settings", "/api/ai/test-connection"):
+        code, _ = http(base + path, data=b"{}")
+        record(code in (401, 403), f"anonymous cannot write {path}", f"HTTP {code}")
+
 
 SCRIPT_SRC_RE = re.compile(r'<script[^>]+src="(https://[^"]+)"')
 
@@ -477,6 +514,13 @@ def check_browser(browser: str, base: str) -> None:
         v = r.get("vendors") or {}
         for lib in ("lucide", "marked", "chart"):
             record(v.get(lib) is True, f"{who}: {lib} loaded and working", str(v.get(lib)))
+        if not authed:
+            record(r.get("copilotSettingsPaneShown") is False,
+                   "guest: Copilot does not open on the settings pane",
+                   str(r.get("copilotSettingsPaneShown")))
+            record(r.get("copilotSettingsBtnShown") is False,
+                   "guest: Copilot settings tab hidden",
+                   str(r.get("copilotSettingsBtnShown")))
         bad_icons = r.get("unrenderedIcons")
         record(bad_icons == [], f"{who}: every lucide icon name resolves",
                f"{len(bad_icons or [])} unknown -> " + ", ".join(sorted(set(bad_icons or []))[:5]))

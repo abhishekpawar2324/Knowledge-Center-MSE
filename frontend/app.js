@@ -2490,6 +2490,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.openCopilotWithQuery = function(initialQ = '', product = '') {
     updateAuthUI()
+    // Re-assert which pane is showing, every time the modal opens.
+    // updateAuthUI() hides the Settings *button* for non-admins, but the panes
+    // keep whatever visibility they were last left with - so after an admin
+    // opened Settings and signed out, the modal reopened straight onto the
+    // configuration screen with no button in sight. switchCopilotTab() applies
+    // the role check itself and downgrades 'settings' to 'chat'.
+    switchCopilotTab(currentCopilotTab || 'chat')
     const modal = document.getElementById('modal-copilot')
     if (modal) modal.classList.remove('hide')
     const thread = document.getElementById('copilot-messages-thread')
@@ -3359,8 +3366,8 @@ document.addEventListener('DOMContentLoaded', () => {
       indicator.innerHTML = `
         <div style="width:8px; height:8px; border-radius:50%; background:#10b981; box-shadow:0 0 8px #10b981; flex-shrink:0;"></div>
         <div style="flex:1; min-width:0;">
-          <div style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">ENGINE: ${prov}</div>
-          <div style="font-size:0.75rem; color:var(--c-sky); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${model}">● Active (${model})</div>
+          <div style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">ENGINE: ${escapeHtmlText(prov)}</div>
+          <div style="font-size:0.75rem; color:var(--c-sky); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtmlText(model)}">● Active (${escapeHtmlText(model)})</div>
         </div>
       `
     } catch (_) {
@@ -6431,6 +6438,9 @@ zeroGrid.innerHTML = ''
       token = ''
       username = ''
       role = ''
+      // Drop out of any admin-only pane immediately rather than waiting for the
+      // next open.
+      if (currentCopilotTab === 'settings') switchCopilotTab('chat')
       localStorage.removeItem('token')
       localStorage.removeItem('username')
       localStorage.removeItem('role')

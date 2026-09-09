@@ -1151,17 +1151,37 @@ async def test_ai_connection(request: Request, current_user: User = Depends(requ
 
 @app.get("/api/ai/settings")
 def get_ai_settings(db: Session = Depends(get_db), current_user: Optional[User] = Depends(get_current_user_optional)):
-    """Retrieve current AI provider configuration."""
+    """Current AI provider configuration.
+
+    Two payloads, by role. Writing this config is already Admin-only (both
+    POST routes reject anonymous callers), but this GET was fully public and
+    returned rather more than the screen shows: the masked key exposes the
+    first six AND last four characters of the live provider key, and the
+    system prompt is internal material. Neither belongs in an anonymous
+    response.
+
+    Everyone still gets provider and model, because the Copilot engine badge
+    is shown to all users and only needs those two.
+    """
     config = get_active_ai_config(db)
+
+    public = {
+        "provider": config["provider"],
+        "model_name": config["model_name"],
+        "has_api_key": bool(config["api_key"]),
+    }
+
+    is_admin = bool(current_user) and (current_user.role or "").strip().lower() == "admin"
+    if not is_admin:
+        return public
+
     masked_key = ""
     if config["api_key"]:
         masked_key = config["api_key"][:6] + "..." + config["api_key"][-4:] if len(config["api_key"]) > 10 else "****"
-    
+
     return {
-        "provider": config["provider"],
-        "model_name": config["model_name"],
+        **public,
         "api_base_url": config["api_base_url"],
-        "has_api_key": bool(config["api_key"]),
         "masked_api_key": masked_key,
         "temperature": config["temperature"],
         "system_prompt": config.get("system_prompt", DEFAULT_MAGIC_SYSTEM_PROMPT)
