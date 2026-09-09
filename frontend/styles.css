@@ -87,7 +87,9 @@
   --c-sky: #0369a1;
   --c-sky-soft: #075985;
   --c-emerald: #047857;
-  --c-amber: #b45309;
+  /* #b45309 was 5.02:1 on white: AA, but with no headroom, so it fell under
+     the line as soon as a hover tint sat behind it. #92400e is 7.09:1. */
+  --c-amber: #92400e;
   --c-rose: #be123c;
   --c-rose-soft: #9f1239;
   --c-cyan: #0e7490;
@@ -670,9 +672,11 @@ select option:checked, select option:hover {
 }
 
 .kb-tool-btn.active {
-  background: #008DC7;
+  /* Was #008DC7, which gives white text only 3.73:1 - under AA for a label
+     this size, in both themes. The deeper primary reaches 7.75:1. */
+  background: var(--primary-hover);
   color: #fff;
-  border-color: var(--c-sky);
+  border-color: var(--primary-hover);
 }
 
 .kb-tool-dropdown {
@@ -1696,6 +1700,30 @@ select option:checked, select option:hover {
   box-shadow: none;
 }
 [data-theme="light"] .product-tab-btn.active i { color: #0369a1; }
+
+/* Hover states that set color:#fff over a translucent accent tint. On the dark
+   ground they were written for that is fine; on white the tint composites to a
+   pale wash and the label all but vanishes - measured 1.28:1 for the KB toolbar
+   buttons (which includes Edit/Split/Preview) and 1.00:1, white on white, for
+   the Copilot tabs.
+   A cyan tint cannot be rescued by recolouring the text: these buttons carry
+   inline accent colours that win over any class rule, and emerald and sky still
+   land at 4.29:1 and 4.36:1 on it. A neutral hover keeps every accent on a
+   near-white ground instead - worst case 4.76:1 - and matches the hover other
+   light-theme controls already use. */
+[data-theme="light"] .kb-tool-btn:hover {
+  background: var(--bg-subtle-hover);
+  color: var(--text-main);
+  border-color: var(--border-strong);
+}
+[data-theme="light"] .kb-dropdown-item:hover {
+  background: var(--bg-subtle-hover);
+  color: var(--text-main);
+}
+[data-theme="light"] .copilot-tab-btn:hover {
+  background: var(--bg-subtle-hover);
+  color: var(--text-main);
+}
 [data-theme="light"] .badge-kb-doc { color: #0369a1 !important; }
 [data-theme="light"] .badge-help-doc { color: #7e22ce !important; }
 [data-theme="light"] .user-menu-item-danger { color: #b91c1c; }
