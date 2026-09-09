@@ -691,15 +691,27 @@ select option:checked, select option:hover {
   padding: 6px;
   z-index: 1000;
   min-width: 140px;
+  width: max-content;
   display: flex;
   flex-direction: column;
   gap: 3px;
+}
+
+/* Opens upward, for a menu anchored near the bottom of a panel - the KB
+   footer's Templates menu would otherwise drop off the modal. */
+.kb-dropdown-menu.kb-dropdown-up {
+  top: auto;
+  bottom: calc(100% + 4px);
 }
 
 .kb-dropdown-item {
   display: flex;
   align-items: center;
   gap: 8px;
+  /* One line per option. The menu's min-width is narrower than several of these
+     labels, so without this "Connector Setup" and "SQL / Oracle / Postgres"
+     wrapped onto two lines; the menu now widens to fit its longest option. */
+  white-space: nowrap;
   padding: 6px 10px;
   border-radius: 6px;
   color: var(--text-soft);
@@ -1704,19 +1716,19 @@ select option:checked, select option:hover {
 [data-theme="light"] .modal-overlay { background: rgba(15, 23, 42, 0.45); }
 
 /* KB studio footer.
-   The two groups together are slightly wider than the modal (measured 1263px of
-   content in a 1198px footer), so the row used to break in two even though it
-   looked like there was room. The template shortcuts are secondary, so they
-   yield: the group shrinks and scrolls, and the primary actions stay put on the
-   same line at any width. */
+   The two groups were together wider than the modal (measured 1263px of content
+   in a 1198px footer), so the row broke in two. The fix then was to let the
+   templates group shrink and scroll - which kept one row, but squeezed the
+   template buttons until the last one sat clipped behind "Discard Changes".
+   The four buttons are now a single "Insert Template" dropdown, so the group
+   has a small fixed width and nothing has to yield.
+   It must NOT clip: the dropdown menu opens upward, well outside this element's
+   own ~30px box. The previous overflow-x and edge mask both cut it off. */
 .kb-footer-templates {
-  flex: 1 1 auto;
-  min-width: 0;            /* without this a flex item refuses to shrink */
-  overflow-x: auto;
-  /* Scrollbars are hidden globally, so fade the right edge to show that the
-     list continues rather than leaving a button looking cut off. */
-  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
-  mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .kb-footer-actions {
   flex: 0 0 auto;

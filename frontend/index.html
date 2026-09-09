@@ -7,7 +7,7 @@
   <!-- Browser tab icon: the official logo, squared onto a transparent canvas so
        it is not distorted at 16px. Generated from magic_logo.png. -->
   <link rel="icon" href="/favicon.ico" sizes="any">
-  <link rel="icon" type="image/png" href="/favicon.png?v=46.0">
+  <link rel="icon" type="image/png" href="/favicon.png?v=47.0">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,8 +24,8 @@
        the file. Pinning records that instead of leaving it to CDN resolution. -->
   <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="styles.css?v=46.0">
-  <link rel="stylesheet" href="toasts.css?v=46.0">
+  <link rel="stylesheet" href="styles.css?v=47.0">
+  <link rel="stylesheet" href="toasts.css?v=47.0">
   <script>
     function openAddUserModal() {
       var modal = document.getElementById('modal-admin-add-user');
@@ -1610,12 +1610,28 @@
 
         <!-- Studio Footer Action Bar -->
         <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 20px; background:var(--bg-card); border-top:1px solid var(--border-color);">
+          <!-- Templates as one dropdown, reusing the same kb-tool-dropdown /
+               kb-dropdown-menu component the toolbar's "Code" menu uses.
+               These were four side-by-side buttons, but this footer's left group
+               is shrink-to-fit: as the action buttons on the right grew, the
+               templates were squeezed until the last one sat clipped behind
+               "Discard Changes". One narrow control removes that competition and
+               leaves room for more templates later.
+               The menu opens upward - it sits at the bottom of the modal. -->
           <div class="kb-footer-templates" style="display:flex; align-items:center; gap:8px;">
             <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700; flex-shrink:0;">Templates:</span>
-            <button type="button" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="insertDocTemplate('connector')"><i data-lucide="plug" style="width:13px; height:13px;"></i>Connector Setup</button>
-            <button type="button" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="insertDocTemplate('troubleshooting')"><i data-lucide="alert-triangle" style="width:13px; height:13px;"></i>Troubleshooting & RCA</button>
-            <button type="button" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="insertDocTemplate('cloud_sop')"><i data-lucide="cloud" style="width:13px; height:13px;"></i>Cloud Native SOP</button>
-            <button type="button" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="insertDocTemplate('salesforce_case')"><i data-lucide="clipboard-list" style="width:13px; height:13px;"></i>Salesforce Case SOP</button>
+            <div class="kb-tool-dropdown">
+              <button type="button" class="btn btn-secondary" id="btn-toggle-template-menu" style="font-size:0.72rem; padding:5px 10px;" title="Insert a document template">
+                <i data-lucide="file-plus-2" style="width:13px; height:13px;"></i> Insert Template
+                <i data-lucide="chevron-down" style="width:11px; height:11px;"></i>
+              </button>
+              <div id="kb-template-menu" class="kb-dropdown-menu kb-dropdown-up hide">
+                <button type="button" class="kb-dropdown-item" onclick="insertDocTemplate('connector')"><i data-lucide="plug" style="width:13px; height:13px;"></i>Connector Setup</button>
+                <button type="button" class="kb-dropdown-item" onclick="insertDocTemplate('troubleshooting')"><i data-lucide="alert-triangle" style="width:13px; height:13px;"></i>Troubleshooting &amp; RCA</button>
+                <button type="button" class="kb-dropdown-item" onclick="insertDocTemplate('cloud_sop')"><i data-lucide="cloud" style="width:13px; height:13px;"></i>Cloud Native SOP</button>
+                <button type="button" class="kb-dropdown-item" onclick="insertDocTemplate('salesforce_case')"><i data-lucide="clipboard-list" style="width:13px; height:13px;"></i>Salesforce Case SOP</button>
+              </div>
+            </div>
           </div>
 
           <div class="kb-footer-actions" style="display:flex; align-items:center; gap:10px;">
@@ -1989,7 +2005,7 @@
       if (modal) modal.classList.add('hide');
     }
   </script>
-  <script src="toasts.js?v=46.0"></script>
-  <script src="app.js?v=46.0"></script>
+  <script src="toasts.js?v=47.0"></script>
+  <script src="app.js?v=47.0"></script>
 </body>
 </html>
