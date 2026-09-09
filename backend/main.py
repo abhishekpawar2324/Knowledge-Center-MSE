@@ -366,11 +366,22 @@ def generate_snippet(content: str, query_terms: List[str], window_size: int = 15
         if end < len(content):
             snippet = snippet + "..."
             
+    # The snippet is raw document content and the frontend injects this through
+    # innerHTML for the <mark> highlighting to render, so the content has to be
+    # escaped here - otherwise markup inside an indexed document would be live
+    # markup in every reader's search results. Marks go in as placeholders
+    # first so escaping cannot mangle the tags, the same approach already used
+    # by the HTML highlighter above.
     highlighted = snippet
     for term in query_terms:
         pattern = re.compile(re.escape(term), re.IGNORECASE)
-        highlighted = pattern.sub(lambda m: f"<mark class='search-highlight'>{m.group(0)}</mark>", highlighted)
-        
+        highlighted = pattern.sub(lambda m: f"___MARK_START___{m.group(0)}___MARK_END___", highlighted)
+
+    highlighted = (highlighted.replace("&", "&amp;")
+                              .replace("<", "&lt;")
+                              .replace(">", "&gt;"))
+    highlighted = (highlighted.replace("___MARK_START___", "<mark class='search-highlight'>")
+                              .replace("___MARK_END___", "</mark>"))
     return highlighted
 
 def levenshtein_distance(s1, s2):

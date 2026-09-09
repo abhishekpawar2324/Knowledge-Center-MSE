@@ -1895,11 +1895,18 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="glass-panel" style="padding:36px; text-align:center;">
           <h3 style="font-size:1.15rem; font-weight:700; color:var(--text-main); margin-bottom:8px;">No matching documents found</h3>
           <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:16px;">Try searching with different keywords, or ask the Magic AI Assistant to synthesize a solution.</p>
-          <button class="btn btn-primary" onclick="openCopilotWithQuery('${query.replace(/'/g, "\\'")}')">
+          <button class="btn btn-primary" id="btn-search-empty-ask">
             <i data-lucide="sparkles" style="width:16px; height:16px;"></i> Ask Magic AI Assistant
           </button>
         </div>
       `
+      // The query is raw user input. It used to be interpolated into this
+      // button's onclick with only single quotes escaped, but that attribute is
+      // delimited by double quotes - so a query containing one broke out of the
+      // attribute and could add handlers of its own. Binding the handler here
+      // keeps the value out of the markup altogether.
+      const askBtn = document.getElementById('btn-search-empty-ask')
+      if (askBtn) askBtn.onclick = () => openCopilotWithQuery(query)
       if (window.lucide) lucide.createIcons()
       return
     }
@@ -1930,19 +1937,19 @@ document.addEventListener('DOMContentLoaded', () => {
               <span style="font-size:0.72rem; font-weight:700; padding:3px 8px; border-radius:6px; background:var(--bg-subtle); color:var(--c-sky); text-transform:uppercase;">
                 ${top.product.toUpperCase()}
               </span>
-              ${top.version && top.version !== 'Universal' ? `<span style="font-size:0.72rem; color:var(--text-muted);">${top.version}</span>` : ''}
+              ${top.version && top.version !== 'Universal' ? `<span style="font-size:0.72rem; color:var(--text-muted);">${escapeHtmlText(top.version)}</span>` : ''}
             </div>
             ${crumbsHtml}
-            <h2 style="font-size:1.45rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">${top.title}</h2>
+            <h2 style="font-size:1.45rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">${escapeHtmlText(top.title)}</h2>
           </div>
         </div>
 
         ${top.syntax ? `
           <div style="margin:12px 0 14px 0; background:var(--bg-card); border:1px solid rgba(0,141,199,0.35); border-radius:8px; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
             <div style="font-family:var(--font-mono); font-size:0.95rem; color:var(--c-sky); overflow-x:auto; white-space:nowrap;">
-              <span style="color:var(--text-muted); user-select:none;">Syntax: </span><strong>${top.syntax}</strong>
+              <span style="color:var(--text-muted); user-select:none;">Syntax: </span><strong>${escapeHtmlText(top.syntax)}</strong>
             </div>
-            <button class="btn btn-secondary btn-sm" style="padding:4px 10px; font-size:0.75rem; white-space:nowrap;" onclick="event.stopPropagation(); navigator.clipboard.writeText('${top.syntax.replace(/'/g, "\\'")}'); showToast('Syntax copied to clipboard!', 'success');">
+            <button class="btn btn-secondary btn-sm" style="padding:4px 10px; font-size:0.75rem; white-space:nowrap;" data-hero-action="copy-syntax">
               <i data-lucide="copy" style="width:13px; height:13px;"></i> Copy
             </button>
           </div>
@@ -1951,12 +1958,23 @@ document.addEventListener('DOMContentLoaded', () => {
         ${top.snippet ? `<p style="font-size:0.9rem; color:var(--text-soft); line-height:1.6; margin-bottom:14px;">${top.snippet}</p>` : ''}
 
         <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-color); padding-top:12px;">
-          <span style="font-size:0.8rem; color:var(--text-muted);">By ${top.author || 'Magic Documentation'} • ${top.created_at}</span>
-          <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openDocument('${top.id}');">
+          <span style="font-size:0.8rem; color:var(--text-muted);">By ${escapeHtmlText(top.author || 'Magic Documentation')} • ${escapeHtmlText(top.created_at)}</span>
+          <button class="btn btn-primary btn-sm" data-hero-action="open">
             Open Function Guide & Examples →
           </button>
         </div>
       `
+      // top.syntax is indexed document content, so it was interpolated into the
+      // copy button's onclick with the same single-quote-only escaping. Both
+      // buttons now read their values from this scope instead.
+      const copyBtn = heroCard.querySelector('[data-hero-action="copy-syntax"]')
+      if (copyBtn) copyBtn.onclick = (e) => {
+        e.stopPropagation()
+        navigator.clipboard.writeText(top.syntax)
+        showToast('Syntax copied to clipboard!', 'success')
+      }
+      const openBtn = heroCard.querySelector('[data-hero-action="open"]')
+      if (openBtn) openBtn.onclick = (e) => { e.stopPropagation(); openDocument(top.id) }
       heroCard.onclick = () => openDocument(top.id)
       container.appendChild(heroCard)
     }
@@ -2054,13 +2072,20 @@ document.addEventListener('DOMContentLoaded', () => {
           bcContainer.innerHTML = bcItems.map((item, idx) => {
             const isLast = idx === bcItems.length - 1
             if (isLast) {
-              return `<span style="color:var(--text-main); font-weight:700;">${item}</span>`
+              return `<span style="color:var(--text-main); font-weight:700;">${escapeHtmlText(item)}</span>`
             }
-            const escaped = item.replace(/'/g, "\\'")
-            return `<span style="cursor:pointer; color:var(--c-sky); transition:color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color = 'var(--c-sky)'" onclick="searchWithKeyword('${escaped}');">${item}</span> <span style="color:var(--text-faint);">›</span>`
+            // Crumbs are the document's own title and folder path - text that
+            // arrives with an uploaded file - and this reader is what every user
+            // sees. Escape the label, and attach the handler after insertion so the
+            // value is never part of an attribute.
+            return `<span data-crumb="${idx}" style="cursor:pointer; color:var(--c-sky); transition:color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color = 'var(--c-sky)'">${escapeHtmlText(item)}</span> <span style="color:var(--text-faint);">›</span>`
           }).join(' ')
+          bcContainer.querySelectorAll('[data-crumb]').forEach(el => {
+            const crumb = bcItems[Number(el.getAttribute('data-crumb'))]
+            el.onclick = () => searchWithKeyword(crumb)
+          })
         } else {
-          bcContainer.innerHTML = `<span style="color:var(--text-muted);">Home</span> <span style="color:var(--text-faint);">›</span> <span style="color:var(--c-sky); text-transform:uppercase;">${(currentDoc.product || 'xpi').toUpperCase()}</span> <span style="color:var(--text-faint);">›</span> <span style="color:var(--text-main); font-weight:700;">${currentDoc.title}</span>`
+          bcContainer.innerHTML = `<span style="color:var(--text-muted);">Home</span> <span style="color:var(--text-faint);">›</span> <span style="color:var(--c-sky); text-transform:uppercase;">${(currentDoc.product || 'xpi').toUpperCase()}</span> <span style="color:var(--text-faint);">›</span> <span style="color:var(--text-main); font-weight:700;">${escapeHtmlText(currentDoc.title)}</span>`
         }
       }
 
@@ -2850,7 +2875,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const isImg = att.type === 'image' || (att.name && att.name.match(/\.(png|jpg|jpeg|webp|gif|bmp)$/i))
       let iconHtml = '📎'
       if (isImg && (att.url || att.base64)) {
-        iconHtml = `<img src="${att.url || att.base64}" style="width:22px; height:22px; object-fit:cover; border-radius:4px; border:1px solid rgba(56,189,248,0.5); cursor:pointer;" onclick="window.open('${att.url || att.base64}', '_blank')" title="Click to view full image">`
+        iconHtml = `<img src="${att.url || att.base64}" style="width:22px; height:22px; object-fit:cover; border-radius:4px; border:1px solid rgba(56,189,248,0.5); cursor:pointer;" onclick="window.open(this.src, '_blank')" title="Click to view full image">`
       } else if (isImg) {
         iconHtml = '🖼️'
       }
@@ -3619,7 +3644,7 @@ document.addEventListener('DOMContentLoaded', () => {
       let iconOrThumb = ''
       if (isImg && (att.url || att.base64)) {
         const src = att.url || att.base64
-        iconOrThumb = `<img src="${src}" alt="preview" style="width:24px; height:24px; object-fit:cover; border-radius:4px; border:1px solid rgba(56,189,248,0.5); cursor:pointer;" onclick="window.open('${src}', '_blank')" title="Click to view full image">`
+        iconOrThumb = `<img src="${src}" alt="preview" style="width:24px; height:24px; object-fit:cover; border-radius:4px; border:1px solid rgba(56,189,248,0.5); cursor:pointer;" onclick="window.open(this.src, '_blank')" title="Click to view full image">`
       } else {
         let icon = '📎'
         if (att.name.endsWith('.log') || att.name.endsWith('.txt')) icon = '📄'
@@ -4605,6 +4630,7 @@ ${content}
   toggleDropdown('btn-toggle-color-menu', 'kb-color-menu')
   toggleDropdown('btn-toggle-highlight-menu', 'kb-highlight-menu')
   toggleDropdown('btn-toggle-code-menu', 'kb-code-menu')
+  toggleDropdown('btn-toggle-template-menu', 'kb-template-menu')
 
   document.addEventListener('click', () => {
     document.querySelectorAll('.kb-dropdown-menu').forEach(m => m.classList.add('hide'))
@@ -5429,7 +5455,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
           <td style="padding:12px 16px; font-weight:700; color:var(--text-main);">
             <div style="display:flex; align-items:center; gap:8px;">
               <i data-lucide="mail" style="width:15px; height:15px; color:var(--link);"></i>
-              <span>${u.username}</span>
+              <span>${escapeHtmlText(u.username)}</span>
             </div>
           </td>
           <td style="padding:12px 16px;">
@@ -5447,20 +5473,32 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
           </td>
           <td style="padding:12px 16px; text-align:right;">
             <div style="display:flex; justify-content:flex-end; gap:8px;">
-              <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="openEditUserModal(${u.id}, '${u.username}', '${u.role}', '${u.product_space || 'all'}', ${isActive})">
+              <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" data-user-action="edit">
                 <i data-lucide="edit" style="width:13px; height:13px;"></i> Edit
               </button>
               ${u.username !== 'admin' ? `
-                <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem; color:${isActive ? 'var(--c-amber)' : 'var(--c-emerald)'};" onclick="toggleUserStatus(${u.id}, '${u.username}', ${isActive})">
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem; color:${isActive ? 'var(--c-amber)' : 'var(--c-emerald)'};" data-user-action="toggle">
                   ${isActive ? '⛔ Suspend' : '✅ Activate'}
                 </button>
-                <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem; color:var(--c-rose);" onclick="deleteUserAccount(${u.id}, '${u.username}')">
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem; color:var(--c-rose);" data-user-action="delete">
                   <i data-lucide="trash-2" style="width:13px; height:13px;"></i> Delete
                 </button>
               ` : ''}
             </div>
           </td>
         `
+        // Username, role and space used to be interpolated into these three
+        // onclick attributes as JS string literals. Escaping cannot fix that
+        // safely: the browser decodes HTML entities in an attribute before the
+        // JS is parsed, so an escaped quote turns back into a quote and still
+        // ends the literal. Binding by closure keeps the values out of markup.
+        const editBtn = tr.querySelector('[data-user-action="edit"]')
+        if (editBtn) editBtn.onclick = () =>
+          openEditUserModal(u.id, u.username, u.role, u.product_space || 'all', isActive)
+        const toggleBtn = tr.querySelector('[data-user-action="toggle"]')
+        if (toggleBtn) toggleBtn.onclick = () => toggleUserStatus(u.id, u.username, isActive)
+        const delBtn = tr.querySelector('[data-user-action="delete"]')
+        if (delBtn) delBtn.onclick = () => deleteUserAccount(u.id, u.username)
         tbody.appendChild(tr)
       })
       if (window.lucide) lucide.createIcons()
@@ -5701,34 +5739,42 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
       tr.style.cssText = 'border-bottom:1px solid var(--border-color);'
       tr.innerHTML = `
         <td style="padding:10px 14px; color:var(--text-main); font-weight:600; max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-          <a onclick="openDocument(${doc.id})" style="color:var(--text-soft); cursor:pointer; text-decoration:none;" onmouseover="this.style.color = 'var(--c-sky)'" onmouseout="this.style.color = 'var(--text-soft)'">${doc.title}</a>
+          <a onclick="openDocument(${doc.id})" style="color:var(--text-soft); cursor:pointer; text-decoration:none;" onmouseover="this.style.color = 'var(--c-sky)'" onmouseout="this.style.color = 'var(--text-soft)'">${escapeHtmlText(doc.title)}</a>
         </td>
         <td style="padding:10px 14px; color:#38bdf8; font-weight:600; font-size:0.8rem; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-          ${doc.author || 'Engineering'}
+          ${escapeHtmlText(doc.author || 'Engineering')}
         </td>
         <td style="padding:10px 14px;">
           <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; font-weight:700; background:var(--bg-subtle); color:${prodColor}; text-transform:uppercase;">
-            ${doc.product}
+            ${escapeHtmlText(doc.product)}
           </span>
         </td>
-        <td style="padding:10px 14px; color:var(--text-muted); font-size:0.75rem; text-transform:uppercase;">${doc.file_type}</td>
+        <td style="padding:10px 14px; color:var(--text-muted); font-size:0.75rem; text-transform:uppercase;">${escapeHtmlText(doc.file_type)}</td>
         <td style="padding:10px 14px;">
           <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; font-weight:700; background:${statusBg}; color:${statusColor}; border:1px solid ${statusBorder};">
             ${statusLabel}
           </span>
         </td>
-        <td style="padding:10px 14px; color:var(--text-muted); font-size:0.75rem; white-space:nowrap;">${doc.created_at || '-'}</td>
+        <td style="padding:10px 14px; color:var(--text-muted); font-size:0.75rem; white-space:nowrap;">${escapeHtmlText(doc.created_at || '-')}</td>
         <td style="padding:10px 14px; text-align:right;">
           <div style="display:flex; justify-content:flex-end; gap:6px;">
-            <button class="btn btn-secondary" style="padding:3px 7px; font-size:0.72rem;" onclick="openEditDocModal(${doc.id}, '${doc.title.replace(/'/g, "\\'")}', '${doc.product || 'xpi'}', '${doc.version || 'Universal'}')">
+            <button class="btn btn-secondary" style="padding:3px 7px; font-size:0.72rem;" data-doc-action="edit">
               <i data-lucide="edit-3" style="width:12px; height:12px;"></i> Space/Meta
             </button>
-            <button class="btn btn-secondary" style="padding:3px 7px; font-size:0.72rem; color:var(--c-rose);" onclick="deleteDocItem(${doc.id}, '${doc.title.replace(/'/g, "\\'")}')">
+            <button class="btn btn-secondary" style="padding:3px 7px; font-size:0.72rem; color:var(--c-rose);" data-doc-action="delete">
               <i data-lucide="trash-2" style="width:12px; height:12px;"></i>
             </button>
           </div>
         </td>
       `
+      // Document titles come from uploaded files and authored articles, so they
+      // are not admin-authored text. Same reasoning as the users table: bind by
+      // closure rather than interpolating into an onclick attribute.
+      const docEdit = tr.querySelector('[data-doc-action="edit"]')
+      if (docEdit) docEdit.onclick = () =>
+        openEditDocModal(doc.id, doc.title, doc.product || 'xpi', doc.version || 'Universal')
+      const docDel = tr.querySelector('[data-doc-action="delete"]')
+      if (docDel) docDel.onclick = () => deleteDocItem(doc.id, doc.title)
       tbody.appendChild(tr)
     })
     if (window.lucide) lucide.createIcons()
@@ -5979,13 +6025,22 @@ zeroGrid.innerHTML = ''
           item.style.cssText = 'padding:10px 14px; border-radius:8px; background:rgba(244,63,94,0.1); border:1px solid rgba(244,63,94,0.2); display:flex; justify-content:space-between; align-items:center;'
           item.innerHTML = `
             <div>
-              <div style="font-size:0.85rem; color:var(--c-rose-soft); font-weight:600;">"${z.query}"</div>
+              <div style="font-size:0.85rem; color:var(--c-rose-soft); font-weight:600;">"${escapeHtmlText(z.query)}"</div>
               <div style="font-size:0.72rem; color:var(--c-rose);">${z.count} failed searches</div>
             </div>
-            <button class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px; color:var(--c-emerald);" onclick="createKbForGap('${z.query.replace(/'/g, "\\'")}')">
+            <button class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px; color:var(--c-emerald);" data-gap-action="create-kb">
               <i data-lucide="plus" style="width:12px; height:12px;"></i> Create KB
             </button>
           `
+          // z.query is whatever an anonymous visitor typed into the search box -
+          // search needs no auth and every miss is recorded - so it is attacker
+          // controlled and lands on an admin's screen. It was interpolated raw
+          // into the text above and into this button's onclick, which turned a
+          // crafted search into a stored script injection running with admin
+          // rights. The text is escaped; the button reads its value from this
+          // closure instead of from markup.
+          const gapBtn = item.querySelector('[data-gap-action="create-kb"]')
+          if (gapBtn) gapBtn.onclick = () => createKbForGap(z.query)
           zeroGrid.appendChild(item)
         })
       }
