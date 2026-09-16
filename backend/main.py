@@ -2333,11 +2333,11 @@ async def upload_documents(
     files: List[UploadFile] = File(...),
     product: Optional[str] = Form("xpi"),
     upload_mode: Optional[str] = Form("publish"), # "publish" vs "review"
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
-    author_name = current_user.username
-    user_role = current_user.role or "Viewer"
+    author_name = current_user.username if current_user else "Support Contributor"
+    user_role = current_user.role if current_user else "Viewer"
     mode = (upload_mode or "publish").lower().strip()
     
     # If review mode is selected, set status to pending_review regardless of role
@@ -2488,11 +2488,11 @@ async def upload_kb_asset(
 @app.post("/api/create-article")   # legacy path, kept so existing callers keep working
 async def create_kb_article(
     request: Request,
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
-    author_name = current_user.username
-    user_role = current_user.role or "Viewer"
+    author_name = current_user.username if current_user else "Support Specialist"
+    user_role = current_user.role if current_user else "Viewer"
 
     content_type = request.headers.get("content-type", "")
     if "application/json" in content_type:
@@ -2589,7 +2589,6 @@ async def create_kb_article(
 # ----------------- Super Admin User Contribution Analytics -----------------
 
 @app.get("/api/admin/contributions")
-@app.get("/api/analytics/contributor-uploads")
 def get_user_contributions(
     scope: Optional[str] = "live", # "live", "historical", "all"
     username: Optional[str] = None,
@@ -2685,7 +2684,7 @@ def get_user_contributions(
         if not author_name:
             return False
         auth_lower = author_name.lower().strip()
-        if auth_lower in ["admin", "support contributor", "support specialist"]:
+        if auth_lower == "admin":
             return True
         reg = registered_users.get(auth_lower)
         if reg:
@@ -2739,7 +2738,6 @@ def get_user_contributions(
         reg_user = registered_users.get(auth.lower())
         user_id = reg_user.id if reg_user else None
         active_flag = is_active_contributor(auth)
-        is_unassigned_role = auth.lower().strip() in ["support contributor", "support specialist"]
         
         # If in live mode, skip non-registered legacy authors
         if scope_clean == "live" and not active_flag and not reg_user:
@@ -2747,14 +2745,13 @@ def get_user_contributions(
 
         user_list.append({
             "user_id": user_id,
-            "username": f"{auth} (Unassigned)" if is_unassigned_role else auth,
-            "raw_username": auth,
-            "role": "Unassigned" if is_unassigned_role else (reg_user.role if reg_user else ("Admin" if auth.lower() == "admin" else "Contributor")),
+            "username": auth,
+            "role": reg_user.role if reg_user else ("Admin" if auth.lower() == "admin" else "Contributor"),
             "product_space": reg_user.product_space if reg_user else "all",
             "is_active": active_flag,
             "is_registered": reg_user is not None,
             "status": "active" if active_flag else "former",
-            "status_label": "Unassigned Uploads" if is_unassigned_role else ("Active Team" if active_flag else "Alumni / Legacy"),
+            "status_label": "Active Team" if active_flag else "Alumni / Legacy",
             "upload_count": stats["upload_count"],
             "views": stats["views"],
             "likes": stats["likes"],
@@ -2817,9 +2814,6 @@ def get_user_contributions(
     reg_user_objs = db.query(User).order_by(User.username.asc()).all()
     if scope_clean == "live":
         author_options = [u.username for u in reg_user_objs if getattr(u, "is_active", True)]
-        for ua in ["Support Contributor", "Support Specialist"]:
-            if any(d.author and d.author.lower().strip() == ua.lower() for d in docs) and ua not in author_options:
-                author_options.append(ua)
     elif scope_clean in ["historical", "legacy"]:
         author_options = sorted(list(set(d.author for d in db.query(Document.author).filter(Document.is_legacy_import == True).all() if d.author)))
     else:
@@ -3086,89 +3080,6 @@ def update_document_product(
         target_id=str(doc.id)
     )
     return {"message": f"Document '{doc.title}' product updated to {product}"}
-
-@app.put("/api/admin/document/{doc_id}/author")
-def reassign_single_document_author(
-    doc_id: int,
-    request: Request,
-    new_author: str = Form(...),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    if current_user.role != "Admin":
-        raise HTTPException(status_code=403, detail="Admin permission required")
-    doc = db.query(Document).filter(Document.id == doc_id).first()
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-    old_author = doc.author
-    clean_author = new_author.strip()
-    if not clean_author:
-        raise HTTPException(status_code=400, detail="New author cannot be empty")
-    doc.author = clean_author
-    db.commit()
-    client_ip = request.client.host if request and request.client else "127.0.0.1"
-    log_enterprise_action(
-        db=db,
-        username=current_user.username,
-        role=current_user.role,
-        ip_address=client_ip,
-        action_category="KB_MANAGE",
-        action="DOCUMENT_REASSIGN_AUTHOR",
-        details=f"Reassigned author of '{doc.title}' from '{old_author}' to '{clean_author}'.",
-        target_id=str(doc.id)
-    )
-    return {"message": f"Author updated from '{old_author}' to '{clean_author}'", "new_author": clean_author}
-
-@app.post("/api/admin/documents/reassign-author")
-async def reassign_document_authors_bulk(
-    request: Request,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    if current_user.role != "Admin":
-        raise HTTPException(status_code=403, detail="Admin permission required")
-    try:
-        body = await request.json()
-    except Exception:
-        body = dict(await request.form())
-
-    doc_ids = body.get("document_ids") or body.get("doc_ids") or []
-    if isinstance(doc_ids, (int, str)):
-        doc_ids = [int(doc_ids)]
-    else:
-        doc_ids = [int(i) for i in doc_ids if str(i).isdigit()]
-
-    new_author = (body.get("new_author") or "").strip()
-    if not new_author:
-        raise HTTPException(status_code=400, detail="New author username is required.")
-    if not doc_ids:
-        raise HTTPException(status_code=400, detail="At least one document ID is required.")
-
-    updated = []
-    for d_id in doc_ids:
-        doc = db.query(Document).filter(Document.id == d_id).first()
-        if doc:
-            old_author = doc.author
-            doc.author = new_author
-            updated.append({"id": doc.id, "title": doc.title, "old_author": old_author, "new_author": new_author})
-
-    db.commit()
-    client_ip = request.client.host if request and request.client else "127.0.0.1"
-    log_enterprise_action(
-        db=db,
-        username=current_user.username,
-        role=current_user.role,
-        ip_address=client_ip,
-        action_category="KB_MANAGE",
-        action="BULK_REASSIGN_AUTHOR",
-        details=f"Bulk reassigned {len(updated)} document(s) to '{new_author}'."
-    )
-    return {
-        "success": True,
-        "updated_count": len(updated),
-        "updated_documents": updated,
-        "message": f"Successfully reassigned {len(updated)} document(s) to {new_author}."
-    }
 
 @app.delete("/api/admin/document/{doc_id}")
 def delete_document(doc_id: int, request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):

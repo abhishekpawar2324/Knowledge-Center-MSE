@@ -424,18 +424,10 @@ def parse_pdf_file(file_path):
         doc_dir_name = re.sub(r'\W+', '_', doc_filename)
         extract_pdf_images(file_path, doc_dir_name)
             
-        pdf_author = getattr(reader.metadata, "author", None) if reader.metadata else None
-        if pdf_author:
-            p_auth_clean = str(pdf_author).strip()
-            if any(tool in p_auth_clean.lower() for tool in ["microsoft", "acrobat", "adobe", "canva", "distiller", "word"]):
-                pdf_author = None
-            else:
-                pdf_author = p_auth_clean
-
         return {
             "title": title,
             "breadcrumbs": json.dumps(["Uploads", "PDFs"]),
-            "author": pdf_author or "Editor",
+            "author": reader.metadata.creator if reader.metadata and reader.metadata.creator else "Editor",
             "created_at": datetime.fromtimestamp(os.path.getmtime(file_path)),
             "content": full_content.strip()
         }
@@ -807,12 +799,8 @@ def scan_and_index(db: Session):
                 existing_doc.content = parsed_data["content"]
                 if parsed_data.get("tags"):
                     existing_doc.tags = parsed_data["tags"]
-                # Protect existing platform-uploaded document authors from being overwritten by reindex
-                if existing_doc.is_legacy_import:
-                    if parsed_data.get("author") and parsed_data["author"] not in ["Editor", "System", "Magic Documentation"]:
-                        existing_doc.author = parsed_data["author"]
-                elif not existing_doc.author:
-                    existing_doc.author = parsed_data.get("author") or "Support Contributor"
+                if parsed_data.get("author") and parsed_data["author"] not in ["Editor", "System", "Magic Documentation"] or not existing_doc.author:
+                    existing_doc.author = parsed_data["author"]
                 existing_doc.created_at = parsed_data["created_at"]
                 if not existing_doc.product or existing_doc.product == "xpi":
                     existing_doc.product = product_tag
@@ -930,9 +918,7 @@ def index_single_file(file_path: str, file_type: str, db: Session, explicit_prod
     if existing_doc:
         existing_doc.title = parsed_data["title"]
         existing_doc.breadcrumbs = parsed_data["breadcrumbs"]
-        # Only overwrite author for legacy bulk imports, preserving uploader identity for platform KBs
-        if existing_doc.is_legacy_import or not existing_doc.author:
-            existing_doc.author = parsed_data["author"]
+        existing_doc.author = parsed_data["author"]
         existing_doc.content = parsed_data["content"]
         existing_doc.product = product_tag
         existing_doc.version = version_tag

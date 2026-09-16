@@ -4943,12 +4943,6 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
           } catch (_) {
             errMsg = res.statusText || 'Failed to publish article'
           }
-          if (res.status === 401) {
-            errMsg = 'Your session has expired. Please sign in again so your article is properly credited.'
-            if (typeof window.openSignInModal === 'function') {
-              window.openSignInModal()
-            }
-          }
           throw new Error(errMsg)
         }
         const data = await res.json()
@@ -5010,15 +5004,6 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
     if (fileList.length === 0) return
 
     const feedback = document.getElementById('upload-status-feedback')
-    if (!token) {
-      if (feedback) {
-        feedback.innerHTML = `<div style="padding:14px 18px; border-radius:8px; background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.3); color:var(--c-amber); font-weight:600;">⚠️ Please sign in before uploading so your contribution history is properly tracked and credited to your name.</div>`
-      }
-      if (typeof window.openSignInModal === 'function') {
-        window.openSignInModal()
-      }
-      return
-    }
 
     const targetProduct = (document.getElementById('upload-target-product') || {}).value || 'xpi'
 
@@ -5082,12 +5067,6 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
               const errData = JSON.parse(xhr.responseText)
               errMsg = errData.detail || errData.message || errMsg
             } catch (_) {}
-            if (xhr.status === 401) {
-              errMsg = 'Your session has expired or authentication is required. Please sign in so your uploads are attributed to your account.'
-              if (typeof window.openSignInModal === 'function') {
-                window.openSignInModal()
-              }
-            }
             reject(new Error(errMsg))
           }
         }
