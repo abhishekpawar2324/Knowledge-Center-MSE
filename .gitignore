@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Production & Build outputs
+dist/
+build/
+*.egg-info/
+
+# Environment & Secrets
+.env
+.env.local
+.env.development.local
+.env.production.local
+
+# Python / Virtual Environment
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+.pytest_cache/
+runtime/
+
+# Databases & Runtime Storage
+*.db
+kb_system.db
+git_tools/portable_git/
+uploads/*
+!uploads/.gitkeep
+downloads/*
+!downloads/.gitkeep
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Misc logs & temporary files
+copy_log.txt
+*.log
+scratch/
+Mock Images/
+863301644/
+
+# AI tool output: reports and audits about the repo, not part of the product
+Claude outputs/
+
+# Temporary probe written by tools/smoke.py (always cleaned up, ignored as a safety net)
+frontend/_smoke_probe.html
