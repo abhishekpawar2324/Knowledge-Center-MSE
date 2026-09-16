@@ -47,7 +47,18 @@ if %ERRORLEVEL% EQU 0 (
     echo ======================================================================
 ) else (
     echo.
-    echo [ERROR] Failed to pull updates. Check your network or git connection.
+    echo [INFO] Direct pull rejected. Syncing cleanly with remote origin/Dev-Abhishek...
+    "%GIT_CMD%" fetch origin Dev-Abhishek
+    "%GIT_CMD%" reset --hard origin/Dev-Abhishek
+    if %ERRORLEVEL% EQU 0 (
+        echo.
+        echo ======================================================================
+        echo [SUCCESS] Codebase synced directly to latest 'Dev-Abhishek' from GitHub!
+        echo ======================================================================
+    ) else (
+        echo.
+        echo [ERROR] Failed to pull updates. Check your network or git connection.
+    )
 )
 
 echo.
