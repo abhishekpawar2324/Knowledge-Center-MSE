@@ -25,6 +25,8 @@ runtime/
 
 # Databases & Runtime Storage
 kb_system.db
+*.db
+git_tools/portable_git/
 uploads/*
 !uploads/.gitkeep
 downloads/*

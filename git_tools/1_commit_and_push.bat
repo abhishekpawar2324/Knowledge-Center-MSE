@@ -68,7 +68,17 @@ if %ERRORLEVEL% EQU 0 (
     echo ======================================================================
 ) else (
     echo.
-    echo [NOTICE] Push encountered an issue. You can run '4_pull_updates.bat' and try again.
+    echo [NOTICE] Normal push rejected. Syncing with --force to update GitHub branch...
+    "%GIT_CMD%" push origin Dev-Abhishek --force
+    if %ERRORLEVEL% EQU 0 (
+        echo.
+        echo ======================================================================
+        echo [SUCCESS] Changes committed and pushed with --force to 'Dev-Abhishek' on GitHub!
+        echo ======================================================================
+    ) else (
+        echo.
+        echo [ERROR] Push failed. Please check your GitHub credentials or connection.
+    )
 )
 
 echo.
