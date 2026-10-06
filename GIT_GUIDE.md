@@ -36,6 +36,7 @@ All Git batch scripts are organized in the **`git_tools/`** folder and include a
 * **`3_push.bat`**: Uploads your local commits to GitHub.
 * **`4_pull_updates.bat`**: Pulls the latest changes from GitHub (for use on your VM or laptop).
 * **`5_check_status.bat`**: Checks which files have been modified and confirms the active branch.
+* **`6_merge_dev_to_main.bat`**: Merges GitHub's `Dev-Abhishek` into `main` (run `3_push.bat` first). It works in a temporary folder, so this folder is never switched to `main`; it shows the file list and asks before pushing, never force-pushes, and if `main` only accepts pull requests it publishes a `release/merge-...` branch and prints the pull-request link.
 
 ---
 
