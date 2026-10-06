@@ -39,7 +39,8 @@ if "%GIT_CMD%"=="" (
 )
 
 :: This folder may be owned by another Windows account (service / admin install).
-set "SAFE=-c safe.directory=%REPO_DIR:\=/%"
+:: (quoted: "call" would otherwise split the value at "=")
+set "SAFE=-c "safe.directory=%REPO_DIR:\=/%""
 set "WORK="
 
 :: ---------------------------------------------------------------------
