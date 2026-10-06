@@ -100,7 +100,9 @@ def seed_initial_cases_if_empty(db: Session):
 
 def import_salesforce_cases_from_csv(csv_content: str, db: Session) -> Dict[str, Any]:
     """Parse and upsert Salesforce cases from CSV string."""
-    reader = csv.DictReader(io.StringIO(csv_content))
+    # Excel / Salesforce exports often start with a UTF-8 BOM, which would otherwise
+    # become part of the first header ("\ufeffCase Number") and skip every row.
+    reader = csv.DictReader(io.StringIO(csv_content.lstrip("\ufeff")))
     imported = 0
     updated = 0
     

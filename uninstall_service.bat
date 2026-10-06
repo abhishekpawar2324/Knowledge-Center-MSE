@@ -5,6 +5,8 @@ echo           UNINSTALLING MagicKnowledgeCenter WINDOWS SERVICE
 echo ======================================================================
 echo.
 
+cd /d "%~dp0"
+
 net session >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] Please right-click and select 'Run as administrator'.

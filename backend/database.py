@@ -94,6 +94,18 @@ class Favorite(Base):
     document_id = Column(Integer, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
     username = Column(String, nullable=False)
 
+class DeletedDocumentPath(Base):
+    """Files an admin deleted from the index but which stay on disk (e.g. the
+    Confluence export). The indexer skips these so they do not come back on the
+    next re-index."""
+    __tablename__ = "deleted_document_paths"
+
+    id = Column(Integer, primary_key=True, index=True)
+    file_path = Column(String, unique=True, index=True, nullable=False)
+    deleted_by = Column(String, nullable=True)
+    deleted_at = Column(DateTime, default=datetime.utcnow)
+
+
 class IndexLog(Base):
     __tablename__ = "index_logs"
     

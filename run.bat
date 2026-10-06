@@ -48,7 +48,7 @@ if "%PY_CMD%"=="" (
 :: folder would delete the running app.
 
 echo [1/2] Using Python Runtime: %PY_CMD%
-for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8000 ^| findstr LISTENING') do (
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr /R /C:":8000 .*LISTENING"') do (
     taskkill /F /PID %%a >nul 2>&1
 )
 echo [2/2] Starting Magic Knowledge Center Server on Port 8000...

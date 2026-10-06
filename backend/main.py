@@ -34,7 +34,8 @@ from backend.database import (
     AIChatMessage,
     SupportUtility,
     UserLoginHistory,
-    EnterpriseAuditLog
+    EnterpriseAuditLog,
+    DeletedDocumentPath
 )
 from backend.auth import (
     get_password_hash,
@@ -43,6 +44,7 @@ from backend.auth import (
     get_current_user,
     get_current_user_optional,
     require_role,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
 )
 from backend.indexer import (
     scan_and_index, 
@@ -83,10 +85,134 @@ app = FastAPI(title="Magic Software Enterprises Knowledge Center API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    # Auth uses a Bearer header, not cookies, so credentialed CORS is not needed.
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Roles allowed to author / upload knowledge base content (matches the UI gating in app.js).
+CONTRIBUTOR_ROLES = ["Admin", "Editor", "Reviewer"]
+
+
+_DANGEROUS_TAGS = ["script", "style", "iframe", "frame", "frameset", "object", "embed", "applet",
+                   "form", "input", "textarea", "select", "button", "link", "meta", "base",
+                   "animate", "set", "foreignobject"]
+_URL_ATTRS = {"href", "src", "action", "formaction", "xlink:href", "background", "poster", "srcset"}
+
+
+def sanitize_html_fragment(html_fragment: str) -> str:
+    """Strip script-capable markup from user-supplied document HTML.
+
+    Uploaded HTML / DOCX / Markdown is rendered with innerHTML in every reader's
+    browser, so event handlers, script/iframe/form tags and javascript: URLs are
+    removed. Formatting, tables, images and links are kept.
+    """
+    if not html_fragment:
+        return html_fragment
+    soup = BeautifulSoup(html_fragment, "html.parser")
+    for tag in soup.find_all(_DANGEROUS_TAGS):
+        tag.decompose()
+    for tag in soup.find_all(True):
+        for attr in list(tag.attrs.keys()):
+            name = attr.lower()
+            if name.startswith("on") or name in ("formaction", "srcdoc"):
+                del tag.attrs[attr]
+                continue
+            if name in _URL_ATTRS:
+                val = tag.attrs.get(attr)
+                val = " ".join(val) if isinstance(val, list) else str(val or "")
+                compact = re.sub(r"[\s\x00-\x1f]", "", val).lower()
+                if compact.startswith(("javascript:", "vbscript:")) or (compact.startswith("data:") and not compact.startswith("data:image/")):
+                    del tag.attrs[attr]
+            elif name == "style":
+                val = str(tag.attrs.get(attr) or "")
+                if re.search(r"expression\s*\(|javascript:|url\s*\(\s*['\"]?\s*javascript:", val, re.IGNORECASE):
+                    del tag.attrs[attr]
+    return str(soup)
+
+
+def user_name_aliases(username: str) -> set:
+    """Lower-case names a registered user may appear under as a document author.
+
+    Accounts are e-mail addresses (first_last@company.com) while older Confluence
+    articles carry display names ("First Last"); both refer to the same person.
+    """
+    name = (username or "").strip().lower()
+    aliases = {name}
+    if "@" in name:
+        local = name.split("@", 1)[0]
+        aliases.add(local)
+        aliases.add(re.sub(r"[._]+", " ", local).strip())
+    return {a for a in aliases if a}
+
+
+def published_only():
+    """SQL filter for documents visible in the public library (search, lists, counts)."""
+    from sqlalchemy import or_
+    return or_(Document.status == "published", Document.status.is_(None))
+
+
+VALID_ROLES = {"admin": "Admin", "editor": "Editor", "reviewer": "Reviewer", "viewer": "Viewer"}
+
+
+def normalize_role(role: Optional[str]) -> str:
+    """Map a role name to its canonical spelling; reject unknown roles."""
+    key = (role or "").strip().lower()
+    if key not in VALID_ROLES:
+        raise HTTPException(status_code=400, detail=f"Invalid role '{role}'. Use Admin, Editor, Reviewer or Viewer.")
+    return VALID_ROLES[key]
+
+
+def safe_join(base_dir: str, rel_path: str) -> Optional[str]:
+    """Join rel_path onto base_dir, returning None if the result escapes base_dir."""
+    if not rel_path:
+        return None
+    base = os.path.realpath(base_dir)
+    candidate = os.path.realpath(os.path.join(base, rel_path))
+    try:
+        if os.path.commonpath([base, candidate]) != base:
+            return None
+    except ValueError:  # different drives on Windows
+        return None
+    return candidate
+
+
+def is_within_content_roots(path: str) -> bool:
+    """True if path lies inside the uploads or Confluence content folders.
+
+    Relative asset links may climb out of a document's own folder (../images/x.png),
+    but never out of the content roots (no database, source code or system files).
+    """
+    return any(is_under_dir(path, root) for root in (UPLOADS_DIR, CONFLUENCE_DIR))
+
+
+def is_under_dir(path: str, root: str) -> bool:
+    """True if path (after resolving links) is inside root."""
+    base = os.path.realpath(root)
+    try:
+        return os.path.commonpath([base, os.path.realpath(path)]) == base
+    except ValueError:  # different drives on Windows
+        return False
+
+
+def safe_upload_filename(name: str) -> str:
+    """Reduce a client-supplied filename to a plain basename with no path parts."""
+    base = os.path.basename((name or "").replace("\\", "/"))
+    base = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", base).strip(" .")
+    return base or f"upload_{int(datetime.utcnow().timestamp())}"
+
+
+def unique_path(path: str) -> str:
+    """Return path, or path with a numeric suffix if a file already exists there."""
+    if not os.path.exists(path):
+        return path
+    root, ext = os.path.splitext(path)
+    i = 1
+    while os.path.exists(f"{root}_{i}{ext}"):
+        i += 1
+    return f"{root}_{i}{ext}"
+
 
 # Initialize DB tables, seed default admin user, and benchmark cases
 init_db()
@@ -150,27 +276,27 @@ def get_attachment_file(file_path: str):
     
     # 1. Primary candidate paths
     candidates = [
-        os.path.join(CONFLUENCE_DIR, "attachments", clean_path),
-        os.path.join(UPLOADS_DIR, "xpa", "attachments", clean_path),
-        os.path.join(UPLOADS_DIR, "xpi", "attachments", clean_path),
-        os.path.join(UPLOADS_DIR, "cloud_native", "attachments", clean_path),
-        os.path.join(UPLOADS_DIR, "attachments", clean_path),
+        safe_join(os.path.join(CONFLUENCE_DIR, "attachments"), clean_path),
+        safe_join(os.path.join(UPLOADS_DIR, "xpa", "attachments"), clean_path),
+        safe_join(os.path.join(UPLOADS_DIR, "xpi", "attachments"), clean_path),
+        safe_join(os.path.join(UPLOADS_DIR, "cloud_native", "attachments"), clean_path),
+        safe_join(os.path.join(UPLOADS_DIR, "attachments"), clean_path),
     ]
     for c in candidates:
-        if os.path.isfile(c):
+        if c and os.path.isfile(c):
             return FileResponse(c)
 
     # 2. Check if clean_path starts with or lacks 'attachments/'
     stripped = clean_path.replace("attachments/", "", 1) if clean_path.startswith("attachments/") else clean_path
     candidates2 = [
-        os.path.join(CONFLUENCE_DIR, "attachments", stripped),
-        os.path.join(UPLOADS_DIR, "xpa", "attachments", stripped),
-        os.path.join(UPLOADS_DIR, "xpi", "attachments", stripped),
-        os.path.join(UPLOADS_DIR, "cloud_native", "attachments", stripped),
-        os.path.join(UPLOADS_DIR, "attachments", stripped),
+        safe_join(os.path.join(CONFLUENCE_DIR, "attachments"), stripped),
+        safe_join(os.path.join(UPLOADS_DIR, "xpa", "attachments"), stripped),
+        safe_join(os.path.join(UPLOADS_DIR, "xpi", "attachments"), stripped),
+        safe_join(os.path.join(UPLOADS_DIR, "cloud_native", "attachments"), stripped),
+        safe_join(os.path.join(UPLOADS_DIR, "attachments"), stripped),
     ]
     for c in candidates2:
-        if os.path.isfile(c):
+        if c and os.path.isfile(c):
             return FileResponse(c)
 
     # 3. Deep search inside subdirectories of UPLOADS_DIR & CONFLUENCE_DIR
@@ -201,14 +327,14 @@ def get_document_asset(doc_id: int, asset_path: str, db: Session = Depends(get_d
     doc_dir = os.path.dirname(doc.file_path)
 
     # 1. Check relative to document directory
-    p1 = os.path.normpath(os.path.join(doc_dir, clean_asset))
-    if os.path.isfile(p1):
+    p1 = os.path.realpath(os.path.join(doc_dir, clean_asset))
+    if is_within_content_roots(p1) and os.path.isfile(p1):
         return FileResponse(p1)
 
     # 2. Check if clean_asset is inside attachments folder of doc_dir
     if not clean_asset.startswith("attachments/"):
-        p2 = os.path.normpath(os.path.join(doc_dir, "attachments", clean_asset))
-        if os.path.isfile(p2):
+        p2 = os.path.realpath(os.path.join(doc_dir, "attachments", clean_asset))
+        if is_within_content_roots(p2) and os.path.isfile(p2):
             return FileResponse(p2)
 
     # 3. Fall back to global multi-space attachment resolver
@@ -242,6 +368,8 @@ def log_enterprise_action(
         db.add(log_entry)
         db.commit()
     except Exception as e:
+        # Leave the session usable for the rest of the request.
+        db.rollback()
         print(f"[WARN] Enterprise audit log error: {e}")
 
 # ----------------- Auth Endpoints (Case-Insensitive) -----------------
@@ -264,7 +392,7 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db
             db.add(UserLoginHistory(username=uname, ip_address=client_ip, user_agent=user_agent[:250], status=status_msg))
             db.commit()
         except Exception:
-            pass
+            db.rollback()
         log_enterprise_action(db, uname, user.role if user else "Unknown", client_ip, "AUTH", "LOGIN_FAILED", f"{status_msg} for '{uname}'.")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -277,7 +405,7 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db
             db.add(UserLoginHistory(username=user.username, ip_address=client_ip, user_agent=user_agent[:250], status="Failed - Suspended Account"))
             db.commit()
         except Exception:
-            pass
+            db.rollback()
         log_enterprise_action(db, user.username, user.role, client_ip, "AUTH", "LOGIN_BLOCKED", f"Login blocked for suspended account '{user.username}'.")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -290,7 +418,7 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db
         db.add(UserLoginHistory(username=user.username, ip_address=client_ip, user_agent=user_agent[:250], status="Success"))
         db.commit()
     except Exception:
-        pass
+        db.rollback()
     log_enterprise_action(db, user.username, user.role, client_ip, "AUTH", "LOGIN_SUCCESS", f"'{user.username}' logged in from {client_ip}.")
 
     access_token = create_access_token(data={"sub": user.username, "role": user.role})
@@ -298,7 +426,8 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db
         "access_token": access_token,
         "token_type": "bearer",
         "username": user.username,
-        "role": user.role
+        "role": user.role,
+        "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60
     }
 
 @app.get("/api/auth/me")
@@ -366,12 +495,20 @@ def generate_snippet(content: str, query_terms: List[str], window_size: int = 15
         if end < len(content):
             snippet = snippet + "..."
             
-    highlighted = snippet
-    for term in query_terms:
-        pattern = re.compile(re.escape(term), re.IGNORECASE)
-        highlighted = pattern.sub(lambda m: f"<mark class='search-highlight'>{m.group(0)}</mark>", highlighted)
-        
-    return highlighted
+    # Escape the document text first (it is inserted as HTML by the client) and
+    # highlight on the raw text, so matches never land inside an HTML entity.
+    import html as _html
+    terms = sorted({t for t in query_terms if t}, key=len, reverse=True)
+    if not terms:
+        return _html.escape(snippet)
+    pattern = re.compile("|".join(re.escape(t) for t in terms), re.IGNORECASE)
+    out, pos = [], 0
+    for m in pattern.finditer(snippet):
+        out.append(_html.escape(snippet[pos:m.start()]))
+        out.append(f"<mark class='search-highlight'>{_html.escape(m.group(0))}</mark>")
+        pos = m.end()
+    out.append(_html.escape(snippet[pos:]))
+    return "".join(out)
 
 def levenshtein_distance(s1, s2):
     if len(s1) > len(s2):
@@ -399,10 +536,11 @@ def search(
     exclude_doc_type: Optional[str] = None,
     match_all: bool = True,
     username: Optional[str] = "Guest",
+    track: bool = True,  # False for search-as-you-type requests; only settled searches are logged
     db: Session = Depends(get_db)
 ):
     raw_q = (q or "").strip()
-    is_wildcard = (raw_q in ["*", "all", ""])
+    is_wildcard = (raw_q in ["*", ""])
     if not raw_q and not is_wildcard:
         return []
         
@@ -429,9 +567,10 @@ def search(
         query_terms = []
 
     from sqlalchemy import or_
-    
-    query = db.query(Document)
-    
+
+    # Drafts and documents still in (or rejected by) review are not searchable.
+    query = db.query(Document).filter(published_only())
+
     # Product filter
     if product and product.lower() not in ["all", "global", ""]:
         query = query.filter(Document.product == product.lower())
@@ -505,7 +644,7 @@ def search(
         
         if is_wildcard:
             score = 100
-            snippet = (doc.content[:180] + "...") if doc.content else ""
+            snippet = generate_snippet(doc.content or "", [], 180)
         else:
             term_matches = []
             for term in query_terms:
@@ -680,8 +819,11 @@ def search(
         # CRITICAL USER REQUIREMENT: Always show Knowledge Base documents FIRST, then official Help results
         results = results + help_results
     
-    # Telemetry: Record search query in SearchAnalytic
+    # Telemetry: Record search query in SearchAnalytic (not the keystroke-by-keystroke
+    # requests, which would fill the gap report with fragments like "add", "adddat")
     try:
+        if not track:
+            return results
         analytic = SearchAnalytic(
             query=q.strip() if q else "*",
             product=product or "all",
@@ -893,14 +1035,21 @@ async def ai_case_followup(
 @app.post("/api/ai/create-kb")
 async def ai_publish_kb(
     request: Request,
+    current_user: User = Depends(require_role(CONTRIBUTOR_ROLES)),
     db: Session = Depends(get_db)
 ):
-    body = await request.json()
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Request body must be JSON.")
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="Request body must be a JSON object.")
     title = body.get("title") or "Magic Technical SOP"
     product = (body.get("product") or "xpi").lower().strip()
     version = body.get("version") or "Universal"
     category = body.get("category") or "troubleshooting"
-    author_name = body.get("author") or "Magic AI Copilot"
+    # Published articles are credited to the signed-in user who published them.
+    author_name = current_user.username
     resolution_id = body.get("resolution_id")
 
     content = body.get("content")
@@ -957,14 +1106,16 @@ async def ai_publish_kb(
 def ai_mark_verified(
     data: dict,
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: User = Depends(get_current_user)
 ):
     """Mark an AI resolution as verified to train future copilot responses."""
     res_id = data.get("resolution_id")
     if not res_id:
-        return {"status": "success", "message": "Resolution marked as verified institutional knowledge."}
-        
+        raise HTTPException(status_code=400, detail="resolution_id is required.")
+
     res = db.query(AIResolution).filter(AIResolution.id == res_id).first()
+    if not res:
+        raise HTTPException(status_code=404, detail="Resolution not found.")
     if res:
         res.is_verified = True
         if res.case_number:
@@ -985,10 +1136,11 @@ def list_ai_sessions(
 ):
     """List recent AI chat sessions, isolated per client browser."""
     cid = client_id or request.headers.get("X-Client-Id")
-    query = db.query(AIChatSession)
-    if cid and cid != "all":
-        query = query.filter((AIChatSession.client_id == cid) | (AIChatSession.client_id == "anonymous"))
-    
+    if not cid or cid == "all":
+        # Without a client id there is no "own" history to show (never list everyone's).
+        return []
+    query = db.query(AIChatSession).filter((AIChatSession.client_id == cid) | (AIChatSession.client_id == "anonymous"))
+
     sessions = query.order_by(AIChatSession.updated_at.desc()).limit(30).all()
     return [
         {
@@ -1017,30 +1169,39 @@ async def create_ai_session(request: Request, db: Session = Depends(get_db)):
 
 @app.delete("/api/ai/sessions")
 def clear_all_ai_sessions(request: Request, client_id: Optional[str] = None, db: Session = Depends(get_db)):
-    """Clear all chat sessions for the active client."""
+    """Clear all chat sessions for the active client (only that client's)."""
     cid = client_id or request.headers.get("X-Client-Id")
-    if cid and cid != "all":
-        sess_ids = [s.id for s in db.query(AIChatSession.id).filter(AIChatSession.client_id == cid).all()]
-        if sess_ids:
-            db.query(AIChatMessage).filter(AIChatMessage.session_id.in_(sess_ids)).delete(synchronize_session=False)
-            db.query(AIChatSession).filter(AIChatSession.client_id == cid).delete(synchronize_session=False)
-    else:
-        db.query(AIChatMessage).delete()
-        db.query(AIChatSession).delete()
+    if not cid or cid in ("all", "anonymous"):
+        # This used to wipe every user's chat history.
+        raise HTTPException(status_code=400, detail="client_id is required to clear chat history.")
+    sess_ids = [s.id for s in db.query(AIChatSession.id).filter(AIChatSession.client_id == cid).all()]
+    if sess_ids:
+        db.query(AIChatMessage).filter(AIChatMessage.session_id.in_(sess_ids)).delete(synchronize_session=False)
+        db.query(AIChatSession).filter(AIChatSession.client_id == cid).delete(synchronize_session=False)
     db.commit()
     return {"status": "success", "message": "All chat sessions cleared"}
 
 @app.delete("/api/ai/sessions/{session_id}")
-def delete_ai_session(session_id: str, db: Session = Depends(get_db)):
-    """Delete an AI chat session and its messages."""
+def delete_ai_session(session_id: str, request: Request, db: Session = Depends(get_db)):
+    """Delete an AI chat session and its messages (only the owning client's)."""
+    sess = db.query(AIChatSession).filter(AIChatSession.id == session_id).first()
+    if not sess:
+        raise HTTPException(status_code=404, detail="Session not found")
+    cid = request.headers.get("X-Client-Id") or request.query_params.get("client_id")
+    if sess.client_id not in (cid, "anonymous", None, ""):
+        raise HTTPException(status_code=403, detail="This chat session belongs to another user.")
     db.query(AIChatMessage).filter(AIChatMessage.session_id == session_id).delete()
     db.query(AIChatSession).filter(AIChatSession.id == session_id).delete()
     db.commit()
     return {"status": "success"}
 
 @app.get("/api/ai/sessions/{session_id}/messages")
-def get_ai_session_messages(session_id: str, db: Session = Depends(get_db)):
-    """Get all messages for a specific session."""
+def get_ai_session_messages(session_id: str, request: Request, db: Session = Depends(get_db)):
+    """Get all messages for a specific session (only the owning client's)."""
+    sess = db.query(AIChatSession).filter(AIChatSession.id == session_id).first()
+    cid = request.headers.get("X-Client-Id") or request.query_params.get("client_id")
+    if sess and sess.client_id not in (cid, "anonymous", None, ""):
+        raise HTTPException(status_code=403, detail="This chat session belongs to another user.")
     msgs = db.query(AIChatMessage).filter(AIChatMessage.session_id == session_id).order_by(AIChatMessage.id.asc()).all()
     return [
         {
@@ -1095,15 +1256,17 @@ def get_ai_case_diagnostic(res_id: int, db: Session = Depends(get_db)):
     }
 
 @app.delete("/api/ai/cases/history/{res_id}")
-def delete_ai_case_diagnostic(res_id: int, db: Session = Depends(get_db)):
-    """Delete a single case diagnostic."""
-    db.query(AIResolution).filter(AIResolution.id == res_id).delete()
+def delete_ai_case_diagnostic(res_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Delete a single case diagnostic (shared team history, so sign-in is required)."""
+    deleted = db.query(AIResolution).filter(AIResolution.id == res_id).delete()
     db.commit()
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Case diagnostic not found")
     return {"status": "success"}
 
 @app.delete("/api/ai/cases/history")
-def clear_all_ai_case_history(db: Session = Depends(get_db)):
-    """Clear all case diagnostics history."""
+def clear_all_ai_case_history(current_user: User = Depends(require_role(["Admin"])), db: Session = Depends(get_db)):
+    """Clear all case diagnostics history (every user's), so Admin only."""
     db.query(AIResolution).delete()
     db.commit()
     return {"status": "success", "message": "All case diagnostics cleared"}
@@ -1536,6 +1699,19 @@ def format_robohelp_topic_html(soup: BeautifulSoup, doc_title: str) -> Optional[
     if not syntax_val and not params_list and not returns_val:
         return None
 
+    # All values above come from get_text(), i.e. decoded plain text. Escape them
+    # before building HTML so e.g. "DbDel(<generic table>)" renders literally.
+    import html as _html
+    raw_syntax = syntax_val
+    raw_see_also = list(see_also_items)
+    esc = lambda s: _html.escape(s or "")
+    overview_paragraphs = [esc(p) for p in overview_paragraphs]
+    syntax_val = esc(syntax_val)
+    params_list = [{"name": esc(p["name"]), "desc": esc(p["desc"])} for p in params_list]
+    returns_val = esc(returns_val)
+    notes_list = [esc(n) for n in notes_list]
+    examples_list = [esc(e) for e in examples_list]
+
     html_parts = []
     html_parts.append('<div class="robohelp-doc-container" style="display:flex; flex-direction:column; gap:20px;">')
     
@@ -1550,14 +1726,14 @@ def format_robohelp_topic_html(soup: BeautifulSoup, doc_title: str) -> Optional[
         
     # 2. Syntax Card with Copy
     if syntax_val:
-        escaped_syn = syntax_val.replace("'", "\\'")
+        syn_js = _html.escape(json.dumps(raw_syntax), quote=True)
         html_parts.append(f'''
         <div class="topic-syntax-card" style="background:#070b12; border:1px solid rgba(0,141,199,0.4); border-radius:10px; padding:18px 22px; display:flex; justify-content:space-between; align-items:center; gap:16px; box-shadow:0 4px 20px rgba(0,0,0,0.4);">
             <div style="overflow-x:auto;">
                 <div style="font-size:0.72rem; font-weight:800; color:#38bdf8; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px;">Syntax</div>
                 <code style="font-family:'Fira Code', monospace, Consolas; font-size:1.1rem; color:#ffffff; font-weight:600;">{syntax_val}</code>
             </div>
-            <button class="btn btn-secondary btn-sm" style="white-space:nowrap; padding:6px 14px; display:flex; align-items:center; gap:6px;" onclick="navigator.clipboard.writeText('{escaped_syn}'); showToast('Syntax copied to clipboard!', 'success');">
+            <button class="btn btn-secondary btn-sm" style="white-space:nowrap; padding:6px 14px; display:flex; align-items:center; gap:6px;" onclick="navigator.clipboard.writeText({syn_js}); if (window.showToast) showToast('Syntax copied to clipboard!', 'success');">
                 <i data-lucide="copy" style="width:14px; height:14px;"></i> Copy Signature
             </button>
         </div>
@@ -1627,10 +1803,11 @@ def format_robohelp_topic_html(soup: BeautifulSoup, doc_title: str) -> Optional[
     # 6. See Also
     if see_also_items:
         pills_html = []
-        for itm in see_also_items:
-            escaped_itm = itm.replace("'", "\\'")
+        for raw_itm in raw_see_also:
+            itm = _html.escape(raw_itm)
+            itm_js = _html.escape(json.dumps(raw_itm), quote=True)
             pills_html.append(f'''
-            <button type="button" class="btn btn-secondary btn-sm" style="font-size:0.82rem; padding:6px 14px; border-radius:6px; background:rgba(0,141,199,0.12); color:#38bdf8; border:1px solid rgba(0,141,199,0.3); cursor:pointer;" onclick="searchWithKeyword('{escaped_itm}')">
+            <button type="button" class="btn btn-secondary btn-sm" style="font-size:0.82rem; padding:6px 14px; border-radius:6px; background:rgba(0,141,199,0.12); color:#38bdf8; border:1px solid rgba(0,141,199,0.3); cursor:pointer;" onclick="searchWithKeyword({itm_js})">
                 {itm}
             </button>
             ''')
@@ -1704,11 +1881,14 @@ def get_document(doc_id: str, q: Optional[str] = None, db: Session = Depends(get
             return get_help_topic(int(t_id_match.group(0)), q=q, db=db)
         raise HTTPException(status_code=404, detail="Invalid help topic ID")
 
-    int_id = int(doc_id)
+    try:
+        int_id = int(doc_id)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=404, detail="Document not found")
     doc = db.query(Document).filter(Document.id == int_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-        
+
     doc.views = (doc.views or 0) + 1
     db.commit()
     
@@ -1749,7 +1929,7 @@ def get_document(doc_id: str, q: Optional[str] = None, db: Session = Depends(get
                                 img["src"] = f"/api/document/{doc.id}/asset/{clean_src}"
                         if query_terms:
                             highlight_html_text_nodes(content_div, query_terms)
-                        html_content = str(content_div)
+                        html_content = sanitize_html_fragment(str(content_div))
         except Exception as e:
             print(f"Error reading raw HTML: {e}")
     elif doc.file_type == "docx" and os.path.exists(doc.file_path + ".html"):
@@ -1761,13 +1941,13 @@ def get_document(doc_id: str, q: Optional[str] = None, db: Session = Depends(get
                     if src and not src.startswith("http") and not src.startswith("data:"):
                         clean_src = src.lstrip("/")
                         img["src"] = f"/api/document/{doc.id}/asset/{clean_src}"
-                html_content = f'<div class="wiki-content group">{str(docx_soup)}</div>'
+                html_content = f'<div class="wiki-content group">{sanitize_html_fragment(str(docx_soup))}</div>'
         except Exception as e:
             print(f"Error reading generated DOCX HTML: {e}")
     elif doc.file_type == "md":
         try:
             import markdown
-            html_content = f'<div class="wiki-content group">{markdown.markdown(doc.content, extensions=["tables", "fenced_code"])}</div>'
+            html_content = f'<div class="wiki-content group">{sanitize_html_fragment(markdown.markdown(doc.content or "", extensions=["tables", "fenced_code"]))}</div>'
         except Exception as e:
             print(f"Error parsing Markdown: {e}")
             
@@ -1789,7 +1969,7 @@ def get_document(doc_id: str, q: Optional[str] = None, db: Session = Depends(get
         "doc_type": doc.doc_type or "troubleshooting",
         "author": doc.author,
         "breadcrumbs": json.loads(doc.breadcrumbs) if doc.breadcrumbs else [],
-        "created_at": doc.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        "created_at": doc.created_at.strftime("%Y-%m-%d %H:%M:%S") if doc.created_at else "",
         "content": display_content,
         "html_content": html_content,
         "views": doc.views,
@@ -1808,7 +1988,11 @@ def get_raw_document(doc_id: int, q: Optional[str] = None, db: Session = Depends
         
     from fastapi.responses import HTMLResponse, FileResponse
     
-    if doc.file_type == "html":
+    # Uploaded HTML is shown as-is here, so run it in a sandbox: no scripts and no
+    # access to this origin (and therefore none to the reader's session).
+    sandbox_headers = {"Content-Security-Policy": "sandbox allow-popups allow-popups-to-escape-sandbox; script-src 'none'"}
+
+    if doc.file_type in ("html", "htm"):
         try:
             with open(doc.file_path, "r", encoding="utf-8", errors="ignore") as f:
                 soup = BeautifulSoup(f.read(), "html.parser")
@@ -1827,7 +2011,7 @@ def get_raw_document(doc_id: int, q: Optional[str] = None, db: Session = Depends
                     else:
                         query_terms = [t.lower().strip() for t in q.split() if t.strip()]
                     highlight_html_text_nodes(soup, query_terms)
-                return HTMLResponse(content=str(soup))
+                return HTMLResponse(content=str(soup), headers=sandbox_headers)
         except Exception as e:
             print(f"Error processing raw HTML: {e}")
             
@@ -1890,8 +2074,22 @@ def get_notifications(include_read: bool = False, product: Optional[str] = None,
         } for n in notifications]
     }
 
+@app.post("/api/notifications/read-all")
+def mark_all_notifications_read(current_user: User = Depends(require_role(["Admin"])), db: Session = Depends(get_db)):
+    # Global read flag (affects every user), so admin-only. Readers dismiss per browser.
+    db.query(Notification).filter(Notification.is_read == False).update({"is_read": True})
+    db.commit()
+    return {"status": "success", "message": "All notifications marked as read"}
+
+@app.delete("/api/notifications/clear-all")
+def clear_all_notifications(current_user: User = Depends(require_role(["Admin"])), db: Session = Depends(get_db)):
+    # Registered before /{notification_id} so "clear-all" is not parsed as an id.
+    db.query(Notification).delete()
+    db.commit()
+    return {"status": "success", "message": "All notifications cleared"}
+
 @app.post("/api/notifications/{notification_id}/read")
-def mark_notification_read(notification_id: int, db: Session = Depends(get_db)):
+def mark_notification_read(notification_id: int, current_user: User = Depends(require_role(["Admin"])), db: Session = Depends(get_db)):
     n = db.query(Notification).filter(Notification.id == notification_id).first()
     if n:
         n.is_read = True
@@ -1899,38 +2097,28 @@ def mark_notification_read(notification_id: int, db: Session = Depends(get_db)):
     return {"status": "success", "message": f"Notification {notification_id} marked as read"}
 
 @app.delete("/api/notifications/{notification_id}")
-def delete_notification(notification_id: int, db: Session = Depends(get_db)):
+def delete_notification(notification_id: int, current_user: User = Depends(require_role(["Admin"])), db: Session = Depends(get_db)):
     n = db.query(Notification).filter(Notification.id == notification_id).first()
-    if n:
-        db.delete(n)
-        db.commit()
-    return {"status": "success", "message": f"Notification {notification_id} dismissed"}
-
-@app.post("/api/notifications/read-all")
-def mark_all_notifications_read(db: Session = Depends(get_db)):
-    db.query(Notification).filter(Notification.is_read == False).update({"is_read": True})
+    if not n:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    db.delete(n)
     db.commit()
-    return {"status": "success", "message": "All notifications marked as read"}
-
-@app.delete("/api/notifications/clear-all")
-def clear_all_notifications(db: Session = Depends(get_db)):
-    db.query(Notification).delete()
-    db.commit()
-    return {"status": "success", "message": "All notifications cleared"}
+    return {"status": "success", "message": f"Notification {notification_id} deleted"}
 
 # ----------------- Products & Space Navigation -----------------
 
 @app.get("/api/products/overview")
 def get_products_overview(db: Session = Depends(get_db)):
-    xpa_count = db.query(Document).filter(Document.product == "xpa").count()
-    xpi_count = db.query(Document).filter(Document.product == "xpi").count()
-    cloud_count = db.query(Document).filter(Document.product == "cloud_native").count()
-    total_docs = db.query(Document).count()
+    pub = db.query(Document).filter(published_only())
+    xpa_count = pub.filter(Document.product == "xpa").count()
+    xpi_count = pub.filter(Document.product == "xpi").count()
+    cloud_count = pub.filter(Document.product == "cloud_native").count()
+    total_docs = pub.count()
     
     xpa_help_count = db.query(HelpTopic).filter(HelpTopic.product == "xpa").count()
     xpi_help_count = db.query(HelpTopic).filter(HelpTopic.product == "xpi").count()
     
-    pinned_docs = db.query(Document).filter(Document.is_pinned == True).limit(8).all()
+    pinned_docs = db.query(Document).filter(Document.is_pinned == True, published_only()).limit(8).all()
     # Only published documents belong on the public landing page; drafts and
     # anything sitting in the review workflow must not leak into these lists.
     recent_docs = (db.query(Document)
@@ -1983,7 +2171,7 @@ def get_products_overview(db: Session = Depends(get_db)):
 
 @app.get("/api/spaces")
 def get_spaces(product: Optional[str] = None, db: Session = Depends(get_db)):
-    query = db.query(Document)
+    query = db.query(Document).filter(published_only())
     if product and product.lower() not in ["all", "global", ""]:
         query = query.filter(Document.product == product.lower())
     docs = query.all()
@@ -2001,7 +2189,7 @@ def get_spaces(product: Optional[str] = None, db: Session = Depends(get_db)):
 @app.get("/api/space/{space_name}/tree")
 def get_space_tree(space_name: str, product: Optional[str] = None, db: Session = Depends(get_db)):
     HIDDEN_FOLDERS = {"uploads", "Uploads"}
-    query = db.query(Document)
+    query = db.query(Document).filter(published_only())
     if product and product.lower() not in ["all", "global", ""]:
         query = query.filter(Document.product == product.lower())
     docs = query.all()
@@ -2068,7 +2256,7 @@ def get_space_tree(space_name: str, product: Optional[str] = None, db: Session =
 
 @app.get("/api/tags")
 def get_all_tags(product: Optional[str] = None, db: Session = Depends(get_db)):
-    query = db.query(Document.tags)
+    query = db.query(Document.tags).filter(published_only())
     if product and product.lower() not in ["all", "global", ""]:
         query = query.filter(Document.product == product.lower())
     docs = query.all()
@@ -2104,7 +2292,7 @@ def get_recently_viewed(ids: str, db: Session = Depends(get_db)):
 
 @app.get("/api/pinned")
 def get_pinned(product: Optional[str] = None, db: Session = Depends(get_db)):
-    query = db.query(Document).filter(Document.is_pinned == True)
+    query = db.query(Document).filter(Document.is_pinned == True, published_only())
     if product and product.lower() not in ["all", "global", ""]:
         query = query.filter(Document.product == product.lower())
     docs = query.all()
@@ -2149,9 +2337,10 @@ def get_comments(doc_id: str, db: Session = Depends(get_db)):
 
 @app.post("/api/document/{doc_id}/comments")
 def add_comment(
-    doc_id: str, 
-    content: str = Form(...), 
-    current_user: User = Depends(get_current_user), 
+    doc_id: str,
+    background_tasks: BackgroundTasks,
+    content: str = Form(...),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     if str(doc_id).startswith("help_"):
@@ -2163,6 +2352,8 @@ def add_comment(
     doc = db.query(Document).filter(Document.id == int_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+    if not content.strip():
+        raise HTTPException(status_code=400, detail="Comment cannot be empty.")
     new_comment = Comment(
         document_id=int_id,
         username=current_user.username,
@@ -2172,10 +2363,8 @@ def add_comment(
     db.commit()
     
     # Notify Super Admin via Email
-    try:
-        notify_new_comment(doc.title, current_user.username, content.strip())
-    except Exception as e:
-        print(f"Comment email notification warning: {e}")
+    # Sent after the response so a slow mail relay never delays posting a comment.
+    background_tasks.add_task(notify_new_comment, doc.title, current_user.username, content.strip())
         
     return {
         "id": new_comment.id,
@@ -2262,10 +2451,10 @@ def update_document(
     doc_id: int,
     title: str = Form(...),
     content: str = Form(...),
-    product: Optional[str] = Form("xpi"),
-    version: Optional[str] = Form("Universal"),
-    doc_type: Optional[str] = Form("troubleshooting"),
-    tags: str = Form(""),
+    product: Optional[str] = Form(None),
+    version: Optional[str] = Form(None),
+    doc_type: Optional[str] = Form(None),
+    tags: Optional[str] = Form(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -2302,17 +2491,22 @@ def update_document(
             
     doc.title = title
     if doc.file_type == "html":
-        clean_text = BeautifulSoup(content, "html.parser").get_text(separator=" ")
+        # HTML is indexed as text; collapse the markup whitespace.
+        doc.content = re.sub(r"\s+", " ", BeautifulSoup(content, "html.parser").get_text(separator=" ")).strip()
     else:
-        clean_text = content
-    doc.content = re.sub(r"\s+", " ", clean_text).strip()
+        # Markdown / text: line breaks are the formatting (headings, lists, code), keep them.
+        doc.content = content.strip()
     if product:
-        doc.product = product
+        prod = product.lower().strip()
+        if prod not in ["xpa", "xpi", "cloud_native", "general"]:
+            raise HTTPException(status_code=400, detail=f"Unknown product space '{product}'.")
+        doc.product = prod
     if version:
         doc.version = version
     if doc_type:
         doc.doc_type = doc_type
-    doc.tags = tags
+    if tags is not None:
+        doc.tags = tags
     db.commit()
     
     return {
@@ -2327,17 +2521,18 @@ def update_document(
 # ----------------- Document Upload & KB Authoring (Direct Publication & Instant Re-Indexing) -----------------
 
 @app.post("/api/upload")
-async def upload_documents(
+def upload_documents(
     background_tasks: BackgroundTasks,
     request: Request,
     files: List[UploadFile] = File(...),
     product: Optional[str] = Form("xpi"),
     upload_mode: Optional[str] = Form("publish"), # "publish" vs "review"
-    current_user: Optional[User] = Depends(get_current_user_optional),
+    current_user: User = Depends(require_role(CONTRIBUTOR_ROLES)),
     db: Session = Depends(get_db)
 ):
-    author_name = current_user.username if current_user else "Support Contributor"
-    user_role = current_user.role if current_user else "Viewer"
+    # A valid session is required, so every upload is credited to the real account.
+    author_name = current_user.username
+    user_role = current_user.role
     mode = (upload_mode or "publish").lower().strip()
     
     # If review mode is selected, set status to pending_review regardless of role
@@ -2356,29 +2551,47 @@ async def upload_documents(
 
     saved_count = 0
     saved_docs = []
+    indexable_exts = ["html", "htm", "pdf", "docx", "txt", "md"]
 
     for file in files:
         if not file.filename:
             continue
-        dest_path = os.path.join(target_dir, file.filename)
-        normalized_dest_path = os.path.abspath(dest_path)
+        clean_name = safe_upload_filename(file.filename)
+        ext = clean_name.split(".")[-1].lower() if "." in clean_name else ""
+        if ext != "zip" and ext not in indexable_exts:
+            # Unsupported types are not stored or counted.
+            continue
+        # Never overwrite an existing file: that would silently take over another
+        # author's document (same path -> same DB row).
+        normalized_dest_path = unique_path(os.path.abspath(os.path.join(target_dir, clean_name)))
         with open(normalized_dest_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-        saved_count += 1
-        
-        ext = file.filename.split(".")[-1].lower()
+
         if ext == "zip":
-            zip_subfolder = os.path.splitext(file.filename)[0]
-            extract_dir = os.path.join(target_dir, zip_subfolder)
+            zip_subfolder = os.path.splitext(os.path.basename(normalized_dest_path))[0]
+            extract_dir = unique_path(os.path.join(target_dir, zip_subfolder))
             os.makedirs(extract_dir, exist_ok=True)
             try:
                 import zipfile
                 with zipfile.ZipFile(normalized_dest_path, 'r') as zp:
-                    zp.extractall(extract_dir)
+                    total_size = 0
+                    for member in zp.infolist():
+                        if member.is_dir():
+                            continue
+                        mext = member.filename.split(".")[-1].lower()
+                        if mext not in indexable_exts and mext not in ["png", "jpg", "jpeg", "gif", "bmp", "webp"]:
+                            continue
+                        member_path = safe_join(extract_dir, member.filename.replace("\\", "/"))
+                        total_size += member.file_size
+                        if not member_path or total_size > 500 * 1024 * 1024:
+                            continue  # path escapes the folder, or archive too large
+                        os.makedirs(os.path.dirname(member_path), exist_ok=True)
+                        with zp.open(member) as src, open(member_path, "wb") as dst:
+                            shutil.copyfileobj(src, dst)
                 for root, _, zfiles in os.walk(extract_dir):
                     for zf in zfiles:
                         zext = zf.split(".")[-1].lower()
-                        if zext in ["html", "htm", "pdf", "docx", "txt", "md"]:
+                        if zext in indexable_exts:
                             zpath = os.path.abspath(os.path.join(root, zf))
                             zdoc = index_single_file(
                                 file_path=zpath,
@@ -2396,6 +2609,7 @@ async def upload_documents(
                                 saved_docs.append(zdoc)
                                 saved_count += 1
             except Exception as e:
+                db.rollback()
                 print(f"[Zip Ingestion Error]: {e}")
         else:
             doc = index_single_file(
@@ -2412,8 +2626,12 @@ async def upload_documents(
                 doc.created_at = datetime.utcnow()
                 db.commit()
                 saved_docs.append(doc)
+                saved_count += 1
 
     total_indexed = db.query(Document).count()
+
+    if saved_count == 0:
+        raise HTTPException(status_code=400, detail="No supported documents were found. Upload HTML, PDF, DOCX, TXT, MD or a ZIP of those.")
 
     if target_status == "pending_review":
         notif_title = f"New Document Pending Review in {prod.upper()}"
@@ -2463,7 +2681,11 @@ async def upload_kb_asset(
 
     os.makedirs(UPLOADS_ASSETS, exist_ok=True)
     orig_name = file.filename
-    clean_name = re.sub(r'[^a-zA-Z0-9_\.-]', '_', orig_name)
+    clean_name = re.sub(r'[^a-zA-Z0-9_\.-]', '_', os.path.basename(orig_name.replace("\\", "/")))
+    blocked_ext = clean_name.split('.')[-1].lower() if '.' in clean_name else ''
+    if blocked_ext in ['html', 'htm', 'xhtml', 'svg', 'xml', 'js', 'mjs', 'php', 'exe', 'bat', 'cmd', 'ps1', 'vbs', 'py']:
+        # These would be served from this origin and could run script in users' sessions.
+        raise HTTPException(status_code=400, detail=f"File type '.{blocked_ext}' is not allowed as an asset.")
     timestamp = int(datetime.utcnow().timestamp())
     saved_filename = f"{timestamp}_{clean_name}"
     dest_path = os.path.join(UPLOADS_ASSETS, saved_filename)
@@ -2488,26 +2710,36 @@ async def upload_kb_asset(
 @app.post("/api/create-article")   # legacy path, kept so existing callers keep working
 async def create_kb_article(
     request: Request,
-    current_user: Optional[User] = Depends(get_current_user_optional),
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(require_role(CONTRIBUTOR_ROLES)),
     db: Session = Depends(get_db)
 ):
-    author_name = current_user.username if current_user else "Support Specialist"
-    user_role = current_user.role if current_user else "Viewer"
+    author_name = current_user.username
+    user_role = current_user.role
 
     content_type = request.headers.get("content-type", "")
-    if "application/json" in content_type:
-        data = await request.json()
-    else:
-        form = await request.form()
-        data = dict(form)
+    try:
+        if "application/json" in content_type:
+            data = await request.json()
+        else:
+            form = await request.form()
+            data = dict(form)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Could not read the article data.")
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=400, detail="Article data must be an object.")
 
-    title = data.get("title") or ""
-    content = data.get("content") or ""
-    product = data.get("product") or "xpi"
-    version = data.get("version") or "Universal"
-    doc_type = data.get("doc_type") or data.get("category") or "troubleshooting"
-    tags = data.get("tags") or ""
-    upload_mode = data.get("upload_mode") or "publish"
+    def _text(key, default=""):
+        val = data.get(key)
+        return val if isinstance(val, str) else default
+
+    title = _text("title")
+    content = _text("content")
+    product = _text("product") or "xpi"
+    version = _text("version") or "Universal"
+    doc_type = _text("doc_type") or _text("category") or "troubleshooting"
+    tags = _text("tags")
+    upload_mode = _text("upload_mode") or "publish"
 
     if not title.strip() or not content.strip():
         raise HTTPException(status_code=400, detail="Title and content are required.")
@@ -2523,7 +2755,7 @@ async def create_kb_article(
     }.get(prod, UPLOADS_GENERAL)
     os.makedirs(target_dir, exist_ok=True)
 
-    safe_title = re.sub(r'[\\/*?:"<>|]', "", title.strip())
+    safe_title = re.sub(r'[\\/*?:"<>|\x00-\x1f]', "", title.strip()).strip(" .")
     filename = f"KB_{int(datetime.utcnow().timestamp())}_{safe_title[:40]}.md"
     file_path = os.path.abspath(os.path.join(target_dir, filename))
 
@@ -2573,7 +2805,7 @@ async def create_kb_article(
             message=f"Published by {author_name} in {prod.upper()} space.",
             doc_id=new_doc.id
         )
-        notify_document_uploaded(new_doc.title, prod, author_name, "md")
+        background_tasks.add_task(notify_document_uploaded, new_doc.title, prod, author_name, "md")
         
     db.add(notif)
     db.commit()
@@ -2607,11 +2839,17 @@ def get_user_contributions(
     
     scope_clean = (scope or "live").lower().strip()
     query = db.query(Document)
-    now = datetime.now()
+    # Platform uploads are stamped in UTC, so period boundaries are UTC as well.
+    now = datetime.utcnow()
     
     # Mapping of registered users in system
-    registered_users = {u.username.lower(): u for u in db.query(User).all()}
-    active_usernames_lower = [u.username.lower() for u in registered_users.values() if getattr(u, "is_active", True)]
+    all_users = db.query(User).all()
+    # Look users up by account name and by the display name used on older articles.
+    registered_users = {}
+    for u in all_users:
+        for alias in user_name_aliases(u.username):
+            registered_users.setdefault(alias, u)
+    active_usernames_lower = sorted({a for u in all_users if getattr(u, "is_active", True) for a in user_name_aliases(u.username)})
 
     # 0. Scope filtering: live platform vs historical Confluence archive
     if scope_clean == "live":
@@ -2623,6 +2861,7 @@ def get_user_contributions(
             (Document.is_legacy_import == True) | (~func.lower(Document.author).in_(active_usernames_lower))
         )
     # else "all": no restriction
+    scope_query = query
 
     # 0.1 Filter by dynamic period (this week, this month, this year)
     if period and period.lower() not in ["all", ""]:
@@ -2640,7 +2879,7 @@ def get_user_contributions(
 
     # 1. Filter by username
     if username and username.lower() not in ["all", ""]:
-        query = query.filter(Document.author.ilike(username.strip()))
+        query = query.filter(func.lower(func.trim(Document.author)).in_(user_name_aliases(username)))
         
     # 2. Filter by product
     if product and product.lower() not in ["all", "global", ""]:
@@ -2702,10 +2941,22 @@ def get_user_contributions(
     total_views = sum(d.views or 0 for d in docs)
     total_likes = sum(d.likes or 0 for d in docs)
     
-    # Aggregate contributions by user
+    # Aggregate contributions by user. Author names are matched case-insensitively
+    # ("Admin" / "admin" are one person) and shown with the registered spelling.
+    PLACEHOLDER_AUTHORS = {"system", "editor", "engineering", "support contributor", "support specialist",
+                           "magic documentation", "magic ai copilot", "unknown", ""}
+
+    def canonical_author(name: Optional[str]) -> str:
+        raw = (name or "").strip()
+        reg = registered_users.get(raw.lower())
+        if reg:
+            return reg.username
+        # Import / tool defaults ("Editor", "System", ...) are not people.
+        return "Unattributed" if raw.lower() in PLACEHOLDER_AUTHORS else raw
+
     user_stats = {}
     for d in docs:
-        auth = d.author or "System"
+        auth = canonical_author(d.author)
         if auth not in user_stats:
             user_stats[auth] = {
                 "username": auth,
@@ -2714,9 +2965,15 @@ def get_user_contributions(
                 "likes": 0,
                 "by_product": {"xpi": 0, "xpa": 0, "cloud_native": 0, "general": 0},
                 "by_type": {},
-                "latest_upload": None
+                "latest_upload": None,
+                "published_count": 0,
+                "pending_count": 0
             }
         user_stats[auth]["upload_count"] += 1
+        if (d.status or "published") == "published":
+            user_stats[auth]["published_count"] += 1
+        elif d.status in ("pending_review", "pending", "changes_requested"):
+            user_stats[auth]["pending_count"] += 1
         user_stats[auth]["views"] += (d.views or 0)
         user_stats[auth]["likes"] += (d.likes or 0)
         
@@ -2751,8 +3008,10 @@ def get_user_contributions(
             "is_active": active_flag,
             "is_registered": reg_user is not None,
             "status": "active" if active_flag else "former",
-            "status_label": "Active Team" if active_flag else "Alumni / Legacy",
+            "status_label": "Active Team" if active_flag else ("Suspended" if reg_user else "Alumni / Legacy"),
             "upload_count": stats["upload_count"],
+            "published_count": stats["published_count"],
+            "pending_count": stats["pending_count"],
             "views": stats["views"],
             "likes": stats["likes"],
             "by_product": stats["by_product"],
@@ -2761,7 +3020,7 @@ def get_user_contributions(
         })
         
     # For live scope, ensure all active registered users appear in the leaderboard
-    if scope_clean == "live" and contributor_status != "former":
+    if scope_clean == "live" and (contributor_status or "").lower() != "former":
         existing_usernames_lower = {u["username"].lower() for u in user_list}
         for u_obj in db.query(User).order_by(User.username.asc()).all():
             if getattr(u_obj, "is_active", True) and u_obj.username.lower() not in existing_usernames_lower:
@@ -2775,6 +3034,8 @@ def get_user_contributions(
                     "status": "active",
                     "status_label": "Active Team",
                     "upload_count": 0,
+                    "published_count": 0,
+                    "pending_count": 0,
                     "views": 0,
                     "likes": 0,
                     "by_product": {"xpi": 0, "xpa": 0, "cloud_native": 0, "general": 0},
@@ -2782,15 +3043,15 @@ def get_user_contributions(
                     "latest_upload": "No uploads yet"
                 })
 
-    user_list.sort(key=lambda x: (x["upload_count"], 1 if x["is_active"] else 0), reverse=True)
+    user_list.sort(key=lambda x: (-x["upload_count"], 0 if x["is_active"] else 1, x["username"].lower()))
     
-    active_count = sum(1 for u in user_list if u["is_active"])
-    former_count = sum(1 for u in user_list if not u["is_active"])
+    active_count = sum(1 for u in user_list if u["is_active"] and u["upload_count"] > 0)
+    former_count = sum(1 for u in user_list if not u["is_active"] and u["upload_count"] > 0)
     active_uploads = sum(u["upload_count"] for u in user_list if u["is_active"])
     former_uploads = sum(u["upload_count"] for u in user_list if not u["is_active"])
 
     top_contributor = user_list[0]["username"] if user_list and user_list[0]["upload_count"] > 0 else "None"
-    top_contributor_count = user_list[0]["upload_count"] if user_list else 0
+    top_contributor_count = user_list[0]["upload_count"] if user_list and user_list[0]["upload_count"] > 0 else 0
     unique_contributors = sum(1 for u in user_list if u["upload_count"] > 0)
     
     # Monthly timeline aggregation for trend visualization
@@ -2809,6 +3070,83 @@ def get_user_contributions(
         timeline_map[month_key]["views"] += (d.views or 0)
         
     timeline = sorted(timeline_map.values(), key=lambda x: x["key"])
+
+    # ---- Month-wise breakdown for the current filters (newest month first) ----
+    in_review_statuses = ("pending_review", "pending", "changes_requested")
+    monthly_map = {}
+    for d in docs:
+        key = d.created_at.strftime("%Y-%m") if d.created_at else "Unknown"
+        if key not in monthly_map:
+            monthly_map[key] = {
+                "key": key,
+                "label": d.created_at.strftime("%b %Y") if d.created_at else "Unknown",
+                "year": d.created_at.year if d.created_at else None,
+                "month": d.created_at.month if d.created_at else None,
+                "total": 0, "published": 0, "in_review": 0, "rejected": 0,
+                "by_product": {"xpi": 0, "xpa": 0, "cloud_native": 0, "general": 0},
+                "_people": set(),
+            }
+        row = monthly_map[key]
+        row["total"] += 1
+        status_val = d.status or "published"
+        if status_val == "published":
+            row["published"] += 1
+        elif status_val in in_review_statuses:
+            row["in_review"] += 1
+        elif status_val == "rejected":
+            row["rejected"] += 1
+        prod_key = d.product if d.product in row["by_product"] else "general"
+        row["by_product"][prod_key] += 1
+        row["_people"].add(canonical_author(d.author))
+    monthly = []
+    for key in sorted(monthly_map, key=lambda k: (k != "Unknown", k), reverse=True):
+        row = monthly_map[key]
+        row["contributors"] = len(row.pop("_people"))
+        monthly.append(row)
+
+    # ---- Contributor x month grid (latest 12 months in the filtered data) ----
+    grid_months = sorted(k for k in monthly_map if k != "Unknown")[-12:]
+    grid_rows = {}
+    for d in docs:
+        key = d.created_at.strftime("%Y-%m") if d.created_at else None
+        if key not in grid_months:
+            continue
+        name = canonical_author(d.author)
+        r = grid_rows.setdefault(name, {"username": name, "counts": {}, "total": 0})
+        r["counts"][key] = r["counts"].get(key, 0) + 1
+        r["total"] += 1
+    contributor_month_grid = {
+        "months": [{"key": k, "label": datetime.strptime(k, "%Y-%m").strftime("%b %Y")} for k in grid_months],
+        "rows": sorted(grid_rows.values(), key=lambda r: (-r["total"], r["username"].lower())),
+    }
+
+    # ---- This month vs last month (same scope / user / space / status filters,
+    #      ignoring the time filters so the comparison is always meaningful) ----
+    cmp_query = scope_query
+    if username and username.lower() not in ["all", ""]:
+        cmp_query = cmp_query.filter(func.lower(func.trim(Document.author)).in_(user_name_aliases(username)))
+    if product and product.lower() not in ["all", "global", ""]:
+        cmp_query = cmp_query.filter(Document.product == product.lower().strip())
+    this_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    last_month_start = (this_month_start - timedelta(days=1)).replace(day=1)
+    cmp_docs = cmp_query.filter(Document.created_at >= last_month_start).all()
+    if contributor_status and contributor_status.lower() in ["active", "former"]:
+        want_active_cmp = contributor_status.lower() == "active"
+        cmp_docs = [d for d in cmp_docs if is_active_contributor(d.author) == want_active_cmp]
+
+    def _period_stats(docs_in_period, label):
+        return {
+            "label": label,
+            "uploads": len(docs_in_period),
+            "published": sum(1 for d in docs_in_period if (d.status or "published") == "published"),
+            "contributors": len({canonical_author(d.author) for d in docs_in_period}),
+        }
+    month_comparison = {
+        "this_month": _period_stats([d for d in cmp_docs if d.created_at and d.created_at >= this_month_start],
+                                    this_month_start.strftime("%b %Y")),
+        "last_month": _period_stats([d for d in cmp_docs if d.created_at and last_month_start <= d.created_at < this_month_start],
+                                    last_month_start.strftime("%b %Y")),
+    }
     
     # Available users filter based on active scope
     reg_user_objs = db.query(User).order_by(User.username.asc()).all()
@@ -2823,13 +3161,15 @@ def get_user_contributions(
     
     years_raw = db.query(func.strftime("%Y", Document.created_at)).distinct().all()
     available_years = sorted(list(set(y[0] for y in years_raw if y[0])), reverse=True)
-    if "2026" not in available_years:
-        available_years.insert(0, "2026")
+    current_year = str(datetime.utcnow().year)
+    if current_year not in available_years:
+        available_years.insert(0, current_year)
 
     article_records = [{
         "id": d.id,
         "title": d.title,
-        "author": d.author or "System",
+        "author": canonical_author(d.author),
+        "status": d.status or "published",
         "author_is_active": is_active_contributor(d.author),
         "author_status": "active" if is_active_contributor(d.author) else "former",
         "product": d.product or "xpi",
@@ -2845,6 +3185,8 @@ def get_user_contributions(
         "scope": scope_clean,
         "summary": {
             "total_uploads": total_uploads,
+            "published_uploads": sum(1 for d in docs if (d.status or "published") == "published"),
+            "pending_uploads": sum(1 for d in docs if d.status in ("pending_review", "pending", "changes_requested")),
             "unique_contributors": unique_contributors,
             "active_contributors_count": active_count,
             "former_contributors_count": former_count,
@@ -2857,6 +3199,9 @@ def get_user_contributions(
         },
         "contributors": user_list,
         "timeline": timeline,
+        "monthly": monthly,
+        "contributor_month_grid": contributor_month_grid,
+        "month_comparison": month_comparison,
         "articles": article_records,
         "available_filters": {
             "users": author_options,
@@ -2903,6 +3248,9 @@ def create_user(
 ):
     if current_user.role != "Admin":
         raise HTTPException(status_code=403, detail="Admin permission required")
+    if not username.strip() or not password.strip():
+        raise HTTPException(status_code=400, detail="Username and password are required.")
+    role = normalize_role(role)
     existing = db.query(User).filter(func.lower(User.username) == username.lower().strip()).first()
     if existing:
         raise HTTPException(status_code=400, detail="User already exists")
@@ -2947,14 +3295,21 @@ def update_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    is_self = user.id == current_user.id
     if role:
-        user.role = role.strip()
+        new_role = normalize_role(role)
+        if is_self and new_role != "Admin":
+            raise HTTPException(status_code=400, detail="You cannot remove your own Admin role.")
+        user.role = new_role
     if product_space:
         user.product_space = product_space.strip().lower()
     if password and password.strip():
         user.hashed_password = get_password_hash(password.strip())
     if is_active is not None:
-        user.is_active = (str(is_active).lower() in ["true", "1", "yes", "active"])
+        new_active = (str(is_active).lower() in ["true", "1", "yes", "active"])
+        if is_self and not new_active:
+            raise HTTPException(status_code=400, detail="You cannot suspend your own account.")
+        user.is_active = new_active
     db.commit()
     client_ip = request.client.host if request and request.client else "127.0.0.1"
     log_enterprise_action(
@@ -2978,6 +3333,8 @@ def delete_user(user_id: int, request: Request, current_user: User = Depends(get
         raise HTTPException(status_code=404, detail="User not found")
     if user.username.lower() == "admin":
         raise HTTPException(status_code=400, detail="Cannot delete default administrator account")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="You cannot delete your own account.")
     deleted_username = user.username
     db.delete(user)
     db.commit()
@@ -3031,7 +3388,7 @@ def get_logs(current_user: User = Depends(get_current_user), db: Session = Depen
 def get_files(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role != "Admin":
         raise HTTPException(status_code=403, detail="Admin permission required")
-    docs = db.query(Document).order_by(Document.created_at.desc()).limit(200).all()
+    docs = db.query(Document).order_by(Document.created_at.desc(), Document.id.desc()).all()
     return [{
         "id": d.id,
         "title": d.title,
@@ -3062,7 +3419,10 @@ def update_document_product(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     old_prod = doc.product
-    doc.product = product.lower().strip()
+    new_prod = product.lower().strip()
+    if new_prod not in ["xpa", "xpi", "cloud_native", "general"]:
+        raise HTTPException(status_code=400, detail=f"Unknown product space '{product}'.")
+    doc.product = new_prod
     if doc_type:
         doc.doc_type = doc_type
     if version:
@@ -3089,11 +3449,20 @@ def delete_document(doc_id: int, request: Request, current_user: User = Depends(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     deleted_title = doc.title
-    if os.path.exists(doc.file_path) and "uploads" in doc.file_path.lower():
+    file_removed = False
+    if doc.file_path and os.path.exists(doc.file_path) and is_under_dir(doc.file_path, UPLOADS_DIR):
         try:
             os.remove(doc.file_path)
+            if os.path.exists(doc.file_path + ".html"):
+                os.remove(doc.file_path + ".html")   # DOCX render cache
+            file_removed = True
         except Exception:
             pass
+    if doc.file_path and not file_removed and os.path.exists(doc.file_path):
+        # The source file stays on disk (e.g. the Confluence export), so remember the
+        # deletion; otherwise the next re-index would quietly bring the article back.
+        if not db.query(DeletedDocumentPath).filter(DeletedDocumentPath.file_path == os.path.abspath(doc.file_path)).first():
+            db.add(DeletedDocumentPath(file_path=os.path.abspath(doc.file_path), deleted_by=current_user.username))
     # SQLite runs with PRAGMA foreign_keys=OFF by default, so the declared
     # ON DELETE CASCADE never fires. Clear dependent rows explicitly.
     db.query(Favorite).filter(Favorite.document_id == doc_id).delete(synchronize_session=False)
@@ -3124,21 +3493,27 @@ def get_admin_analytics(
 
     scope_clean = (scope or "live").lower().strip()
     active_users = db.query(User).filter(User.is_active == True).all()
-    active_usernames_lower = [u.username.lower() for u in active_users]
+    active_usernames_lower = sorted({a for u in active_users for a in user_name_aliases(u.username)})
 
-    top_queries = db.query(SearchAnalytic.query, func.count(SearchAnalytic.id).label("count"))\
-                    .group_by(SearchAnalytic.query)\
+    # Case/whitespace variants of the same query are one query; the "*" browse-all
+    # call and empty strings are not real searches.
+    norm_q = func.lower(func.trim(SearchAnalytic.query))
+    real_search = (func.trim(SearchAnalytic.query) != "") & (func.trim(SearchAnalytic.query) != "*")
+    top_queries = db.query(norm_q, func.count(SearchAnalytic.id).label("count"))\
+                    .filter(real_search)\
+                    .group_by(norm_q)\
                     .order_by(func.count(SearchAnalytic.id).desc())\
                     .limit(10).all()
-                    
-    zero_results = db.query(SearchAnalytic.query, func.count(SearchAnalytic.id).label("count"))\
-                     .filter(SearchAnalytic.results_count == 0)\
-                     .group_by(SearchAnalytic.query)\
+
+    zero_results = db.query(norm_q, func.count(SearchAnalytic.id).label("count"))\
+                     .filter(real_search, SearchAnalytic.results_count == 0)\
+                     .group_by(norm_q)\
                      .order_by(func.count(SearchAnalytic.id).desc())\
                      .limit(10).all()
 
-    # Scope-aware Document query for top contributors
-    contrib_q = db.query(Document.author, func.count(Document.id).label("count"))
+    # Scope-aware Document query for top contributors ("Admin" and "admin" are one person)
+    author_key = func.lower(func.trim(Document.author))
+    contrib_q = db.query(author_key, func.max(Document.author), func.count(Document.id).label("count")).filter(Document.author.isnot(None))
     if scope_clean == "live":
         contrib_q = contrib_q.filter(
             (Document.is_legacy_import == False) | (func.lower(Document.author).in_(active_usernames_lower))
@@ -3149,16 +3524,29 @@ def get_admin_analytics(
         )
     # else "all": no filter
 
-    top_contrib_rows = contrib_q.group_by(Document.author)\
-                                .order_by(func.count(Document.id).desc())\
-                                .limit(8).all()
+    # Merge every spelling of a person (account e-mail, display name, case) before
+    # taking the top 8, so nobody is split or cut off by a partial count.
+    contrib_rows = contrib_q.group_by(author_key).all()
 
-    author_results = []
-    seen = set()
-    for auth, cnt in top_contrib_rows:
-        if auth:
-            author_results.append({"author": auth, "count": cnt})
-            seen.add(auth.lower())
+    display_names = {}
+    for u in db.query(User).all():
+        for alias in user_name_aliases(u.username):
+            display_names.setdefault(alias, u.username)
+    placeholder_authors = {"system", "editor", "engineering", "support contributor", "support specialist",
+                           "magic documentation", "magic ai copilot", "unknown", ""}
+    merged = {}
+    for key, original, cnt in contrib_rows:
+        if key is None:
+            continue
+        if key in display_names:
+            name = display_names[key]
+        elif key in placeholder_authors:
+            name = "Unattributed"
+        else:
+            name = (original or key).strip()
+        merged[name] = merged.get(name, 0) + cnt
+    author_results = [{"author": n, "count": c} for n, c in sorted(merged.items(), key=lambda x: -x[1])[:8]]
+    seen = {r["author"].lower() for r in author_results}
 
     if scope_clean == "live":
         # Make sure active registered team members are represented
@@ -3167,36 +3555,44 @@ def get_admin_analytics(
                 author_results.append({"author": u.username, "count": 0})
         author_results = author_results[:8]
 
-    by_product = {
-        "xpa": db.query(Document).filter(Document.product == "xpa").count(),
-        "xpi": db.query(Document).filter(Document.product == "xpi").count(),
-        "cloud_native": db.query(Document).filter(Document.product == "cloud_native").count(),
-        "general": db.query(Document).filter(Document.product == "general").count()
-    }
-    
+    # Library composition counts what readers can actually find (published only);
+    # documents without a product are shown under General instead of disappearing.
+    by_product = {"xpa": 0, "xpi": 0, "cloud_native": 0, "general": 0}
+    for prod, cnt in db.query(Document.product, func.count(Document.id)).filter(published_only()).group_by(Document.product).all():
+        key = prod if prod in by_product else "general"
+        by_product[key] += cnt
+
     by_type = {}
-    type_counts = db.query(Document.file_type, func.count(Document.id)).group_by(Document.file_type).all()
+    type_counts = db.query(Document.file_type, func.count(Document.id)).filter(published_only()).group_by(Document.file_type).all()
     for ft, count in type_counts:
-        by_type[ft] = count
-        
+        by_type[ft or "other"] = by_type.get(ft or "other", 0) + count
+
+    by_status = {"published": 0, "pending_review": 0, "changes_requested": 0, "rejected": 0}
+    for st, cnt in db.query(Document.status, func.count(Document.id)).group_by(Document.status).all():
+        key = st or "published"
+        by_status[key] = by_status.get(key, 0) + cnt
+
     return {
         "scope": scope_clean,
+        "by_status": by_status,
+        "total_documents": by_status.get("published", 0),
         "top_queries": [{"query": q, "count": c} for q, c in top_queries],
         "zero_result_queries": [{"query": q, "count": c} for q, c in zero_results],
         "top_contributors": author_results,
         "by_product": by_product,
         "by_type": by_type,
-        "total_searches": db.query(SearchAnalytic).count()
+        "total_searches": db.query(SearchAnalytic).filter(real_search).count()
     }
 
 @app.get("/api/stats")
 def get_stats(db: Session = Depends(get_db)):
-    total_docs = db.query(Document).count()
-    total_views = db.query(func.sum(Document.views)).scalar() or 0
-    total_likes = db.query(func.sum(Document.likes)).scalar() or 0
+    total_docs = db.query(Document).filter(published_only()).count()
+    total_views = db.query(func.sum(Document.views)).filter(published_only()).scalar() or 0
+    total_likes = db.query(func.sum(Document.likes)).filter(published_only()).scalar() or 0
     total_comments = db.query(Comment).count()
-    
-    trending = db.query(Document).order_by(Document.views.desc()).limit(5).all()
+
+    trending = (db.query(Document).filter(published_only())
+                  .order_by(Document.views.desc(), Document.created_at.desc()).limit(5).all())
     
     return {
         "total_documents": total_docs,
@@ -3207,8 +3603,8 @@ def get_stats(db: Session = Depends(get_db)):
             "id": d.id,
             "title": d.title,
             "product": d.product or "xpi",
-            "views": d.views,
-            "likes": d.likes,
+            "views": d.views or 0,
+            "likes": d.likes or 0,
             "file_type": d.file_type
         } for d in trending]
     }
@@ -3232,7 +3628,7 @@ def download_pending_review_document(
         ip_address=client_ip,
         action_category="REVIEW",
         action="REVIEW_DOWNLOAD_ORIGINAL",
-        details=f"Reviewer downloaded original file '{os.path.basename(doc.file_path)}' for document '{doc.title}' ({doc.product.upper()})",
+        details=f"Reviewer downloaded original file '{os.path.basename(doc.file_path)}' for document '{doc.title}' ({(doc.product or 'general').upper()})",
         target_id=doc.id
     )
 
@@ -3267,6 +3663,8 @@ def get_enterprise_audit_logs(
         )
         
     total = query.count()
+    limit = max(1, min(int(limit or 200), 1000))
+    offset = max(0, int(offset or 0))
     logs = query.order_by(EnterpriseAuditLog.id.desc()).offset(offset).limit(limit).all()
     
     return {
@@ -3299,9 +3697,7 @@ def get_review_queue(
         query = db.query(Document).filter(Document.status == status_filter.lower().strip())
     if product and product != "all":
         query = query.filter(Document.product == product.lower().strip())
-    if status_filter and status_filter != "all":
-        query = query.filter(Document.status == status_filter.lower().strip())
-        
+
     docs = query.order_by(Document.created_at.desc()).all()
     return [{
         "id": d.id,
@@ -3327,7 +3723,7 @@ async def process_review_action(
     body = await request.json()
     doc_id = body.get("doc_id") or body.get("document_id")
     action = body.get("action") # "approve", "request_changes", "reject"
-    reviewer_comment = (body.get("reviewer_comment") or body.get("comment") or "").strip()
+    reviewer_comment = str(body.get("reviewer_comment") or body.get("comment") or "").strip()
 
     if not doc_id:
         raise HTTPException(status_code=400, detail="Missing document_id in request body")
@@ -3343,11 +3739,11 @@ async def process_review_action(
         doc.review_comment = None
         notif = Notification(
             title=f"KB Approved & Published: {doc.title[:40]}",
-            message=f"Your KB article has been approved by {current_user.username} and published to {doc.product.upper()}.",
+            message=f"Your KB article has been approved by {current_user.username} and published to {(doc.product or 'general').upper()}.",
             doc_id=doc.id
         )
         db.add(notif)
-        log_enterprise_action(db, current_user.username, current_user.role, client_ip, "REVIEW", "REVIEW_APPROVE", f"Approved and published document '{doc.title}' into {doc.product.upper()} space.", target_id=doc.id)
+        log_enterprise_action(db, current_user.username, current_user.role, client_ip, "REVIEW", "REVIEW_APPROVE", f"Approved and published document '{doc.title}' into {(doc.product or 'general').upper()} space.", target_id=doc.id)
         db.commit()
         return {"status": "published", "message": f"Document '{doc.title}' approved and published successfully!"}
 

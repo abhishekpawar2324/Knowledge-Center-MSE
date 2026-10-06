@@ -86,7 +86,7 @@ Follow these simple steps when your IT team provisions your new VM:
 Once running on the VM:
 * **From VM itself**: `http://localhost:8000`
 * **From other office computers**: `http://<VM-IP-ADDRESS>:8000` (or `http://<HOSTNAME>:8000`)
-* **Default Super Admin**: `superadmin` / `admin@123`
+* **Default Super Admin**: `admin` / `admin` (override with `ADMIN_USERNAME` / `ADMIN_PASSWORD`)
 
 ---
 

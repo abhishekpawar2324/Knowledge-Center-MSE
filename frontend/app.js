@@ -8,8 +8,117 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentDoc = null
   let overviewData = null
   let searchDebounce = null
+  let searchTrackTimer = null
+  let searchSeq = 0
   let adminDocsCache = []
   let contribDataCache = null
+
+  // ==================== 0. SESSION LIFETIME ====================
+  // Sign-in tokens expire on the server (8 hours by default). The browser has to
+  // honour that too: an expired or rejected token ends the session and sends the
+  // user to the sign-in page, instead of leaving a stale "signed in" header whose
+  // uploads the server can no longer attribute to anyone.
+  const SESSION_EXPIRED_MSG = 'Your session has expired. Please sign in again.'
+  let sessionTimer = null
+  let pendingLoginNotice = ''
+
+  function tokenExpiryMs(t) {
+    try {
+      const part = (t || '').split('.')[1]
+      if (!part) return 0
+      const b64 = part.replace(/-/g, '+').replace(/_/g, '/')
+      const payload = JSON.parse(atob(b64 + '='.repeat((4 - b64.length % 4) % 4)))
+      return payload && payload.exp ? payload.exp * 1000 : 0
+    } catch (e) {
+      return 0
+    }
+  }
+
+  function isTokenExpired(t) {
+    const exp = tokenExpiryMs(t)
+    return !exp || Date.now() >= exp
+  }
+
+  function clearStoredSession() {
+    token = ''
+    username = ''
+    role = ''
+    try {
+      localStorage.removeItem('token')
+      localStorage.removeItem('username')
+      localStorage.removeItem('role')
+    } catch (e) {}
+    if (sessionTimer) {
+      clearTimeout(sessionTimer)
+      sessionTimer = null
+    }
+  }
+
+  function scheduleSessionExpiry() {
+    if (sessionTimer) {
+      clearTimeout(sessionTimer)
+      sessionTimer = null
+    }
+    if (!token) return
+    const ms = tokenExpiryMs(token) - Date.now()
+    if (ms <= 0) {
+      expireSession()
+      return
+    }
+    // setTimeout caps at ~24.8 days; the periodic check below covers sleep/drift.
+    sessionTimer = setTimeout(() => expireSession(), Math.min(ms, 2147483000))
+  }
+
+  function expireSession(message) {
+    if (!token) return
+    clearStoredSession()
+    updateAuthUI()
+    loadBookmarks()
+    if (typeof window.openLoginPage === 'function') {
+      window.openLoginPage(message || SESSION_EXPIRED_MSG)
+    } else {
+      pendingLoginNotice = message || SESSION_EXPIRED_MSG
+    }
+  }
+
+  // A token that expired while the tab was closed must never boot as "signed in".
+  if (token && isTokenExpired(token)) {
+    clearStoredSession()
+    pendingLoginNotice = SESSION_EXPIRED_MSG
+  }
+
+  // Any API call that was sent with the current token and comes back 401 means
+  // the server no longer accepts this session (expired, suspended, deleted).
+  const nativeFetch = window.fetch.bind(window)
+  window.fetch = async function (input, init) {
+    const sentToken = token
+    const res = await nativeFetch(input, init)
+    if (res.status === 401 && sentToken && sentToken === token) {
+      let auth = ''
+      try {
+        auth = new Headers((init && init.headers) || (input && input.headers) || {}).get('Authorization') || ''
+      } catch (e) {}
+      const url = typeof input === 'string' ? input : ((input && input.url) || '')
+      if (auth === `Bearer ${sentToken}` && !url.includes('/api/auth/login')) {
+        let detail = ''
+        try {
+          const body = await res.clone().json()
+          if (body && typeof body.detail === 'string') detail = body.detail
+        } catch (e) {}
+        expireSession(detail || SESSION_EXPIRED_MSG)
+      }
+    }
+    return res
+  }
+
+  // Timers do not run while a laptop sleeps, so re-check whenever the tab is used.
+  function checkSessionStillValid() {
+    if (token && isTokenExpired(token)) expireSession()
+  }
+  setInterval(checkSessionStillValid, 60000)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') checkSessionStillValid()
+  })
 
   // Hot Topic Definitions per product
   const hotTopicsMap = {
@@ -865,6 +974,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (spaceFilter !== 'all') {
         items = items.filter(i => i.product === spaceFilter)
       }
+      // Drop a selection that is no longer in the (filtered) list.
+      if (currentReviewItem && !items.some(i => i.id === currentReviewItem.id)) {
+        currentReviewItem = null
+      }
 
       container.innerHTML = ''
       if (items.length === 0) {
@@ -877,11 +990,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const card = document.createElement('div')
         card.style.cssText = 'padding:12px; border-radius:8px; background:var(--bg-subtle); border:1px solid var(--border-color); cursor:pointer;'
         card.innerHTML = `
-          <div style="font-size:0.85rem; font-weight:700; color:var(--text-main); margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.title}</div>
+          <div style="font-size:0.85rem; font-weight:700; color:var(--text-main); margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtmlText(item.title)}">${escapeHtmlText(item.title)}</div>
           <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-muted);">
-            <span>By: ${item.author}</span>
-            <span style="color:var(--c-amber); font-weight:600;">${item.product}</span>
+            <span>By: ${escapeHtmlText(item.author)}</span>
+            <span style="color:var(--c-amber); font-weight:600;">${escapeHtmlText(item.product)}</span>
           </div>
+          ${item.status && item.status !== 'pending_review' ? `<div style="margin-top:4px;">${docStatusBadge(item.status)}</div>` : ''}
         `
         card.onclick = () => renderReviewItemDetail(item)
         container.appendChild(card)
@@ -901,32 +1015,32 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!detailPane) return
 
     const rawText = item.content || 'No document content available.'
-    const parsedContent = (window.marked && window.marked.parse) ? window.marked.parse(rawText) : rawText
+    const parsedContent = (window.marked && window.marked.parse) ? sanitizeHtml(window.marked.parse(rawText)) : escapeHtmlText(rawText)
 
     detailPane.innerHTML = `
       <div style="border-bottom:1px solid var(--border-color); padding-bottom:16px; margin-bottom:16px; flex-shrink:0;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:0.75rem; font-weight:700; padding:3px 8px; border-radius:6px; background:rgba(245,158,11,0.15); color:var(--c-amber); text-transform:uppercase;">${(item.product || 'XPI').toUpperCase()}</span>
-            <span style="font-size:0.75rem; padding:3px 8px; border-radius:6px; background:var(--bg-subtle); color:var(--text-soft);">${item.file_type ? item.file_type.toUpperCase() : 'MD'}</span>
+            <span style="font-size:0.75rem; font-weight:700; padding:3px 8px; border-radius:6px; background:rgba(245,158,11,0.15); color:var(--c-amber); text-transform:uppercase;">${escapeHtmlText((item.product || 'XPI').toUpperCase())}</span>
+            <span style="font-size:0.75rem; padding:3px 8px; border-radius:6px; background:var(--bg-subtle); color:var(--text-soft);">${escapeHtmlText(item.file_type ? item.file_type.toUpperCase() : 'MD')}</span>
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:0.78rem; color:var(--text-muted);">Submitted: ${item.created_at || 'Recently'}</span>
-            <button type="button" onclick="downloadReviewOriginalFile(${item.id})" class="btn btn-secondary" style="font-size:0.75rem; padding:4px 10px; color:var(--c-emerald); border-color:rgba(52,211,153,0.3); display:inline-flex; align-items:center; gap:4px;">
+            <span style="font-size:0.78rem; color:var(--text-muted);">Submitted: ${escapeHtmlText(item.created_at || 'Recently')}</span>
+            <button type="button" onclick="downloadReviewOriginalFile(${Number(item.id)})" class="btn btn-secondary" style="font-size:0.75rem; padding:4px 10px; color:var(--c-emerald); border-color:rgba(52,211,153,0.3); display:inline-flex; align-items:center; gap:4px;">
               <i data-lucide="download" style="width:13px; height:13px;"></i> Download Original File
             </button>
-            <button type="button" onclick="previewDocInReader(${item.id})" class="btn btn-secondary" style="font-size:0.75rem; padding:4px 10px; color:var(--c-sky); border-color:rgba(56,189,248,0.3);">
+            <button type="button" onclick="previewDocInReader(${Number(item.id)})" class="btn btn-secondary" style="font-size:0.75rem; padding:4px 10px; color:var(--c-sky); border-color:rgba(56,189,248,0.3);">
               <i data-lucide="eye" style="width:13px; height:13px;"></i> Full Reader View
             </button>
           </div>
         </div>
-        <h2 style="font-size:1.35rem; font-weight:800; color:var(--text-main); margin:0 0 6px 0; word-break:break-word;">${item.title}</h2>
-        <div style="font-size:0.82rem; color:var(--c-sky);">Uploader / Author: <strong>${item.author || 'Contributor'}</strong></div>
+        <h2 style="font-size:1.35rem; font-weight:800; color:var(--text-main); margin:0 0 6px 0; word-break:break-word;">${escapeHtmlText(item.title)}</h2>
+        <div style="font-size:0.82rem; color:var(--c-sky);">Uploader / Author: <strong>${escapeHtmlText(item.author || 'Contributor')}</strong></div>
       </div>
 
       ${item.review_comment ? `
         <div style="padding:10px 14px; border-radius:8px; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); color:var(--c-amber); font-size:0.82rem; margin-bottom:14px; flex-shrink:0;">
-          <strong>Previous Review Notes:</strong> ${item.review_comment}
+          <strong>Previous Review Notes:</strong> ${escapeHtmlText(item.review_comment)}
         </div>
       ` : ''}
 
@@ -943,9 +1057,9 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
 
         <div style="display:flex; justify-content:flex-end; gap:10px;">
-          <button onclick="submitReviewDecision(${item.id}, 'reject')" class="btn" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:var(--c-rose); font-weight:700;">Reject</button>
-          <button onclick="submitReviewDecision(${item.id}, 'request_changes')" class="btn" style="background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.3); color:var(--c-amber); font-weight:700;">Request Changes</button>
-          <button onclick="submitReviewDecision(${item.id}, 'approve')" class="btn btn-primary" style="background:linear-gradient(135deg, #10b981, #008DC7); font-weight:700;">Approve & Publish SOP</button>
+          <button onclick="submitReviewDecision(${Number(item.id)}, 'reject')" class="btn" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:var(--c-rose); font-weight:700;">Reject</button>
+          <button onclick="submitReviewDecision(${Number(item.id)}, 'request_changes')" class="btn" style="background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.3); color:var(--c-amber); font-weight:700;">Request Changes</button>
+          <button onclick="submitReviewDecision(${Number(item.id)}, 'approve')" class="btn btn-primary" style="background:linear-gradient(135deg, #10b981, #008DC7); font-weight:700;">Approve & Publish SOP</button>
         </div>
       </div>
     `
@@ -1159,6 +1273,60 @@ document.addEventListener('DOMContentLoaded', () => {
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
   }
 
+  // Remove script-capable markup from HTML produced from user / AI text (marked
+  // output). Mirrors the server-side sanitizer used for document bodies.
+  function sanitizeHtml(html) {
+    if (!html) return ''
+    try {
+      const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html')
+      const root = doc.body.firstElementChild
+      root.querySelectorAll('script,style,iframe,frame,frameset,object,embed,applet,form,input,textarea,select,button,link,meta,base,animate,set,foreignObject').forEach(n => n.remove())
+      root.querySelectorAll('*').forEach(el => {
+        Array.from(el.attributes).forEach(a => {
+          const name = a.name.toLowerCase()
+          const val = (a.value || '').replace(/[\s\u0000-\u001f]/g, '').toLowerCase()
+          if (name.startsWith('on') || name === 'srcdoc' || name === 'formaction') {
+            el.removeAttribute(a.name)
+          } else if (['href', 'src', 'xlink:href', 'action', 'poster', 'background'].includes(name) &&
+                     (val.startsWith('javascript:') || val.startsWith('vbscript:') || (val.startsWith('data:') && !val.startsWith('data:image/')))) {
+            el.removeAttribute(a.name)
+          }
+        })
+      })
+      return root.innerHTML
+    } catch (e) {
+      return escapeHtmlText(html)
+    }
+  }
+
+  // A string argument for an inline onclick="fn(...)" handler: JSON-quoted for JS,
+  // then HTML-escaped for the attribute. Safe for any quotes or markup in the value.
+  function jsArg(v) {
+    return escapeHtmlText(JSON.stringify(v === undefined || v === null ? '' : String(v)))
+  }
+
+  async function apiErrorMessage(res, fallback) {
+    try {
+      const body = await res.json()
+      if (body && typeof body.detail === 'string') return body.detail
+      if (body && Array.isArray(body.detail)) return body.detail.map(d => d.msg || JSON.stringify(d)).join(', ')
+    } catch (e) {}
+    return fallback
+  }
+
+  const DOC_STATUS_STYLES = {
+    published: { label: 'Published', bg: 'rgba(52,211,153,0.15)', color: '#34d399', border: 'rgba(52,211,153,0.3)' },
+    pending_review: { label: 'Pending Review', bg: 'rgba(245,158,11,0.15)', color: '#fbbf24', border: 'rgba(245,158,11,0.3)' },
+    pending: { label: 'Pending Review', bg: 'rgba(245,158,11,0.15)', color: '#fbbf24', border: 'rgba(245,158,11,0.3)' },
+    changes_requested: { label: 'Changes Requested', bg: 'rgba(56,189,248,0.15)', color: '#38bdf8', border: 'rgba(56,189,248,0.3)' },
+    rejected: { label: 'Rejected', bg: 'rgba(244,63,94,0.15)', color: '#f43f5e', border: 'rgba(244,63,94,0.3)' }
+  }
+
+  function docStatusBadge(status) {
+    const s = DOC_STATUS_STYLES[(status || 'published').toLowerCase()] || { label: status, bg: 'var(--bg-subtle)', color: 'var(--text-muted)', border: 'var(--border-color)' }
+    return `<span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; font-weight:700; background:${s.bg}; color:${s.color}; border:1px solid ${s.border}; white-space:nowrap;">${escapeHtmlText(s.label)}</span>`
+  }
+
   // ==================== 6.2 LANDING PAGE: AUTH-AWARE CONTENT SECTIONS ====================
   // One renderer for all four sections so there is no per-section copy-paste.
   function buildLandingSection({ title, icon, accent, accentText, items, emptyText, meta, starred }) {
@@ -1349,6 +1517,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const productNames = {
+      all: 'All Products',
       xpa: 'Magic xpa Space',
       xpi: 'Magic xpi Space',
       cloud_native: 'Cloud Native Space',
@@ -1389,7 +1558,7 @@ document.addEventListener('DOMContentLoaded', () => {
       docRow.style.cssText = 'padding:6px 8px; border-radius:6px; font-size:0.78rem; cursor:pointer; color:var(--text-soft); display:flex; align-items:center; gap:6px; transition:all 0.15s;'
       docRow.innerHTML = `
         <i data-lucide="file-text" style="width:13px; height:13px; color:var(--text-muted); flex-shrink:0;"></i>
-        <span class="doc-title-text" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;" title="${doc.title}">${doc.title}</span>
+        <span class="doc-title-text" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;" title="${escapeHtmlText(doc.title)}">${escapeHtmlText(doc.title)}</span>
       `
       docRow.onclick = (e) => {
         e.stopPropagation()
@@ -1411,6 +1580,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!container) return
 
     const productNames = {
+      all: 'All Magic Products',
       xpa: 'Magic xpa Application Platform',
       xpi: 'Magic xpi Integration Platform',
       cloud_native: 'Cloud Native Products'
@@ -1458,13 +1628,13 @@ document.addEventListener('DOMContentLoaded', () => {
           card.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:6px; background:rgba(0,141,199,0.15); color:var(--c-sky); text-transform:uppercase;">${prod}</span>
-                <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:var(--bg-subtle); color:var(--text-muted); text-transform:uppercase;">${fileType}</span>
+                <span style="font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:6px; background:rgba(0,141,199,0.15); color:var(--c-sky); text-transform:uppercase;">${escapeHtmlText(prod)}</span>
+                <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:var(--bg-subtle); color:var(--text-muted); text-transform:uppercase;">${escapeHtmlText(fileType)}</span>
                 <span style="font-size:0.7rem; font-weight:800; padding:2px 7px; border-radius:6px; background:rgba(34,211,238,0.15); color:var(--c-cyan); border:1px solid rgba(34,211,238,0.3);">RECENTLY VIEWED</span>
               </div>
-              <span style="font-size:0.72rem; color:var(--text-faint);">${createdAt ? createdAt + ' • ' : ''}${views} views</span>
+              <span style="font-size:0.72rem; color:var(--text-faint);">${createdAt ? escapeHtmlText(createdAt) + ' • ' : ''}${Number(views) || 0} views</span>
             </div>
-            <h4 style="font-size:1.05rem; font-weight:700; color:var(--text-main); margin:2px 0;">🕒 ${title}</h4>
+            <h4 style="font-size:1.05rem; font-weight:700; color:var(--text-main); margin:2px 0;">🕒 ${escapeHtmlText(title)}</h4>
             ${snippet ? `<p style="font-size:0.84rem; color:var(--text-muted); line-height:1.5; margin:0;">${snippet}</p>` : ''}
           `
           card.onclick = () => openDocument(r.id)
@@ -1495,10 +1665,10 @@ document.addEventListener('DOMContentLoaded', () => {
             card.style.cssText = 'padding:14px 18px; cursor:pointer; display:flex; flex-direction:column; gap:4px;'
             card.innerHTML = `
               <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:6px; background:rgba(0,141,199,0.15); color:var(--c-sky); text-transform:uppercase;">${doc.product}</span>
-                <span style="font-size:0.72rem; color:var(--text-faint);">${doc.views || 0} views</span>
+                <span style="font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:6px; background:rgba(0,141,199,0.15); color:var(--c-sky); text-transform:uppercase;">${escapeHtmlText(doc.product)}</span>
+                <span style="font-size:0.72rem; color:var(--text-faint);">${Number(doc.views) || 0} views</span>
               </div>
-              <h4 style="font-size:1.0rem; font-weight:700; color:var(--text-main); margin:2px 0;">${doc.title}</h4>
+              <h4 style="font-size:1.0rem; font-weight:700; color:var(--text-main); margin:2px 0;">${escapeHtmlText(doc.title)}</h4>
             `
             card.onclick = () => openDocument(doc.id)
             container.appendChild(card)
@@ -1513,19 +1683,62 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==================== 9. NOTIFICATIONS & ALERTS ====================
+  // Notifications are shared by everyone, so "read" and "dismiss" are remembered
+  // per browser. (They used to delete / mark-read the notification for all users.)
+  const NOTIF_SEEN_KEY = 'kc_notif_seen'
+  const NOTIF_SEEN_UPTO_KEY = 'kc_notif_seen_upto'
+  let lastNotifications = []
+
+  function getSeenNotifIds() {
+    try {
+      const arr = JSON.parse(localStorage.getItem(NOTIF_SEEN_KEY) || '[]')
+      return new Set(Array.isArray(arr) ? arr : [])
+    } catch (e) {
+      return new Set()
+    }
+  }
+
+  function getSeenUpTo() {
+    try {
+      return parseInt(localStorage.getItem(NOTIF_SEEN_UPTO_KEY) || '0', 10) || 0
+    } catch (e) {
+      return 0
+    }
+  }
+
+  function markNotifSeen(id) {
+    const seen = getSeenNotifIds()
+    seen.add(id)
+    try {
+      localStorage.setItem(NOTIF_SEEN_KEY, JSON.stringify(Array.from(seen).slice(-300)))
+    } catch (e) {}
+  }
+
+  function unseenNotifications(notifs) {
+    const seen = getSeenNotifIds()
+    const upTo = getSeenUpTo()
+    return (notifs || []).filter(n => !n.is_read && n.id > upTo && !seen.has(n.id))
+  }
+
+  function updateNotifBadge(count) {
+    const badge = document.getElementById('notif-badge')
+    if (!badge) return
+    if (count > 0) {
+      badge.textContent = count
+      badge.classList.remove('hide')
+    } else {
+      badge.classList.add('hide')
+    }
+  }
+
   async function fetchNotifications() {
     try {
       const res = await fetch('/api/notifications')
       if (!res.ok) return
       const data = await res.json()
-      const badge = document.getElementById('notif-badge')
-      if (data.unread_count > 0) {
-        badge.textContent = data.unread_count
-        badge.classList.remove('hide')
-      } else {
-        badge.classList.add('hide')
-      }
-      renderNotifications(data.notifications || [])
+      lastNotifications = data.notifications || []
+      updateNotifBadge(unseenNotifications(lastNotifications).length)
+      renderNotifications(lastNotifications)
     } catch (e) {}
   }
 
@@ -1556,11 +1769,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    try {
-      await fetch(`/api/notifications/${notifId}`, { method: 'DELETE' })
-    } catch (err) {
-      console.error('Failed to dismiss notification:', err)
-    }
+    markNotifSeen(notifId)
   }
 
   function renderNotifications(notifs) {
@@ -1568,8 +1777,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!container) return
     container.innerHTML = ''
     
-    // Only show active unread notifications so read items disappear
-    const unreadNotifs = notifs.filter(n => !n.is_read)
+    // Only show notifications this browser has not read or dismissed yet
+    const unreadNotifs = unseenNotifications(notifs)
     
     if (unreadNotifs.length === 0) {
       container.innerHTML = '<span style="font-size:0.78rem; color:var(--text-faint); text-align:center; padding:16px; display:block;">✓ All caught up! No unread notifications.</span>'
@@ -1585,24 +1794,22 @@ document.addEventListener('DOMContentLoaded', () => {
         <div style="font-size:0.84rem; font-weight:700; color:var(--text-main); margin-bottom:3px; display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
           <div style="display:flex; align-items:center; gap:6px;">
             <span style="width:6px; height:6px; border-radius:50%; background:#38bdf8; flex-shrink:0;"></span>
-            <span>${n.title}</span>
+            <span>${escapeHtmlText(n.title)}</span>
           </div>
           <button 
             type="button" 
-            onclick="dismissNotification(${n.id}, event)" 
+            onclick="dismissNotification(${Number(n.id)}, event)" 
             title="Dismiss notification" 
             style="background:none; border:none; color:var(--text-muted); font-size:0.95rem; line-height:1; cursor:pointer; padding:1px 5px; border-radius:4px; transition:all 0.15s; flex-shrink:0;"
             onmouseover="this.style.color = 'var(--c-rose)'; this.style.background='rgba(244,63,94,0.15)'" 
             onmouseout="this.style.color = 'var(--text-muted)'; this.style.background='transparent'"
           >✕</button>
         </div>
-        <div style="font-size:0.78rem; color:var(--text-soft); margin-bottom:5px; line-height:1.4;">${n.message}</div>
-        <div style="font-size:0.68rem; color:var(--text-muted);">${timeStr}</div>
+        <div style="font-size:0.78rem; color:var(--text-soft); margin-bottom:5px; line-height:1.4;">${escapeHtmlText(n.message)}</div>
+        <div style="font-size:0.68rem; color:var(--text-muted);">${escapeHtmlText(timeStr)}</div>
       `
       item.onclick = async () => {
-        try {
-          await fetch(`/api/notifications/${n.id}/read`, { method: 'POST' })
-        } catch (e) {}
+        markNotifSeen(n.id)
         if (n.doc_id) openDocument(n.doc_id)
         document.getElementById('notification-dropdown').classList.add('hide')
         fetchNotifications()
@@ -1623,9 +1830,9 @@ document.addEventListener('DOMContentLoaded', () => {
       container.innerHTML = '<span style="font-size:0.78rem; color:var(--text-faint); text-align:center; padding:16px; display:block;">✓ All caught up! No unread notifications.</span>'
     }
 
+    const maxId = (lastNotifications || []).reduce((m, n) => Math.max(m, Number(n.id) || 0), getSeenUpTo())
     try {
-      await fetch('/api/notifications/read-all', { method: 'POST' })
-      fetchNotifications()
+      localStorage.setItem(NOTIF_SEEN_UPTO_KEY, String(maxId))
     } catch (e) {}
   })
 
@@ -1792,8 +1999,20 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('view-product-doc-listing').classList.remove('hide')
       return
     }
-    searchDebounce = setTimeout(performSearch, 200)
+    // Live results while typing are not logged as searches; once the user pauses,
+    // the settled query is recorded once for the search analytics.
+    searchDebounce = setTimeout(() => performSearch(false), 200)
+    clearTimeout(searchTrackTimer)
+    searchTrackTimer = setTimeout(() => recordSettledSearch(q), 1500)
   })
+
+  // Log a search the user settled on without re-rendering the results on screen.
+  function recordSettledSearch(q) {
+    if (!q || searchInput.value.trim() !== q) return
+    let url = `/api/search?q=${encodeURIComponent(q)}`
+    if (activeProduct !== 'all') url += `&product=${encodeURIComponent(activeProduct)}`
+    fetch(url).catch(() => {})
+  }
 
   clearSearchBtn.addEventListener('click', () => {
     searchInput.value = ''
@@ -1811,8 +2030,9 @@ document.addEventListener('DOMContentLoaded', () => {
     openCopilotWithQuery(q)
   })
 
-  async function performSearch() {
+  async function performSearch(track) {
     const q = searchInput.value.trim()
+    if (track !== false) clearTimeout(searchTrackTimer)
     if (!q) {
       document.getElementById('view-search-results').classList.add('hide')
       document.getElementById('view-product-doc-listing').classList.remove('hide')
@@ -1823,12 +2043,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let url = `/api/search?q=${encodeURIComponent(q)}`
     if (activeProduct !== 'all') url += `&product=${encodeURIComponent(activeProduct)}`
     if (fmt) url += `&type=${encodeURIComponent(fmt)}`
+    if (track === false) url += '&track=false'
 
     const headers = {}
     if (token) headers['Authorization'] = `Bearer ${token}`
 
+    const seq = ++searchSeq
     try {
       const res = await fetch(url, { headers })
+      // A slower, older request must not overwrite newer results.
+      if (seq !== searchSeq) return
       if (!res.ok) return
       const results = await res.json()
       renderSearchResults(results, q)
@@ -1841,6 +2065,20 @@ document.addEventListener('DOMContentLoaded', () => {
   window.searchWithKeyword = function(keyword) {
     if (!keyword) return
     const input = document.getElementById('omnibox-search-input')
+    if (input && activeProduct === 'all' && document.getElementById('page-product-workspace')?.classList.contains('hide')) {
+      // Searching from the All Products landing page: the workspace still shows the
+      // badge and space tree of whichever product was opened last, so reset them.
+      const badge = document.getElementById('workspace-active-badge')
+      if (badge) {
+        badge.textContent = '🌐 All Products'
+        badge.style.background = 'rgba(0, 141, 199, 0.15)'
+        badge.style.color = 'var(--c-sky)'
+        badge.style.border = '1px solid rgba(0, 141, 199, 0.3)'
+      }
+      input.placeholder = 'Search all Magic documentation, connectors, SOPs...'
+      renderPinnedList(overviewData?.pinned || [])
+      fetchFeaturedProductDocs()
+    }
     if (input) {
       input.value = keyword
       document.getElementById('btn-clear-search')?.classList.remove('hide')
@@ -1869,7 +2107,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="glass-panel" style="padding:36px; text-align:center;">
           <h3 style="font-size:1.15rem; font-weight:700; color:var(--text-main); margin-bottom:8px;">No matching documents found</h3>
           <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:16px;">Try searching with different keywords, or ask the Magic AI Assistant to synthesize a solution.</p>
-          <button class="btn btn-primary" onclick="openCopilotWithQuery('${query.replace(/'/g, "\\'")}')">
+          <button class="btn btn-primary" onclick="openCopilotWithQuery(${jsArg(query)})">
             <i data-lucide="sparkles" style="width:16px; height:16px;"></i> Ask Magic AI Assistant
           </button>
         </div>
@@ -1890,7 +2128,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const crumbsHtml = (top.breadcrumbs && top.breadcrumbs.length) 
         ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:8px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
             <i data-lucide="folder" style="width:13px; height:13px;"></i>
-            ${top.breadcrumbs.map(b => `<span>${b}</span>`).join('<span style="color:var(--text-faint);">›</span>')}
+            ${top.breadcrumbs.map(b => `<span>${escapeHtmlText(b)}</span>`).join('<span style="color:var(--text-faint);">›</span>')}
            </div>`
         : ''
 
@@ -1902,21 +2140,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 <i data-lucide="zap" style="width:12px; height:12px;"></i> ${top.doc_type === 'function' ? 'Official Function Reference' : 'Top Official Match'}
               </span>
               <span style="font-size:0.72rem; font-weight:700; padding:3px 8px; border-radius:6px; background:var(--bg-subtle); color:var(--c-sky); text-transform:uppercase;">
-                ${top.product.toUpperCase()}
+                ${escapeHtmlText((top.product || '').toUpperCase())}
               </span>
-              ${top.version && top.version !== 'Universal' ? `<span style="font-size:0.72rem; color:var(--text-muted);">${top.version}</span>` : ''}
+              ${top.version && top.version !== 'Universal' ? `<span style="font-size:0.72rem; color:var(--text-muted);">${escapeHtmlText(top.version)}</span>` : ''}
             </div>
             ${crumbsHtml}
-            <h2 style="font-size:1.45rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">${top.title}</h2>
+            <h2 style="font-size:1.45rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">${escapeHtmlText(top.title)}</h2>
           </div>
         </div>
 
         ${top.syntax ? `
           <div style="margin:12px 0 14px 0; background:var(--bg-card); border:1px solid rgba(0,141,199,0.35); border-radius:8px; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
             <div style="font-family:'Fira Code', monospace, Consolas; font-size:0.95rem; color:var(--c-sky); overflow-x:auto; white-space:nowrap;">
-              <span style="color:var(--text-muted); user-select:none;">Syntax: </span><strong>${top.syntax}</strong>
+              <span style="color:var(--text-muted); user-select:none;">Syntax: </span><strong>${escapeHtmlText(top.syntax)}</strong>
             </div>
-            <button class="btn btn-secondary btn-sm" style="padding:4px 10px; font-size:0.75rem; white-space:nowrap;" onclick="event.stopPropagation(); navigator.clipboard.writeText('${top.syntax.replace(/'/g, "\\'")}'); showToast('Syntax copied to clipboard!', 'success');">
+            <button class="btn btn-secondary btn-sm" style="padding:4px 10px; font-size:0.75rem; white-space:nowrap;" onclick="event.stopPropagation(); navigator.clipboard.writeText(${jsArg(top.syntax)}); if (window.showToast) showToast('Syntax copied to clipboard!', 'success');">
               <i data-lucide="copy" style="width:13px; height:13px;"></i> Copy
             </button>
           </div>
@@ -1925,8 +2163,8 @@ document.addEventListener('DOMContentLoaded', () => {
         ${top.snippet ? `<p style="font-size:0.9rem; color:var(--text-soft); line-height:1.6; margin-bottom:14px;">${top.snippet}</p>` : ''}
 
         <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-color); padding-top:12px;">
-          <span style="font-size:0.8rem; color:var(--text-muted);">By ${top.author || 'Magic Documentation'} • ${top.created_at}</span>
-          <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openDocument('${top.id}');">
+          <span style="font-size:0.8rem; color:var(--text-muted);">By ${escapeHtmlText(top.author || 'Magic Documentation')} • ${escapeHtmlText(top.created_at)}</span>
+          <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openDocument(${jsArg(top.id)});">
             Open Function Guide & Examples →
           </button>
         </div>
@@ -1952,20 +2190,20 @@ document.addEventListener('DOMContentLoaded', () => {
           <div>
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
               ${sourceBadge}
-              <span style="font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:6px; background:rgba(0,141,199,0.15); color:var(--c-sky); text-transform:uppercase;">${doc.product}</span>
-              <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:var(--bg-subtle); color:var(--text-muted); text-transform:uppercase;">${doc.file_type}</span>
+              <span style="font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:6px; background:rgba(0,141,199,0.15); color:var(--c-sky); text-transform:uppercase;">${escapeHtmlText(doc.product)}</span>
+              <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:var(--bg-subtle); color:var(--text-muted); text-transform:uppercase;">${escapeHtmlText(doc.file_type)}</span>
               ${doc.doc_type === 'function' ? `<span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:rgba(16,185,129,0.15); color:var(--c-emerald); font-weight:700;">FUNCTION</span>` : ''}
-              ${doc.version && doc.version !== 'Universal' ? `<span style="font-size:0.72rem; color:var(--text-soft);">${doc.version}</span>` : ''}
+              ${doc.version && doc.version !== 'Universal' ? `<span style="font-size:0.72rem; color:var(--text-soft);">${escapeHtmlText(doc.version)}</span>` : ''}
               ${doc.is_pinned ? `<span style="font-size:0.72rem; color:var(--c-amber); font-weight:700;">★ Pinned SOP</span>` : ''}
             </div>
-            <h3 style="font-size:1.15rem; font-weight:700; color:var(--text-main); margin-bottom:4px;">${doc.title}</h3>
+            <h3 style="font-size:1.15rem; font-weight:700; color:var(--text-main); margin-bottom:4px;">${escapeHtmlText(doc.title)}</h3>
           </div>
           <span style="font-size:0.75rem; color:var(--text-faint);">${doc.views || 0} views</span>
         </div>
-        ${doc.syntax ? `<div class="syntax-pill" style="margin-bottom:4px;"><span style="color:var(--text-muted);">Syntax: </span>${doc.syntax}</div>` : ''}
+        ${doc.syntax ? `<div class="syntax-pill" style="margin-bottom:4px;"><span style="color:var(--text-muted);">Syntax: </span>${escapeHtmlText(doc.syntax)}</div>` : ''}
         ${doc.snippet ? `<p style="font-size:0.88rem; color:var(--text-soft); line-height:1.6;">${doc.snippet}</p>` : ''}
         <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-color); padding-top:8px; font-size:0.78rem; color:var(--text-faint);">
-          <span>By ${doc.author || 'Engineering'} • ${doc.created_at}</span>
+          <span>By ${escapeHtmlText(doc.author || 'Engineering')} • ${escapeHtmlText(doc.created_at)}</span>
           <span style="color:var(--link); font-weight:600;">${isHelpTopic ? 'View Reference Specification →' : 'Read Document →'}</span>
         </div>
       `
@@ -2028,13 +2266,12 @@ document.addEventListener('DOMContentLoaded', () => {
           bcContainer.innerHTML = bcItems.map((item, idx) => {
             const isLast = idx === bcItems.length - 1
             if (isLast) {
-              return `<span style="color:var(--text-main); font-weight:700;">${item}</span>`
+              return `<span style="color:var(--text-main); font-weight:700;">${escapeHtmlText(item)}</span>`
             }
-            const escaped = item.replace(/'/g, "\\'")
-            return `<span style="cursor:pointer; color:var(--c-sky); transition:color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color = 'var(--c-sky)'" onclick="searchWithKeyword('${escaped}');">${item}</span> <span style="color:var(--text-faint);">›</span>`
+            return `<span style="cursor:pointer; color:var(--c-sky); transition:color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color = 'var(--c-sky)'" onclick="searchWithKeyword(${jsArg(item)});">${escapeHtmlText(item)}</span> <span style="color:var(--text-faint);">›</span>`
           }).join(' ')
         } else {
-          bcContainer.innerHTML = `<span style="color:var(--text-muted);">Home</span> <span style="color:var(--text-faint);">›</span> <span style="color:var(--c-sky); text-transform:uppercase;">${(currentDoc.product || 'xpi').toUpperCase()}</span> <span style="color:var(--text-faint);">›</span> <span style="color:var(--text-main); font-weight:700;">${currentDoc.title}</span>`
+          bcContainer.innerHTML = `<span style="color:var(--text-muted);">Home</span> <span style="color:var(--text-faint);">›</span> <span style="color:var(--c-sky); text-transform:uppercase;">${(currentDoc.product || 'xpi').toUpperCase()}</span> <span style="color:var(--text-faint);">›</span> <span style="color:var(--text-main); font-weight:700;">${escapeHtmlText(currentDoc.title)}</span>`
         }
       }
 
@@ -2059,7 +2296,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <iframe src="/api/document/raw/${currentDoc.id}#toolbar=1&navpanes=1" style="width:100%; height:820px; border:none; border-radius:10px; background:var(--bg-elev); box-shadow:0 10px 30px rgba(0,0,0,0.5);"></iframe>
           </div>
           <div id="pdf-view-text-container" class="hide" style="padding:20px; border-radius:10px; background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-soft); line-height:1.8;">
-            ${currentDoc.html_content || `<pre style="white-space:pre-wrap; font-family:inherit;">${currentDoc.content}</pre>`}
+            ${currentDoc.html_content || `<pre style="white-space:pre-wrap; font-family:inherit;">${escapeHtmlText(currentDoc.content)}</pre>`}
           </div>
         `
         document.getElementById('btn-toggle-pdf-view').onclick = () => {
@@ -2085,7 +2322,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (currentDoc.html_content) {
         bodyContainer.innerHTML = currentDoc.html_content
       } else {
-        bodyContainer.innerHTML = `<pre style="white-space:pre-wrap; font-family:inherit;">${currentDoc.content}</pre>`
+        bodyContainer.innerHTML = `<pre style="white-space:pre-wrap; font-family:inherit;">${escapeHtmlText(currentDoc.content)}</pre>`
       }
 
       if (window.lucide) lucide.createIcons()
@@ -2156,10 +2393,10 @@ document.addEventListener('DOMContentLoaded', () => {
         item.style.cssText = 'padding:12px; border-radius:8px; background:var(--bg-subtle); border:1px solid var(--border-color);'
         item.innerHTML = `
           <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:0.75rem; color:var(--text-muted);">
-            <span style="font-weight:700; color:var(--c-sky);">${c.username}</span>
-            <span>${c.created_at}</span>
+            <span style="font-weight:700; color:var(--c-sky);">${escapeHtmlText(c.username)}</span>
+            <span>${escapeHtmlText(c.created_at)}</span>
           </div>
-          <p style="font-size:0.88rem; color:var(--text-soft); margin:0;">${c.content}</p>
+          <p style="font-size:0.88rem; color:var(--text-soft); margin:0; white-space:pre-wrap;">${escapeHtmlText(c.content)}</p>
         `
         container.appendChild(item)
       })
@@ -2185,7 +2422,10 @@ document.addEventListener('DOMContentLoaded', () => {
         headers: { Authorization: `Bearer ${token}` },
         body: formData
       })
-      if (!res.ok) return
+      if (!res.ok) {
+        alert(await apiErrorMessage(res, 'Could not post your comment.'))
+        return
+      }
       input.value = ''
       fetchComments(currentDoc.id)
       fetchNotifications()
@@ -2201,7 +2441,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!rawText) return ''
     if (window.marked && typeof window.marked.parse === 'function') {
       try {
-        return window.marked.parse(rawText)
+        return sanitizeHtml(window.marked.parse(rawText))
       } catch (e) {
         console.error('Marked parse error:', e)
       }
@@ -2480,12 +2720,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!mdText) return ''
     if (window.marked && typeof marked.parse === 'function') {
       try {
-        return marked.parse(mdText)
+        return sanitizeHtml(marked.parse(mdText))
       } catch (e) {
         console.warn('[Markdown parse error]', e)
       }
     }
-    return mdText
+    return escapeHtmlText(mdText)
       .replace(/### (.*)/g, '<h3 style="color:var(--c-sky-soft); margin-top:10px;">$1</h3>')
       .replace(/## (.*)/g, '<h2 style="color:var(--c-sky); margin-top:12px;">$1</h2>')
       .replace(/# (.*)/g, '<h1 style="color:var(--text-main); margin-top:14px;">$1</h1>')
@@ -2536,8 +2776,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Global Copy Text
-  window.copyTextToClipboard = function(text, btnEl) {
+  window.copyTextToClipboard = function(text, btnEl, isEncoded) {
     if (!text) return
+    if (isEncoded) {
+      try { text = decodeURIComponent(text) } catch (e) {}
+    }
     navigator.clipboard.writeText(text).then(() => {
       if (btnEl) {
         const orig = btnEl.innerHTML
@@ -2668,9 +2911,13 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnClearHistory) {
     btnClearHistory.addEventListener('click', async () => {
       if (currentCopilotTab === 'case') {
-        if (!confirm('Are you sure you want to clear recent case diagnostics history?')) return
+        if (!confirm('Are you sure you want to clear recent case diagnostics history? This removes it for all users.')) return
         try {
-          await fetch('/api/ai/cases/history', { method: 'DELETE' })
+          const res = await fetch('/api/ai/cases/history', { method: 'DELETE', headers: token ? { Authorization: `Bearer ${token}` } : {} })
+          if (!res.ok) {
+            alert(await apiErrorMessage(res, 'Only administrators can clear the shared case history.'))
+            return
+          }
           activeCaseDiagnosticId = null
           const results = document.getElementById('case-results-container')
           if (results) {
@@ -2923,7 +3170,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.deleteCopilotSession = async function(sessId, e) {
     if (e) e.stopPropagation()
     try {
-      await fetch(`/api/ai/sessions/${sessId}`, { method: 'DELETE' })
+      await fetch(`/api/ai/sessions/${encodeURIComponent(sessId)}`, { method: 'DELETE', headers: { 'X-Client-Id': clientId } })
       if (activeSessionId === sessId) {
         activeSessionId = 'sess_' + Date.now()
         const thread = document.getElementById('copilot-messages-thread')
@@ -3190,7 +3437,11 @@ document.addEventListener('DOMContentLoaded', () => {
   window.deleteCaseDiagnostic = async function(resId, e) {
     if (e) e.stopPropagation()
     try {
-      await fetch(`/api/ai/cases/history/${resId}`, { method: 'DELETE' })
+      const delRes = await fetch(`/api/ai/cases/history/${resId}`, { method: 'DELETE', headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      if (!delRes.ok) {
+        alert(await apiErrorMessage(delRes, 'Please sign in to delete case diagnostics.'))
+        return
+      }
       if (activeCaseDiagnosticId === resId) {
         activeCaseDiagnosticId = null
         const results = document.getElementById('case-results-container')
@@ -3353,6 +3604,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!data || !data.answer) {
           throw new Error('AI Engine service temporarily unavailable')
         }
+        // The server just created/updated this session; show it in the history sidebar.
+        fetchCopilotSessions()
 
         const formattedHtml = safeRenderMarkdown(data.answer)
         const sources = data.citations || data.sources || []
@@ -3451,15 +3704,11 @@ document.addEventListener('DOMContentLoaded', () => {
               <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px; color:var(--c-sky); border-color:rgba(56,189,248,0.35); font-weight:700;" onclick="requestCustomerDraft()">
                 ✏️ Customer Draft
               </button>
-              ${resId ? `
-                <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px; color:var(--c-emerald); border-color:rgba(16,185,129,0.4); font-weight:700;" onclick="markResolutionVerified(${resId}, this)">
+              ${resId && token ? `
+                <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px; color:var(--c-emerald); border-color:rgba(16,185,129,0.4); font-weight:700;" onclick="markResolutionVerified(${Number(resId)}, this)">
                   ✓ Mark Verified
                 </button>
-              ` : `
-                <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px; color:var(--c-emerald); border-color:rgba(16,185,129,0.4); font-weight:700;" onclick="markResolutionVerified(1, this)">
-                  ✓ Mark Verified
-                </button>
-              `}
+              ` : ''}
               <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px; color:var(--c-sky); border-color:rgba(0,141,199,0.4); font-weight:700;" onclick="openPublishAiKbModal(${resId || 'null'}, \`${encodeURIComponent(prompt || 'Magic Troubleshooting SOP').replace(/`/g, '\\`')}\`, '${scope}', \`${encodeURIComponent(data.answer).replace(/`/g, '\\`')}\`)">
                 🔗 Publish as KB
               </button>
@@ -3705,28 +3954,18 @@ document.addEventListener('DOMContentLoaded', () => {
     })
   }
 
-  // Clear Sessions Buttons
-  const btnClearCopilotHist = document.getElementById('btn-clear-copilot-history')
-  if (btnClearCopilotHist) {
-    btnClearCopilotHist.addEventListener('click', async () => {
-      if (confirm('Clear all recent chat conversations?')) {
-        try {
-          await fetch('/api/ai/sessions', { method: 'DELETE' })
-        } catch (e) {}
-        activeCopilotSessionId = null
-        const thread = document.getElementById('copilot-messages-thread')
-        if (thread) thread.innerHTML = ''
-        fetchCopilotSessions()
-      }
-    })
-  }
+  // (The Clear-history button is wired once, in the Copilot tab section above.)
 
   const btnClearCaseHist = document.getElementById('btn-clear-case-history')
   if (btnClearCaseHist) {
     btnClearCaseHist.addEventListener('click', async () => {
-      if (confirm('Clear all saved log diagnostic sessions?')) {
+      if (confirm('Clear all saved log diagnostic sessions? This removes them for all users.')) {
         try {
-          await fetch('/api/ai/cases/history', { method: 'DELETE' })
+          const res = await fetch('/api/ai/cases/history', { method: 'DELETE', headers: token ? { Authorization: `Bearer ${token}` } : {} })
+          if (!res.ok) {
+            alert(await apiErrorMessage(res, 'Only administrators can clear the shared case history.'))
+            return
+          }
         } catch (e) {}
         activeCaseDiagnosticId = null
         const results = document.getElementById('case-results-container')
@@ -3784,7 +4023,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await res.json()
 
         const resId = data.resolution_id || data.id
-        renderCaseDiagnosticResults(data, resultsContainer, incidentTime, product)
+        renderCaseDiagnosticResults(data, resultsContainer, product)
         activeCaseDiagnosticId = resId || null
         fetchCaseSessions()
       } catch (err) {
@@ -3801,6 +4040,13 @@ document.addEventListener('DOMContentLoaded', () => {
   window.openPublishAiKbModal = function(resId, titleEncoded, product, contentEncoded, version, descEncoded, rootEncoded) {
     const modal = document.getElementById('modal-publish-ai-kb')
     if (!modal) return
+    // Publishing is credited to the signed-in contributor, so guests sign in first.
+    if (!token || !['admin', 'editor', 'reviewer'].includes((role || '').toLowerCase())) {
+      const copilot = document.getElementById('modal-copilot')
+      if (copilot) copilot.classList.add('hide')
+      window.openLoginPage(token ? 'Only Admins, Editors and Reviewers can publish KB articles.' : 'Please sign in to publish this as a KB article.')
+      return
+    }
 
     let title = ''
     let content = ''
@@ -5005,6 +5251,15 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
 
     const feedback = document.getElementById('upload-status-feedback')
 
+    if (!token || isTokenExpired(token)) {
+      if (token) {
+        expireSession()
+      } else if (typeof window.openLoginPage === 'function') {
+        window.openLoginPage('Please sign in to upload documents.')
+      }
+      return
+    }
+
     const targetProduct = (document.getElementById('upload-target-product') || {}).value || 'xpi'
 
     const totalBytes = fileList.reduce((acc, f) => acc + f.size, 0)
@@ -5067,7 +5322,10 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
               const errData = JSON.parse(xhr.responseText)
               errMsg = errData.detail || errData.message || errMsg
             } catch (_) {}
-            reject(new Error(errMsg))
+            if (xhr.status === 401) {
+              expireSession(typeof errMsg === 'string' ? errMsg : SESSION_EXPIRED_MSG)
+            }
+            reject(new Error(typeof errMsg === 'string' ? errMsg : 'Upload failed'))
           }
         }
 
@@ -5264,9 +5522,6 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
           btn.classList.add('btn-primary')
         }
         if (panel) panel.classList.remove('hide')
-        if (t.name === 'analytics') {
-          setTimeout(() => { fetchAdminAnalytics(); }, 50);
-        }
       } else {
         if (btn) {
           btn.classList.remove('btn-primary')
@@ -5310,10 +5565,12 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
 
       users.forEach(u => {
         const isActive = u.is_active !== false
-        const roleColor = u.role === 'Admin' ? '#f43f5e' : (u.role === 'Editor' ? '#34d399' : '#94a3b8')
-        const roleText = u.role === 'Admin' ? 'var(--c-rose)' : (u.role === 'Editor' ? 'var(--c-emerald)' : 'var(--text-muted)')
-        const roleLabel = u.role === 'Admin' ? 'Super Admin' : (u.role === 'Editor' ? 'Contributor / Author' : 'Reader')
-        const spaceLabel = u.product_space === 'all' ? '🌐 All Products' : (u.product_space === 'xpa' ? '⚡ Magic xpa' : (u.product_space === 'xpi' ? '🔗 Magic xpi' : '☁️ Cloud Native'))
+        const roleKey = (u.role || '').toLowerCase()
+        const roleColor = roleKey === 'admin' ? '#f43f5e' : (roleKey === 'editor' ? '#34d399' : (roleKey === 'reviewer' ? '#38bdf8' : '#94a3b8'))
+        const roleText = roleKey === 'admin' ? 'var(--c-rose)' : (roleKey === 'editor' ? 'var(--c-emerald)' : (roleKey === 'reviewer' ? 'var(--c-sky)' : 'var(--text-muted)'))
+        const roleLabel = { admin: 'Super Admin', editor: 'Contributor / Author', reviewer: 'Reviewer', viewer: 'Reader' }[roleKey] || (u.role || 'Reader')
+        const spaceLabel = { all: '🌐 All Products', xpa: '⚡ Magic xpa', xpi: '🔗 Magic xpi', cloud_native: '☁️ Cloud Native', general: '📁 General' }[u.product_space || 'all'] || escapeHtmlText(u.product_space)
+        const isSelf = (u.username || '').toLowerCase() === (username || '').toLowerCase()
 
         const tr = document.createElement('tr')
         tr.style.cssText = `border-bottom:1px solid rgba(255,255,255,0.06); opacity:${isActive ? 1 : 0.65};`
@@ -5321,7 +5578,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
           <td style="padding:12px 16px; font-weight:700; color:var(--text-main);">
             <div style="display:flex; align-items:center; gap:8px;">
               <i data-lucide="mail" style="width:15px; height:15px; color:var(--link);"></i>
-              <span>${u.username}</span>
+              <span>${escapeHtmlText(u.username)}${isSelf ? ' <span style="font-size:0.7rem; color:var(--text-muted); font-weight:600;">(you)</span>' : ''}</span>
             </div>
           </td>
           <td style="padding:12px 16px;">
@@ -5339,14 +5596,14 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
           </td>
           <td style="padding:12px 16px; text-align:right;">
             <div style="display:flex; justify-content:flex-end; gap:8px;">
-              <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="openEditUserModal(${u.id}, '${u.username}', '${u.role}', '${u.product_space || 'all'}', ${isActive})">
+              <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="openEditUserModal(${Number(u.id)}, ${jsArg(u.username)}, ${jsArg(u.role)}, ${jsArg(u.product_space || 'all')}, ${isActive})">
                 <i data-lucide="edit" style="width:13px; height:13px;"></i> Edit
               </button>
-              ${u.username !== 'admin' ? `
-                <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem; color:${isActive ? 'var(--c-amber)' : 'var(--c-emerald)'};" onclick="toggleUserStatus(${u.id}, '${u.username}', ${isActive})">
+              ${(u.username || '').toLowerCase() !== 'admin' && !isSelf ? `
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem; color:${isActive ? 'var(--c-amber)' : 'var(--c-emerald)'};" onclick="toggleUserStatus(${Number(u.id)}, ${jsArg(u.username)}, ${isActive})">
                   ${isActive ? '⛔ Suspend' : '✅ Activate'}
                 </button>
-                <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem; color:var(--c-rose);" onclick="deleteUserAccount(${u.id}, '${u.username}')">
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem; color:var(--c-rose);" onclick="deleteUserAccount(${Number(u.id)}, ${jsArg(u.username)})">
                   <i data-lucide="trash-2" style="width:13px; height:13px;"></i> Delete
                 </button>
               ` : ''}
@@ -5357,7 +5614,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
       })
       if (window.lucide) lucide.createIcons()
     } catch (e) {
-      tbody.innerHTML = `<tr><td colspan="5" style="padding:20px; text-align:center; color:var(--c-rose);">${e.message}</td></tr>`
+      tbody.innerHTML = `<tr><td colspan="5" style="padding:20px; text-align:center; color:var(--c-rose);">${escapeHtmlText(e.message)}</td></tr>`
     }
   }
 
@@ -5375,7 +5632,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
         headers: { Authorization: `Bearer ${token}` },
         body: formData
       })
-      if (!res.ok) throw new Error('Status update failed')
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Status update failed'))
       fetchAdminUsers()
       if (typeof fetchAdminContributions === 'function') fetchAdminContributions()
     } catch (err) {
@@ -5524,7 +5781,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
           headers: { Authorization: `Bearer ${token}` },
           body: formData
         })
-        if (!res.ok) throw new Error('Failed to update user')
+        if (!res.ok) throw new Error(await apiErrorMessage(res, 'Failed to update user'))
         window.closeEditUserModal()
         fetchAdminUsers()
         if (typeof fetchAdminContributions === 'function') fetchAdminContributions()
@@ -5541,7 +5798,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })
-      if (!res.ok) throw new Error('Failed to delete user')
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Failed to delete user'))
       fetchAdminUsers()
       if (typeof fetchAdminContributions === 'function') fetchAdminContributions()
     } catch (err) {
@@ -5552,17 +5809,17 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
   // --- Admin Tab 2: Master Document Management ---
   async function fetchAdminDocuments() {
     const tbody = document.getElementById('admin-docs-table-body')
-    tbody.innerHTML = '<tr><td colspan="6" style="padding:20px; text-align:center; color:var(--text-muted);">Loading master document catalog...</td></tr>'
+    tbody.innerHTML = '<tr><td colspan="7" style="padding:20px; text-align:center; color:var(--text-muted);">Loading master document catalog...</td></tr>'
 
     try {
       const res = await fetch('/api/admin/files', {
         headers: { Authorization: `Bearer ${token}` }
       })
-      if (!res.ok) throw new Error('Failed to load documents')
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Failed to load documents'))
       adminDocsCache = await res.json()
       renderAdminDocsTable()
     } catch (e) {
-      tbody.innerHTML = `<tr><td colspan="6" style="padding:20px; text-align:center; color:var(--c-rose);">${e.message}</td></tr>`
+      tbody.innerHTML = `<tr><td colspan="7" style="padding:20px; text-align:center; color:var(--c-rose);">${escapeHtmlText(e.message)}</td></tr>`
     }
   }
 
@@ -5581,41 +5838,34 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
       return
     }
 
-    filtered.slice(0, 100).forEach(doc => {
-      const prodColor = doc.product === 'xpa' ? '#f59e0b' : (doc.product === 'xpi' ? '#06b6d4' : '#10b981')
-      const isPending = (doc.status || '').toLowerCase().includes('pending')
-      const statusBg = isPending ? 'rgba(245,158,11,0.15)' : 'rgba(52,211,153,0.15)'
-      const statusColor = isPending ? '#fbbf24' : '#34d399'
-      const statusBorder = isPending ? 'rgba(245,158,11,0.3)' : 'rgba(52,211,153,0.3)'
-      const statusLabel = isPending ? 'Pending Review' : 'Published'
+    filtered.forEach(doc => {
+      const prodColor = doc.product === 'xpa' ? '#f59e0b' : (doc.product === 'xpi' ? '#06b6d4' : (doc.product === 'general' ? '#8b5cf6' : '#10b981'))
 
       const tr = document.createElement('tr')
       tr.style.cssText = 'border-bottom:1px solid var(--border-color);'
       tr.innerHTML = `
         <td style="padding:10px 14px; color:var(--text-main); font-weight:600; max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-          <a onclick="openDocument(${doc.id})" style="color:var(--text-soft); cursor:pointer; text-decoration:none;" onmouseover="this.style.color = 'var(--c-sky)'" onmouseout="this.style.color = 'var(--text-soft)'">${doc.title}</a>
+          <a onclick="openDocument(${Number(doc.id)})" title="${escapeHtmlText(doc.title)}" style="color:var(--text-soft); cursor:pointer; text-decoration:none;" onmouseover="this.style.color = 'var(--c-sky)'" onmouseout="this.style.color = 'var(--text-soft)'">${escapeHtmlText(doc.title)}</a>
         </td>
         <td style="padding:10px 14px; color:#38bdf8; font-weight:600; font-size:0.8rem; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-          ${doc.author || 'Engineering'}
+          ${escapeHtmlText(doc.author || 'Engineering')}
         </td>
         <td style="padding:10px 14px;">
           <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; font-weight:700; background:var(--bg-subtle); color:${prodColor}; text-transform:uppercase;">
-            ${doc.product}
+            ${escapeHtmlText(doc.product)}
           </span>
         </td>
-        <td style="padding:10px 14px; color:var(--text-muted); font-size:0.75rem; text-transform:uppercase;">${doc.file_type}</td>
+        <td style="padding:10px 14px; color:var(--text-muted); font-size:0.75rem; text-transform:uppercase;">${escapeHtmlText(doc.file_type)}</td>
         <td style="padding:10px 14px;">
-          <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; font-weight:700; background:${statusBg}; color:${statusColor}; border:1px solid ${statusBorder};">
-            ${statusLabel}
-          </span>
+          ${docStatusBadge(doc.status)}
         </td>
-        <td style="padding:10px 14px; color:var(--text-muted); font-size:0.75rem; white-space:nowrap;">${doc.created_at || '-'}</td>
+        <td style="padding:10px 14px; color:var(--text-muted); font-size:0.75rem; white-space:nowrap;">${escapeHtmlText(doc.created_at || '-')}</td>
         <td style="padding:10px 14px; text-align:right;">
           <div style="display:flex; justify-content:flex-end; gap:6px;">
-            <button class="btn btn-secondary" style="padding:3px 7px; font-size:0.72rem;" onclick="openEditDocModal(${doc.id}, '${doc.title.replace(/'/g, "\\'")}', '${doc.product || 'xpi'}', '${doc.version || 'Universal'}')">
+            <button class="btn btn-secondary" style="padding:3px 7px; font-size:0.72rem;" onclick="openEditDocModal(${Number(doc.id)}, ${jsArg(doc.title)}, ${jsArg(doc.product || 'xpi')}, ${jsArg(doc.version || 'Universal')})">
               <i data-lucide="edit-3" style="width:12px; height:12px;"></i> Space/Meta
             </button>
-            <button class="btn btn-secondary" style="padding:3px 7px; font-size:0.72rem; color:var(--c-rose);" onclick="deleteDocItem(${doc.id}, '${doc.title.replace(/'/g, "\\'")}')">
+            <button class="btn btn-secondary" style="padding:3px 7px; font-size:0.72rem; color:var(--c-rose);" onclick="deleteDocItem(${Number(doc.id)}, ${jsArg(doc.title)})">
               <i data-lucide="trash-2" style="width:12px; height:12px;"></i>
             </button>
           </div>
@@ -5658,7 +5908,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
         headers: { Authorization: `Bearer ${token}` },
         body: formData
       })
-      if (!res.ok) throw new Error('Failed to update document')
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Failed to update document'))
       document.getElementById('modal-admin-edit-doc').classList.add('hide')
       fetchAdminDocuments()
       fetchOverview()
@@ -5674,7 +5924,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })
-      if (!res.ok) throw new Error('Failed to delete document')
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Failed to delete document'))
       fetchAdminDocuments()
       fetchOverview()
     } catch (err) {
@@ -5693,7 +5943,7 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       })
-      if (!res.ok) throw new Error('Reindexing failed')
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Reindexing failed'))
       const data = await res.json()
       statusEl.textContent = `✓ ${data.message}: Successfully indexed ${data.count} total documents!`
       statusEl.style.color = 'var(--c-emerald)'
@@ -5727,10 +5977,10 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
         item.style.cssText = 'padding:10px 14px; border-radius:8px; background:var(--bg-subtle); border:1px solid var(--border-color); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;'
         item.innerHTML = `
           <div>
-            <div style="font-size:0.82rem; font-weight:700; color:var(--text-main);">${l.message}</div>
-            <div style="font-size:0.75rem; color:var(--text-muted);">Indexed: ${l.indexed_count} files • Status: <span style="color:var(--c-emerald);">${l.status}</span></div>
+            <div style="font-size:0.82rem; font-weight:700; color:var(--text-main);">${escapeHtmlText(l.message)}</div>
+            <div style="font-size:0.75rem; color:var(--text-muted);">Indexed: ${Number(l.indexed_count) || 0} files • Status: <span style="color:${/success/i.test(l.status || '') ? 'var(--c-emerald)' : 'var(--c-rose)'};">${escapeHtmlText(l.status)}</span></div>
           </div>
-          <span style="font-size:0.75rem; color:var(--text-faint);">${l.timestamp}</span>
+          <span style="font-size:0.75rem; color:var(--text-faint);">${escapeHtmlText(l.timestamp)}</span>
         `
         container.appendChild(item)
       })
@@ -5749,10 +5999,20 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
       const res = await fetch(`/api/admin/analytics?scope=${encodeURIComponent(scope)}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      if (!res.ok) return
+      if (!res.ok) {
+        grid.innerHTML = `<div style="color:var(--c-rose);">${escapeHtmlText(await apiErrorMessage(res, 'Failed to load analytics'))}</div>`
+        return
+      }
       const data = await res.json()
+      const st = data.by_status || {}
+      const awaitingReview = (st.pending_review || 0) + (st.pending || 0) + (st.changes_requested || 0)
 
       grid.innerHTML = `
+        <div class="glass-panel" style="padding:16px; border-left:4px solid #8b5cf6;">
+          <div style="font-size:0.75rem; color:var(--text-muted);">Published Docs</div>
+          <div style="font-size:1.6rem; font-weight:800; color:var(--text-main);">${Number(data.total_documents) || 0}</div>
+          <div style="font-size:0.72rem; color:var(--text-muted);">${awaitingReview} awaiting review · ${Number(st.rejected) || 0} rejected</div>
+        </div>
         <div class="glass-panel" style="padding:16px; border-left:4px solid #f59e0b;">
           <div style="font-size:0.75rem; color:var(--text-muted);">Magic xpa Docs</div>
           <div style="font-size:1.6rem; font-weight:800; color:var(--c-amber);">${data.by_product?.xpa || 0}</div>
@@ -5777,16 +6037,16 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
       const ctx1 = document.getElementById('admin-chart-telemetry');
       if (ctx1) {
         if (window.chartTelemetry) window.chartTelemetry.destroy();
-        const topLabels = (data.top_queries || []).slice(0, 7).map(q => q.query || q.term);
-        const topCounts = (data.top_queries || []).slice(0, 7).map(q => q.count || q.search_count || 10);
+        const topLabels = (data.top_queries || []).slice(0, 7).map(q => q.query || q.term || '');
+        const topCounts = (data.top_queries || []).slice(0, 7).map(q => Number(q.count || q.search_count) || 0);
 
         window.chartTelemetry = new Chart(ctx1, {
           type: 'line',
           data: {
-            labels: topLabels.length > 0 ? topLabels : ['VPN Setup', 'API Docs', 'HR Policy', 'Security', 'xpa Runtime', 'xpi Connector', 'Cloud SOP'],
+            labels: topLabels.length > 0 ? topLabels : ['No searches recorded yet'],
             datasets: [{
               label: 'Search Frequency',
-              data: topCounts.length > 0 ? topCounts : [145, 98, 76, 62, 54, 48, 32],
+              data: topCounts.length > 0 ? topCounts : [0],
               borderColor: '#008DC7',
               backgroundColor: 'rgba(0, 141, 199, 0.15)',
               fill: true,
@@ -5809,13 +6069,13 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
       const ctx2 = document.getElementById('admin-chart-product-dist');
       if (ctx2) {
         if (window.chartProductDist) window.chartProductDist.destroy();
-        const prodData = data.by_product || { xpa: 125, xpi: 150, cloud_native: 123, general: 45 };
+        const prodData = data.by_product || {};
         window.chartProductDist = new Chart(ctx2, {
           type: 'doughnut',
           data: {
             labels: ['Magic xpa', 'Magic xpi', 'Cloud Native', 'General'],
             datasets: [{
-              data: [prodData.xpa || 125, prodData.xpi || 150, prodData.cloud_native || 123, prodData.general || 45],
+              data: [prodData.xpa || 0, prodData.xpi || 0, prodData.cloud_native || 0, prodData.general || 0],
               backgroundColor: ['#f59e0b', '#06b6d4', '#10b981', '#8b5cf6'],
               borderWidth: 0
             }]
@@ -5871,10 +6131,10 @@ zeroGrid.innerHTML = ''
           item.style.cssText = 'padding:10px 14px; border-radius:8px; background:rgba(244,63,94,0.1); border:1px solid rgba(244,63,94,0.2); display:flex; justify-content:space-between; align-items:center;'
           item.innerHTML = `
             <div>
-              <div style="font-size:0.85rem; color:var(--c-rose-soft); font-weight:600;">"${z.query}"</div>
-              <div style="font-size:0.72rem; color:var(--c-rose);">${z.count} failed searches</div>
+              <div style="font-size:0.85rem; color:var(--c-rose-soft); font-weight:600;">"${escapeHtmlText(z.query)}"</div>
+              <div style="font-size:0.72rem; color:var(--c-rose);">${Number(z.count) || 0} failed searches</div>
             </div>
-            <button class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px; color:var(--c-emerald);" onclick="createKbForGap('${z.query.replace(/'/g, "\\'")}')">
+            <button class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px; color:var(--c-emerald);" onclick="createKbForGap(${jsArg(z.query)})">
               <i data-lucide="plus" style="width:12px; height:12px;"></i> Create KB
             </button>
           `
@@ -5891,6 +6151,145 @@ zeroGrid.innerHTML = ''
   }
 
   // --- Admin Tab 5: User Contributions & Uploads Analytics ---
+  const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+  function renderMonthComparisonCard(cmp) {
+    if (!cmp || !cmp.this_month) return ''
+    const cur = cmp.this_month.uploads || 0
+    const prev = (cmp.last_month && cmp.last_month.uploads) || 0
+    const diff = cur - prev
+    const arrow = diff > 0 ? '▲' : (diff < 0 ? '▼' : '•')
+    const color = diff > 0 ? 'var(--c-emerald)' : (diff < 0 ? 'var(--c-rose)' : 'var(--text-muted)')
+    const pct = prev > 0 ? ` (${diff > 0 ? '+' : ''}${Math.round((diff / prev) * 100)}%)` : ''
+    return `
+      <div class="glass-panel" style="padding:18px; border-left:4px solid #06b6d4;">
+        <div style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">This Month (${escapeHtmlText(cmp.this_month.label)})</div>
+        <div style="font-size:1.8rem; font-weight:800; color:var(--text-main); margin-top:4px;">${cur} <span style="font-size:0.9rem; font-weight:700; color:${color};">${arrow} ${diff > 0 ? '+' : ''}${diff}${pct}</span></div>
+        <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">
+          vs ${prev} in ${escapeHtmlText(cmp.last_month ? cmp.last_month.label : 'last month')} · ${cmp.this_month.contributors || 0} contributor(s) this month (${(cmp.last_month && cmp.last_month.contributors) || 0} last month)
+        </div>
+      </div>`
+  }
+
+  function renderContribFilterSummary(data) {
+    const el = document.getElementById('contrib-filter-summary')
+    if (!el) return
+    const val = id => (document.getElementById(id) || {}).value
+    const selText = id => {
+      const s = document.getElementById(id)
+      return s && s.selectedIndex >= 0 ? s.options[s.selectedIndex].text.replace(/^[^A-Za-z0-9]+/, '') : ''
+    }
+    const parts = []
+    const scope = val('contrib-filter-scope')
+    parts.push(scope === 'all' ? 'Live + Archive' : (scope === 'historical' ? 'Confluence archive' : 'Live platform'))
+    if (val('contrib-filter-period') && val('contrib-filter-period') !== 'all') parts.push(selText('contrib-filter-period').replace(/\s*\(.*\)$/, ''))
+    if (val('contrib-filter-year') && val('contrib-filter-year') !== 'all' && val('contrib-filter-period') === 'all') parts.push(val('contrib-filter-year'))
+    if (val('contrib-filter-month') && val('contrib-filter-month') !== 'all') parts.push(MONTH_NAMES[parseInt(val('contrib-filter-month'), 10) - 1] || '')
+    if (val('contrib-filter-product') && val('contrib-filter-product') !== 'all') parts.push(selText('contrib-filter-product'))
+    if (val('contrib-filter-user') && val('contrib-filter-user') !== 'all') parts.push(val('contrib-filter-user'))
+    if (val('contrib-filter-status') && val('contrib-filter-status') !== 'all') parts.push(selText('contrib-filter-status'))
+    if (val('contrib-filter-start')) parts.push('from ' + val('contrib-filter-start'))
+    if (val('contrib-filter-end')) parts.push('to ' + val('contrib-filter-end'))
+    const s = data.summary || {}
+    el.innerHTML = `
+      <span>📊 Showing <strong style="color:var(--text-main);">${Number(s.total_uploads) || 0} KB(s)</strong>
+        (${Number(s.published_uploads) || 0} published, ${Number(s.pending_uploads) || 0} in review)
+        by <strong style="color:var(--text-main);">${Number(s.unique_contributors) || 0}</strong> contributor(s)
+        · ${parts.filter(Boolean).map(p => escapeHtmlText(p)).join(' · ')}</span>
+      <button type="button" class="btn btn-secondary" style="padding:4px 10px; font-size:0.75rem;" onclick="document.getElementById('btn-contrib-reset')?.click()">Clear filters</button>`
+  }
+
+  function renderContribMonthly(months) {
+    const tbody = document.getElementById('contrib-monthly-body')
+    if (!tbody) return
+    if (!months.length) {
+      tbody.innerHTML = '<tr><td colspan="10" style="padding:20px; text-align:center; color:var(--text-muted);">No uploads for the selected filters.</td></tr>'
+      return
+    }
+    const num = n => Number(n) || 0
+    const cell = (v, extra = '') => `<td style="padding:9px 12px; text-align:right; ${extra}">${v}</td>`
+    const totals = { total: 0, published: 0, in_review: 0, rejected: 0, xpi: 0, xpa: 0, cloud_native: 0, general: 0 }
+    tbody.innerHTML = months.map(m => {
+      totals.total += num(m.total); totals.published += num(m.published); totals.in_review += num(m.in_review); totals.rejected += num(m.rejected)
+      Object.keys(m.by_product || {}).forEach(k => { totals[k] = (totals[k] || 0) + num(m.by_product[k]) })
+      const clickable = m.year && m.month
+      return `
+        <tr style="border-bottom:1px solid var(--border-color); ${clickable ? 'cursor:pointer;' : ''}" ${clickable ? `onclick="filterContributionsToMonth(${Number(m.year)}, ${Number(m.month)})" title="Show only ${escapeHtmlText(m.label)}"` : ''}>
+          <td style="padding:9px 12px; font-weight:700; color:var(--c-sky);">${escapeHtmlText(m.label)}</td>
+          ${cell(`<strong style="color:var(--text-main);">${num(m.total)}</strong>`)}
+          ${cell(num(m.published), 'color:var(--c-emerald);')}
+          ${cell(num(m.in_review), num(m.in_review) ? 'color:var(--c-amber);' : 'color:var(--text-faint);')}
+          ${cell(num(m.rejected), num(m.rejected) ? 'color:var(--c-rose);' : 'color:var(--text-faint);')}
+          ${cell(num(m.by_product && m.by_product.xpi))}
+          ${cell(num(m.by_product && m.by_product.xpa))}
+          ${cell(num(m.by_product && m.by_product.cloud_native))}
+          ${cell(num(m.by_product && m.by_product.general))}
+          ${cell(num(m.contributors))}
+        </tr>`
+    }).join('') + `
+        <tr style="border-top:2px solid var(--border-strong); font-weight:800; color:var(--text-main);">
+          <td style="padding:10px 12px;">Total (${months.length} month${months.length === 1 ? '' : 's'})</td>
+          ${cell(totals.total)}${cell(totals.published)}${cell(totals.in_review)}${cell(totals.rejected)}
+          ${cell(totals.xpi)}${cell(totals.xpa)}${cell(totals.cloud_native)}${cell(totals.general)}
+          ${cell('')}
+        </tr>`
+  }
+
+  function renderContribMonthGrid(grid) {
+    const box = document.getElementById('contrib-month-grid')
+    if (!box) return
+    const months = grid.months || []
+    const rows = grid.rows || []
+    if (!months.length || !rows.length) {
+      box.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted); font-size:0.85rem;">No uploads for the selected filters.</div>'
+      return
+    }
+    const maxCell = Math.max(1, ...rows.flatMap(r => months.map(m => r.counts[m.key] || 0)))
+    const shade = n => n ? `background:rgba(16,185,129,${(0.12 + 0.55 * n / maxCell).toFixed(2)}); color:var(--text-main); font-weight:700;` : 'color:var(--text-faint);'
+    const colTotals = months.map(m => rows.reduce((s, r) => s + (r.counts[m.key] || 0), 0))
+    box.innerHTML = `
+      <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border-strong); color:var(--text-muted);">
+            <th style="padding:8px 10px; text-align:left; position:sticky; left:0; background:var(--bg-card);">Contributor</th>
+            ${months.map(m => `<th style="padding:8px 10px; text-align:center; white-space:nowrap;">${escapeHtmlText(m.label)}</th>`).join('')}
+            <th style="padding:8px 10px; text-align:center;">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr style="border-bottom:1px solid var(--border-color);">
+              <td style="padding:8px 10px; font-weight:600; color:var(--text-soft); white-space:nowrap; position:sticky; left:0; background:var(--bg-card);">${escapeHtmlText(r.username)}</td>
+              ${months.map(m => `<td style="padding:8px 10px; text-align:center; ${shade(r.counts[m.key] || 0)}">${r.counts[m.key] || '·'}</td>`).join('')}
+              <td style="padding:8px 10px; text-align:center; font-weight:800; color:var(--text-main);">${Number(r.total) || 0}</td>
+            </tr>`).join('')}
+          <tr style="border-top:2px solid var(--border-strong); font-weight:800; color:var(--text-main);">
+            <td style="padding:8px 10px; position:sticky; left:0; background:var(--bg-card);">Total</td>
+            ${colTotals.map(t => `<td style="padding:8px 10px; text-align:center;">${t}</td>`).join('')}
+            <td style="padding:8px 10px; text-align:center;">${colTotals.reduce((a, b) => a + b, 0)}</td>
+          </tr>
+        </tbody>
+      </table>`
+  }
+
+  // Clicking a month row narrows the whole dashboard to that month.
+  window.filterContributionsToMonth = function(year, month) {
+    const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v }
+    const yearSel = document.getElementById('contrib-filter-year')
+    if (yearSel && !Array.from(yearSel.options).some(o => o.value === String(year))) {
+      const opt = document.createElement('option')
+      opt.value = String(year)
+      opt.textContent = String(year)
+      yearSel.appendChild(opt)
+    }
+    setVal('contrib-filter-period', 'all')
+    setVal('contrib-filter-year', String(year))
+    setVal('contrib-filter-month', String(month))
+    setVal('contrib-filter-start', '')
+    setVal('contrib-filter-end', '')
+    fetchAdminContributions()
+  }
+
   async function fetchAdminContributions() {
     const scopeSel = document.getElementById('contrib-filter-scope')
     const periodSel = document.getElementById('contrib-filter-period')
@@ -5923,7 +6322,11 @@ zeroGrid.innerHTML = ''
       const res = await fetch(`/api/admin/contributions?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      if (!res.ok) return
+      if (!res.ok) {
+        const cardsErr = document.getElementById('contrib-summary-cards')
+        if (cardsErr) cardsErr.innerHTML = `<div style="color:var(--c-rose);">${escapeHtmlText(await apiErrorMessage(res, 'Failed to load contributions'))}</div>`
+        return
+      }
       const data = await res.json()
       contribDataCache = data
 
@@ -5931,7 +6334,7 @@ zeroGrid.innerHTML = ''
       const badgeEl = document.getElementById('contrib-chart-period-badge')
       if (badgeEl) {
         const periodVal = periodSel ? periodSel.value : 'all'
-        const labelMap = { week: 'This Week', month: 'This Month', year: 'This Year (2026)', all: 'All Time' }
+        const labelMap = { week: 'This Week', month: 'This Month', year: `This Year (${new Date().getFullYear()})`, all: 'All Time' }
         badgeEl.textContent = labelMap[periodVal] || 'All Time'
       }
 
@@ -5944,13 +6347,14 @@ zeroGrid.innerHTML = ''
             const opt = document.createElement('option')
             opt.value = u
             opt.textContent = u
-            if (u === currentVal) opt.selected = true
+            if (u.toLowerCase() === (currentVal || '').toLowerCase()) opt.selected = true
             userSel.appendChild(opt)
           })
         }
-        if (yearSel && yearSel.options.length <= 2 && data.available_filters.years) {
+        if (yearSel && data.available_filters.years) {
+          const existingYears = new Set(Array.from(yearSel.options).map(o => o.value))
           data.available_filters.years.forEach(y => {
-            if (y !== '2026') {
+            if (!existingYears.has(y)) {
               const opt = document.createElement('option')
               opt.value = y
               opt.textContent = y
@@ -5966,26 +6370,30 @@ zeroGrid.innerHTML = ''
         cardsEl.innerHTML = `
           <div class="glass-panel" style="padding:18px; border-left:4px solid #008DC7;">
             <div style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">Total Ingested KBs</div>
-            <div style="font-size:1.8rem; font-weight:800; color:var(--text-main); margin-top:4px;">${data.summary.total_uploads}</div>
+            <div style="font-size:1.8rem; font-weight:800; color:var(--text-main); margin-top:4px;">${Number(data.summary.total_uploads) || 0}</div>
             <div style="font-size:0.72rem; color:var(--c-sky); margin-top:2px;">
+              ✅ Published: ${data.summary.published_uploads ?? data.summary.total_uploads} | ⏳ In review: ${data.summary.pending_uploads || 0}
+            </div>
+            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">
               🟢 Active: ${data.summary.active_uploads_count || 0} | 🏛️ Alumni: ${data.summary.former_uploads_count || 0}
             </div>
           </div>
           <div class="glass-panel" style="padding:18px; border-left:4px solid #10b981;">
             <div style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">Contributors</div>
-            <div style="font-size:1.8rem; font-weight:800; color:var(--text-main); margin-top:4px;">${data.summary.unique_contributors}</div>
+            <div style="font-size:1.8rem; font-weight:800; color:var(--text-main); margin-top:4px;">${Number(data.summary.unique_contributors) || 0}</div>
             <div style="font-size:0.72rem; color:var(--c-emerald); margin-top:2px;">
               🟢 Active: ${data.summary.active_contributors_count || 0} | 🏛️ Alumni: ${data.summary.former_contributors_count || 0}
             </div>
           </div>
           <div class="glass-panel" style="padding:18px; border-left:4px solid #f59e0b;">
             <div style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">Top Contributor</div>
-            <div style="font-size:1.3rem; font-weight:800; color:var(--c-amber); margin-top:4px;">${data.summary.top_contributor}</div>
-            <div style="font-size:0.72rem; color:var(--c-amber);">${data.summary.top_contributor_count} KBs published</div>
+            <div style="font-size:1.3rem; font-weight:800; color:var(--c-amber); margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtmlText(data.summary.top_contributor)}">${escapeHtmlText(data.summary.top_contributor)}</div>
+            <div style="font-size:0.72rem; color:var(--c-amber);">${Number(data.summary.top_contributor_count) || 0} KBs uploaded</div>
           </div>
+          ${renderMonthComparisonCard(data.month_comparison)}
           <div class="glass-panel" style="padding:18px; border-left:4px solid #a855f7;">
             <div style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">Total Reader Views</div>
-            <div style="font-size:1.8rem; font-weight:800; color:var(--text-main); margin-top:4px;">${data.summary.total_views}</div>
+            <div style="font-size:1.8rem; font-weight:800; color:var(--text-main); margin-top:4px;">${Number(data.summary.total_views) || 0}</div>
             <div style="font-size:0.72rem; color:var(--c-purple);">Across filtered articles</div>
           </div>
         `
@@ -5998,7 +6406,8 @@ zeroGrid.innerHTML = ''
         if (ctxUser) {
           if (window.chartContribUsers) window.chartContribUsers.destroy()
 
-          const sortedContribs = [...(data.contributors || [])].sort((a, b) => b.upload_count - a.upload_count)
+          // Chart only people who actually uploaded something in this filter.
+          const sortedContribs = [...(data.contributors || [])].filter(c => c.upload_count > 0).sort((a, b) => b.upload_count - a.upload_count).slice(0, 15)
           const userLabels = sortedContribs.map(c => c.username)
           const userCounts = sortedContribs.map(c => c.upload_count)
           const barColors = ['#008DC7', '#34d399', '#f59e0b', '#a855f7', '#ec4899', '#38bdf8', '#fbbf24', '#10b981']
@@ -6079,14 +6488,19 @@ zeroGrid.innerHTML = ''
         } else {
           data.contributors.forEach((c, idx) => {
             const rankBadge = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : `#${idx + 1}`))
-            const total = data.summary.total_uploads || 1
-            const share = Math.round((c.upload_count / total) * 100)
-            const statusBadge = c.is_active 
+            const total = data.summary.total_uploads || 0
+            const share = total > 0 ? Math.round((c.upload_count / total) * 100) : 0
+            // Registered-but-inactive accounts are suspended; authors with no account
+            // here (e.g. Confluence archive) are alumni / legacy contributors.
+            const statusBadge = c.is_active
               ? '<span style="font-size:0.72rem; padding:2px 7px; border-radius:6px; background:rgba(16,185,129,0.15); color:var(--c-emerald); font-weight:700;">🟢 Active Team</span>'
-              : '<span style="font-size:0.72rem; padding:2px 7px; border-radius:6px; background:rgba(244,63,94,0.15); color:var(--c-rose); font-weight:700;">🔴 Suspended</span>'
+              : (c.is_registered
+                  ? '<span style="font-size:0.72rem; padding:2px 7px; border-radius:6px; background:rgba(244,63,94,0.15); color:var(--c-rose); font-weight:700;">🔴 Suspended</span>'
+                  : '<span style="font-size:0.72rem; padding:2px 7px; border-radius:6px; background:rgba(148,163,184,0.15); color:var(--text-muted); font-weight:700;">🏛️ Alumni / Legacy</span>')
 
-            const actionBtn = (c.username !== 'admin' && (c.user_id || c.is_registered))
-              ? `<button class="btn btn-secondary" style="padding:3px 8px; font-size:0.72rem; color:${c.is_active ? 'var(--c-amber)' : 'var(--c-emerald)'}; font-weight:700;" onclick="toggleUserStatus(${c.user_id}, '${c.username}', ${c.is_active})">
+            const isSelfRow = (c.username || '').toLowerCase() === (username || '').toLowerCase()
+            const actionBtn = ((c.username || '').toLowerCase() !== 'admin' && !isSelfRow && c.user_id)
+              ? `<button class="btn btn-secondary" style="padding:3px 8px; font-size:0.72rem; color:${c.is_active ? 'var(--c-amber)' : 'var(--c-emerald)'}; font-weight:700;" onclick="toggleUserStatus(${Number(c.user_id)}, ${jsArg(c.username)}, ${c.is_active})">
                    ${c.is_active ? '⛔ Suspend' : '✅ Activate'}
                  </button>`
               : `<span style="color:var(--text-faint); font-size:0.72rem;">-</span>`
@@ -6095,21 +6509,22 @@ zeroGrid.innerHTML = ''
             tr.style.cssText = `border-bottom:1px solid rgba(255,255,255,0.05); opacity:${c.is_active ? 1 : 0.7};`
             tr.innerHTML = `
               <td style="padding:12px 14px; font-weight:800;">${rankBadge}</td>
-              <td style="padding:12px 14px; font-weight:700; color:var(--text-main);">${c.username}</td>
+              <td style="padding:12px 14px; font-weight:700; color:var(--text-main);">${escapeHtmlText(c.username)}</td>
               <td style="padding:12px 14px;">${statusBadge}</td>
               <td style="padding:12px 14px;">
                 <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:${c.role === 'Admin' ? 'rgba(244,63,94,0.15)' : 'rgba(16,185,129,0.15)'}; color:${c.role === 'Admin' ? 'var(--c-rose)' : 'var(--c-emerald)'}; font-weight:700;">
-                  ${c.role}
+                  ${escapeHtmlText(c.role)}
                 </span>
               </td>
               <td style="padding:12px 14px;">
-                <strong style="color:var(--text-main);">${c.upload_count} KBs</strong> (${share}%)
+                <strong style="color:var(--text-main);">${Number(c.upload_count) || 0} KBs</strong> (${share}%)
+                ${c.pending_count ? `<div style="font-size:0.7rem; color:var(--c-amber);">${Number(c.pending_count)} in review</div>` : ''}
               </td>
               <td style="padding:12px 14px; font-size:0.75rem; color:var(--text-muted);">
-                xpi: ${c.by_product.xpi || 0} | xpa: ${c.by_product.xpa || 0} | cloud: ${c.by_product.cloud_native || 0}
+                xpi: ${c.by_product.xpi || 0} | xpa: ${c.by_product.xpa || 0} | cloud: ${c.by_product.cloud_native || 0}${c.by_product.general ? ` | general: ${c.by_product.general}` : ''}
               </td>
-              <td style="padding:12px 14px; color:var(--text-soft);">${c.views}</td>
-              <td style="padding:12px 14px; color:var(--text-muted); font-size:0.78rem;">${c.latest_upload}</td>
+              <td style="padding:12px 14px; color:var(--text-soft);">${Number(c.views) || 0}</td>
+              <td style="padding:12px 14px; color:var(--text-muted); font-size:0.78rem;">${escapeHtmlText(c.latest_upload)}</td>
               <td style="padding:12px 14px; text-align:right;">${actionBtn}</td>
             `
             lbody.appendChild(tr)
@@ -6117,24 +6532,36 @@ zeroGrid.innerHTML = ''
         }
       }
 
+      // 3.5 Filter summary line, month-wise table, contributor x month grid
+      renderContribFilterSummary(data)
+      renderContribMonthly(data.monthly || [])
+      renderContribMonthGrid(data.contributor_month_grid || { months: [], rows: [] })
+
       // 4. Render Articles Log
       const abody = document.getElementById('contrib-articles-body')
       if (abody) {
         abody.innerHTML = ''
-        if (data.articles.length === 0) {
-          abody.innerHTML = '<tr><td colspan="7" style="padding:20px; text-align:center; color:var(--text-muted);">No articles found.</td></tr>'
+        const articles = data.articles || []
+        const countEl = document.getElementById('contrib-articles-count')
+        if (countEl) {
+          const totalUp = Number(data.summary && data.summary.total_uploads) || articles.length
+          countEl.textContent = totalUp > articles.length ? `(latest ${articles.length} of ${totalUp})` : `(${articles.length})`
+        }
+        if (articles.length === 0) {
+          abody.innerHTML = '<tr><td colspan="8" style="padding:20px; text-align:center; color:var(--text-muted);">No articles found.</td></tr>'
         } else {
-          data.articles.forEach(a => {
+          articles.forEach(a => {
             const tr = document.createElement('tr')
             tr.style.cssText = 'border-bottom:1px solid var(--border-color);'
             tr.innerHTML = `
-              <td style="padding:8px 12px; color:var(--text-faint); font-size:0.75rem;">#${a.id}</td>
-              <td style="padding:8px 12px; color:var(--text-soft); font-weight:600;">${a.title}</td>
-              <td style="padding:8px 12px; color:var(--c-sky);">${a.author}</td>
-              <td style="padding:8px 12px; text-transform:uppercase; font-size:0.75rem; font-weight:700; color:var(--c-amber);">${a.product}</td>
-              <td style="padding:8px 12px; text-transform:uppercase; font-size:0.72rem; color:var(--text-muted);">${a.file_type}</td>
-              <td style="padding:8px 12px; color:var(--text-soft);">${a.views}</td>
-              <td style="padding:8px 12px; color:var(--text-faint); font-size:0.75rem;">${a.created_at}</td>
+              <td style="padding:8px 12px; color:var(--text-faint); font-size:0.75rem;">#${Number(a.id)}</td>
+              <td style="padding:8px 12px; color:var(--text-soft); font-weight:600;"><a onclick="openDocument(${Number(a.id)})" style="cursor:pointer;">${escapeHtmlText(a.title)}</a></td>
+              <td style="padding:8px 12px; color:var(--c-sky);">${escapeHtmlText(a.author)}</td>
+              <td style="padding:8px 12px; text-transform:uppercase; font-size:0.75rem; font-weight:700; color:var(--c-amber);">${escapeHtmlText(a.product)}</td>
+              <td style="padding:8px 12px; text-transform:uppercase; font-size:0.72rem; color:var(--text-muted);">${escapeHtmlText(a.file_type)}</td>
+              <td style="padding:8px 12px;">${docStatusBadge(a.status)}</td>
+              <td style="padding:8px 12px; color:var(--text-soft);">${Number(a.views) || 0}</td>
+              <td style="padding:8px 12px; color:var(--text-faint); font-size:0.75rem;">${escapeHtmlText(a.created_at)}</td>
             `
             abody.appendChild(tr)
           })
@@ -6188,19 +6615,20 @@ zeroGrid.innerHTML = ''
 
       let csv = ''
       if (articleList.length > 0) {
-        const headers = ['ID', 'Title', 'Author', 'Author Status', 'Product Space', 'Format', 'Views', 'Likes', 'Date Uploaded']
+        const headers = ['ID', 'Title', 'Author', 'Author Status', 'Document Status', 'Product Space', 'Format', 'Views', 'Likes', 'Date Uploaded']
         const rows = articleList.map(a => [
           a.id,
           `"${(a.title || '').replace(/"/g, '""')}"`,
           `"${(a.author || 'System').replace(/"/g, '""')}"`,
           `"${a.author_status || 'active'}"`,
+          `"${a.status || 'published'}"`,
           (a.product || 'xpi').toUpperCase(),
           (a.file_type || '').toUpperCase(),
           a.views || 0,
           a.likes || 0,
           `"${a.created_at || a.created_date || ''}"`
         ])
-        csv = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+        csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
       } else {
         const headers = ['User', 'Role', 'Status', 'Upload Count', 'Views', 'Likes', 'Latest Upload']
         const rows = contribList.map(c => [
@@ -6212,11 +6640,11 @@ zeroGrid.innerHTML = ''
           c.likes || 0,
           `"${c.latest_upload || ''}"`
         ])
-        csv = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+        csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
       }
 
       const link = document.createElement('a')
-      link.setAttribute('href', encodeURI(csv))
+      link.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent('\ufeff' + csv))
       const scopeVal = document.getElementById('contrib-filter-scope')?.value || 'report'
       link.setAttribute('download', `magic_kb_${scopeVal}_contributions_${new Date().toISOString().slice(0, 10)}.csv`)
       document.body.appendChild(link)
@@ -6226,7 +6654,7 @@ zeroGrid.innerHTML = ''
   }
 
   // ==================== 18. SIGN IN & LOGOUT ====================
-  window.openLoginPage = function() {
+  window.openLoginPage = function(notice) {
     document.getElementById('page-home-landing').classList.add('hide')
     document.getElementById('page-product-workspace').classList.add('hide')
     document.getElementById('page-upload-portal').classList.add('hide')
@@ -6235,7 +6663,14 @@ zeroGrid.innerHTML = ''
     if (pageLogin) {
       pageLogin.classList.remove('hide')
       const errBox = document.getElementById('loginpage-error-box')
-      if (errBox) errBox.classList.add('hide')
+      if (errBox) {
+        if (typeof notice === 'string' && notice) {
+          errBox.textContent = notice
+          errBox.classList.remove('hide')
+        } else {
+          errBox.classList.add('hide')
+        }
+      }
       const userInp = document.getElementById('loginpage-user')
       const passInp = document.getElementById('loginpage-pass')
       if (userInp) userInp.value = ''
@@ -6265,12 +6700,7 @@ zeroGrid.innerHTML = ''
   const logoutBtnEl = document.getElementById('btn-logout')
   if (logoutBtnEl) {
     logoutBtnEl.addEventListener('click', () => {
-      token = ''
-      username = ''
-      role = ''
-      localStorage.removeItem('token')
-      localStorage.removeItem('username')
-      localStorage.removeItem('role')
+      clearStoredSession()
       updateAuthUI()
       loadBookmarks()
       switchProductScope('all')
@@ -6306,6 +6736,7 @@ zeroGrid.innerHTML = ''
         localStorage.setItem('token', token)
         localStorage.setItem('username', username)
         localStorage.setItem('role', role)
+        scheduleSessionExpiry()
         updateAuthUI()
         await migrateLocalBookmarks()
         await loadBookmarks()
@@ -6351,6 +6782,7 @@ zeroGrid.innerHTML = ''
         localStorage.setItem('token', token)
         localStorage.setItem('username', username)
         localStorage.setItem('role', role)
+        scheduleSessionExpiry()
         window.closeSignInModal()
         updateAuthUI()
         await migrateLocalBookmarks()
@@ -6390,4 +6822,27 @@ zeroGrid.innerHTML = ''
   renderFavouritesList()
   renderLandingQuickChips()
   switchProductScope('all')
+
+  if (pendingLoginNotice) {
+    // The stored session had already expired: go straight to sign-in.
+    window.openLoginPage(pendingLoginNotice)
+    pendingLoginNotice = ''
+  } else if (token) {
+    scheduleSessionExpiry()
+    // The token may be unexpired but no longer valid (account suspended or removed,
+    // server key rotated). Ask the server, and pick up any role change.
+    fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => (res.ok ? res.json() : null))
+      .then(me => {
+        if (!me || !token) return
+        if (me.username !== username || me.role !== role) {
+          username = me.username
+          role = me.role
+          localStorage.setItem('username', username)
+          localStorage.setItem('role', role)
+          updateAuthUI()
+        }
+      })
+      .catch(() => {})
+  }
 })

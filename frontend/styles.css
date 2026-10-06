@@ -1644,3 +1644,45 @@ select option:checked, select option:hover {
 
 
 
+/* Tablets and phones: a fixed 280px sidebar beside the content left phones with a
+   ~30px-wide reading column. Stack the sidebar above the content instead, and let
+   the header wrap rather than run off-screen. */
+@media (max-width: 900px) {
+  .workspace-layout {
+    flex-direction: column;
+    padding: 16px;
+    gap: 16px;
+  }
+  .left-sidebar-pane,
+  .left-sidebar-pane.expanded {
+    width: 100%;
+  }
+  .center-content-pane {
+    order: -1; /* the article / results first, the sidebar lists after them */
+    width: 100%;
+    min-width: 0;
+  }
+  .main-header {
+    position: relative; /* a wrapped header is too tall to keep pinned on a phone */
+    flex-wrap: wrap;
+    padding: 10px 16px;
+    gap: 10px;
+  }
+  .product-tabs-bar {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+  }
+  /* Reader toolbar (Back / Favourite / Bookmark / Pin / Like) wraps instead of clipping. */
+  #view-document-reader > div:first-child,
+  #view-document-reader > div:first-child > div {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .product-tab-btn {
+    flex: 1 1 0;
+    justify-content: center;
+    padding: 6px 6px;
+    font-size: 0.76rem;
+  }
+}

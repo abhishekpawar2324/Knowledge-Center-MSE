@@ -1,7 +1,7 @@
 @echo off
-title Magic Knowledge Center - Git Save & Commit
+title Magic Knowledge Center - Git Save ^& Commit
 echo ======================================================================
-echo           MAGIC KNOWLEDGE CENTER - 1-CLICK GIT SAVE & COMMIT
+echo           MAGIC KNOWLEDGE CENTER - 1-CLICK GIT SAVE ^& COMMIT
 echo ======================================================================
 echo.
 
@@ -35,9 +35,10 @@ echo.
 set /p COMMIT_MSG="Enter a short description of your changes (Press Enter for auto-date): "
 
 if "%COMMIT_MSG%"=="" (
-    for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value') do set datetime=%%I
-    set COMMIT_MSG=Update Knowledge Center codebase - %datetime:~0,4%-%datetime:~4,2%-%datetime:~6,2% %datetime:~8,2%:%datetime:~10,2%
+    rem wmic is gone on current Windows; PowerShell gives a locale-independent stamp.
+    for /f "delims=" %%I in ('powershell -NoProfile -Command "Get-Date -Format 'yyyy-MM-dd HH:mm'"') do set "COMMIT_STAMP=%%I"
 )
+if "%COMMIT_MSG%"=="" set "COMMIT_MSG=Update Knowledge Center codebase - %COMMIT_STAMP%"
 
 echo.
 echo [2/3] Staging all modified files...
@@ -52,7 +53,7 @@ echo ======================================================================
 echo [SUCCESS] Changes saved and committed locally!
 echo.
 echo To send these changes to your remote server (GitHub/GitLab), run:
-echo -> git_push_to_remote.bat
+echo    git_push_to_remote.bat
 echo ======================================================================
 echo.
 pause

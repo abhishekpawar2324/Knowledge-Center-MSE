@@ -32,7 +32,16 @@ except ImportError:
 
 import markdown
 
-from backend.database import SessionLocal, Document, HelpTopic, IndexLog, init_db
+from backend.database import SessionLocal, Document, HelpTopic, IndexLog, DeletedDocumentPath, EnterpriseAuditLog, init_db
+import threading
+
+# One scan at a time: the startup scan, an admin re-index and uploads can overlap,
+# and two scans inserting the same new file hit the unique file_path constraint.
+_SCAN_LOCK = threading.Lock()
+
+# PDF "creator"/"producer" metadata names the authoring tool, not a person.
+_PDF_TOOL_MARKERS = ["microsoft", "word", "acrobat", "adobe", "distiller", "canva", "libreoffice",
+                     "openoffice", "pdf", "writer", "printer", "ghostscript", "chrome", "skia", "quartz"]
 
 # Constants for paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -427,7 +436,7 @@ def parse_pdf_file(file_path):
         return {
             "title": title,
             "breadcrumbs": json.dumps(["Uploads", "PDFs"]),
-            "author": reader.metadata.creator if reader.metadata and reader.metadata.creator else "Editor",
+            "author": _pdf_person_author(reader),
             "created_at": datetime.fromtimestamp(os.path.getmtime(file_path)),
             "content": full_content.strip()
         }
@@ -637,10 +646,27 @@ def scan_and_index_help_topics(db: Session) -> int:
     print(f"[Help Indexer] Total {len(existing_map)} official help topics active. Updated: {indexed_help_count}")
     return len(existing_map)
 
+def _pdf_person_author(reader) -> str:
+    """The PDF's Author field when it names a person; never the creating tool."""
+    try:
+        meta = reader.metadata
+        name = str(getattr(meta, "author", None) or "").strip() if meta else ""
+    except Exception:
+        name = ""
+    if not name or any(m in name.lower() for m in _PDF_TOOL_MARKERS):
+        return "Editor"
+    return name
+
+
 def scan_and_index(db: Session):
     """
     Scans directory, parses files, inserts/updates DB entries, and deletes stale ones.
     """
+    with _SCAN_LOCK:
+        return _scan_and_index_locked(db)
+
+
+def _scan_and_index_locked(db: Session):
     log_msg = []
     indexed_count = 0
     start_time = datetime.utcnow()
@@ -666,7 +692,16 @@ def scan_and_index(db: Session):
 
     # 1c. Ensure all existing documents match their authoritative folder space
     aligned_count = 0
+    # An admin's manual space change (audited as DOCUMENT_REASSIGN) beats the folder.
+    try:
+        manually_moved = {int(t) for (t,) in db.query(EnterpriseAuditLog.target_id)
+                          .filter(EnterpriseAuditLog.action == "DOCUMENT_REASSIGN").all()
+                          if t and str(t).isdigit()}
+    except Exception:
+        manually_moved = set()
     for doc in db.query(Document).all():
+        if doc.id in manually_moved:
+            continue
         crumbs = doc.breadcrumbs or ""
         # Same single source of truth as detect_product(); the folder wins, and
         # Confluence breadcrumbs only decide for files outside a product folder.
@@ -752,84 +787,112 @@ def scan_and_index(db: Session):
     
     # Track paths processed to identify deleted ones
     processed_paths = set()
-    
+
+    # Files an admin removed from the index on purpose stay out of it.
+    try:
+        deleted_paths = {os.path.normcase(p) for (p,) in db.query(DeletedDocumentPath.file_path).all()}
+    except Exception:
+        deleted_paths = set()
+
     # 2. Index each file
     for file_path, file_type in all_files:
         normalized_path = os.path.abspath(file_path)
         processed_paths.add(normalized_path)
-        
-        # Check if already in DB and up to date (compare modification time)
-        existing_doc = db.query(Document).filter(Document.file_path == normalized_path).first()
-        mtime = datetime.fromtimestamp(os.path.getmtime(file_path))
-        
-        # Force re-parse if the document contains flattened text (no newlines) from the previous indexer version,
-        # or if it is a DOCX file but the Mammoth HTML cache does not exist on disk yet
-        needs_reparse = False
-        if existing_doc:
-            if existing_doc.file_type in ["pdf", "docx", "txt", "md"] and "\n" not in existing_doc.content:
-                needs_reparse = True
-            elif existing_doc.file_type == "docx" and not os.path.exists(normalized_path + ".html"):
-                needs_reparse = True
-            
-        if existing_doc and not needs_reparse and existing_doc.created_at >= mtime:
-            # Document exists and is up to date
-            indexed_count += 1
+        if os.path.normcase(normalized_path) in deleted_paths:
             continue
-            
-        # Parse based on file type
-        parsed_data = None
-        if file_type in ["html", "htm"]:
-            parsed_data = parse_html_file(file_path)
-        elif file_type == "pdf":
-            parsed_data = parse_pdf_file(file_path)
-        elif file_type == "docx":
-            parsed_data = parse_docx_file(file_path)
-        elif file_type in ["txt", "md"]:
-            parsed_data = parse_text_file(file_path, file_type)
-            
-        if parsed_data:
-            breadcrumbs_list = json.loads(parsed_data["breadcrumbs"]) if parsed_data["breadcrumbs"] else []
-            product_tag = detect_product(file_path, parsed_data["title"], parsed_data["content"], breadcrumbs_list)
-            version_tag = detect_version(parsed_data["title"], parsed_data["content"])
-            doc_type_tag = detect_doc_type(parsed_data["title"], parsed_data["content"], breadcrumbs_list)
-            
+        try:
+            # Check if already in DB and up to date (compare modification time)
+            existing_doc = db.query(Document).filter(Document.file_path == normalized_path).first()
+            # Documents uploaded through the portal are stamped in UTC; archive imports
+            # carry the file's local modification time. Compare like with like, or every
+            # upload looks "changed" on a server east of UTC and is re-parsed each scan.
+            is_platform_doc = bool(existing_doc) and existing_doc.is_legacy_import is False
+            mtime_ts = os.path.getmtime(file_path)
+            mtime = datetime.utcfromtimestamp(mtime_ts) if is_platform_doc else datetime.fromtimestamp(mtime_ts)
+
+            # Force re-parse if the document contains flattened text (no newlines) from the previous indexer version,
+            # or if it is a DOCX file but the Mammoth HTML cache does not exist on disk yet
+            needs_reparse = False
             if existing_doc:
-                existing_doc.title = parsed_data["title"]
-                existing_doc.breadcrumbs = parsed_data["breadcrumbs"]
-                existing_doc.content = parsed_data["content"]
-                if parsed_data.get("tags"):
-                    existing_doc.tags = parsed_data["tags"]
-                if parsed_data.get("author") and parsed_data["author"] not in ["Editor", "System", "Magic Documentation"] or not existing_doc.author:
-                    existing_doc.author = parsed_data["author"]
-                existing_doc.created_at = parsed_data["created_at"]
-                if not existing_doc.product or existing_doc.product == "xpi":
-                    existing_doc.product = product_tag
-                if not existing_doc.version or existing_doc.version == "Universal":
-                    existing_doc.version = version_tag
-                if not existing_doc.doc_type:
-                    existing_doc.doc_type = doc_type_tag
-            else:
-                # Create new
-                new_doc = Document(
-                    title=parsed_data["title"],
-                    file_path=normalized_path,
-                    file_type=file_type,
-                    content=parsed_data["content"],
-                    author=parsed_data["author"],
-                    breadcrumbs=parsed_data["breadcrumbs"],
-                    product=product_tag,
-                    version=version_tag,
-                    doc_type=doc_type_tag,
-                    tags=parsed_data.get("tags"),
-                    is_legacy_import=True,
-                    status="published",
-                    created_at=parsed_data["created_at"]
-                )
-                db.add(new_doc)
+                if (not is_platform_doc and existing_doc.file_type in ["pdf", "docx", "txt", "md"]
+                        and "\n" not in (existing_doc.content or "")):
+                    needs_reparse = True
+                elif existing_doc.file_type == "docx" and not os.path.exists(normalized_path + ".html"):
+                    needs_reparse = True
+
+            if existing_doc and not needs_reparse and existing_doc.created_at and existing_doc.created_at >= mtime:
+                # Document exists and is up to date
+                indexed_count += 1
+                continue
+                        
+            # Parse based on file type
+            parsed_data = None
+            if file_type in ["html", "htm"]:
+                parsed_data = parse_html_file(file_path)
+            elif file_type == "pdf":
+                parsed_data = parse_pdf_file(file_path)
+            elif file_type == "docx":
+                parsed_data = parse_docx_file(file_path)
+            elif file_type in ["txt", "md"]:
+                parsed_data = parse_text_file(file_path, file_type)
             
-            indexed_count += 1
-            db.commit()
+            if parsed_data:
+                breadcrumbs_list = json.loads(parsed_data["breadcrumbs"]) if parsed_data["breadcrumbs"] else []
+                product_tag = detect_product(file_path, parsed_data["title"], parsed_data["content"], breadcrumbs_list)
+                version_tag = detect_version(parsed_data["title"], parsed_data["content"])
+                doc_type_tag = detect_doc_type(parsed_data["title"], parsed_data["content"], breadcrumbs_list)
             
+                if existing_doc and is_platform_doc:
+                    # Uploaded / authored in the portal: the uploader, upload time, space
+                    # and review status belong to the upload, not to the file on disk.
+                    # Only refresh the text when the file itself changed.
+                    if existing_doc.file_type != "md":
+                        existing_doc.content = parsed_data["content"]
+                    if parsed_data.get("tags") and not existing_doc.tags:
+                        existing_doc.tags = parsed_data["tags"]
+                elif existing_doc:
+                    existing_doc.title = parsed_data["title"]
+                    existing_doc.breadcrumbs = parsed_data["breadcrumbs"]
+                    existing_doc.content = parsed_data["content"]
+                    if parsed_data.get("tags"):
+                        existing_doc.tags = parsed_data["tags"]
+                    if (parsed_data.get("author") and parsed_data["author"] not in ["Editor", "System", "Magic Documentation"]) or not existing_doc.author:
+                        existing_doc.author = parsed_data["author"]
+                    existing_doc.created_at = parsed_data["created_at"]
+                    # Never override a space that is already set (it may be an admin's manual move).
+                    if not existing_doc.product:
+                        existing_doc.product = product_tag
+                    if not existing_doc.version or existing_doc.version == "Universal":
+                        existing_doc.version = version_tag
+                    if not existing_doc.doc_type:
+                        existing_doc.doc_type = doc_type_tag
+                else:
+                    # Create new
+                    new_doc = Document(
+                        title=parsed_data["title"],
+                        file_path=normalized_path,
+                        file_type=file_type,
+                        content=parsed_data["content"],
+                        author=parsed_data["author"],
+                        breadcrumbs=parsed_data["breadcrumbs"],
+                        product=product_tag,
+                        version=version_tag,
+                        doc_type=doc_type_tag,
+                        tags=parsed_data.get("tags"),
+                        is_legacy_import=True,
+                        status="published",
+                        created_at=parsed_data["created_at"]
+                    )
+                    db.add(new_doc)
+
+                indexed_count += 1
+                db.commit()
+        except Exception as e:
+            # One unreadable or conflicting file must not abort the whole scan.
+            db.rollback()
+            log_msg.append(f"Skipped '{os.path.basename(file_path)}': {e}")
+            print(f"[Indexer] Skipped {file_path}: {e}")
+                        
     # 3. Clean up documents whose underlying file is genuinely gone.
     #
     # This used to delete anything absent from processed_paths, which treats "not
@@ -858,7 +921,11 @@ def scan_and_index(db: Session):
         print(f"[Indexer] Prune aborted as a safety measure: {len(missing)} of {len(db_docs)} documents appeared missing.")
     else:
         deleted_count = len(missing)
+        from backend.database import Comment, Favorite
         for doc in missing:
+            # SQLite foreign keys are off, so remove dependent rows explicitly.
+            db.query(Favorite).filter(Favorite.document_id == doc.id).delete(synchronize_session=False)
+            db.query(Comment).filter(Comment.document_id == doc.id).delete(synchronize_session=False)
             db.delete(doc)
         if deleted_count > 0:
             db.commit()

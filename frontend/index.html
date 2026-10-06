@@ -17,7 +17,7 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link rel="stylesheet" href="styles.css?v=35.0">
+  <link rel="stylesheet" href="styles.css?v=45.0">
   <script>
     function openAddUserModal() {
       var modal = document.getElementById('modal-admin-add-user');
@@ -824,7 +824,7 @@
             <select id="contrib-filter-period" style="width:100%; padding:8px 10px; border-radius:8px; background:var(--bg-subtle); border:1px solid var(--border-strong); color:var(--text-main); font-size:0.82rem;">
               <option value="week">📅 This Week (Current Week Uploads)</option>
               <option value="month">🗓️ This Month (Current Month Uploads)</option>
-              <option value="year">📆 This Year (2026 Platform Period)</option>
+              <option value="year">📆 This Year (Current Year Uploads)</option>
               <option value="all" selected>🌟 All-Time Uploads</option>
             </select>
           </div>
@@ -888,6 +888,9 @@
         </div>
       </div>
 
+      <!-- What the current filters match, in one line -->
+      <div id="contrib-filter-summary" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding:12px 18px; border-radius:10px; background:rgba(0,141,199,0.10); border:1px solid rgba(0,141,199,0.25); font-size:0.88rem; color:var(--text-soft);"></div>
+
       <!-- KPI Stat Cards -->
       <div id="contrib-summary-cards" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px;"></div>
 
@@ -918,6 +921,48 @@
         </div>
       </div>
 
+      <!-- Month-wise upload counts for the current filters -->
+      <div class="glass-panel" style="padding:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+          <h3 style="font-size:1.15rem; font-weight:700; color:var(--text-main); margin:0; display:flex; align-items:center; gap:8px;">
+            <i data-lucide="calendar-days" style="width:18px; height:18px; color:var(--c-sky);"></i> Month-wise KB Uploads
+          </h3>
+          <span style="font-size:0.75rem; color:var(--text-muted);">Click a month to filter the dashboard to it</span>
+        </div>
+        <div style="overflow-x:auto; max-height:420px; overflow-y:auto;">
+          <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.85rem;">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border-strong); color:var(--text-muted);">
+                <th style="padding:10px 12px;">Month</th>
+                <th style="padding:10px 12px; text-align:right;">Total KBs</th>
+                <th style="padding:10px 12px; text-align:right;">Published</th>
+                <th style="padding:10px 12px; text-align:right;">In Review</th>
+                <th style="padding:10px 12px; text-align:right;">Rejected</th>
+                <th style="padding:10px 12px; text-align:right;">xpi</th>
+                <th style="padding:10px 12px; text-align:right;">xpa</th>
+                <th style="padding:10px 12px; text-align:right;">Cloud</th>
+                <th style="padding:10px 12px; text-align:right;">General</th>
+                <th style="padding:10px 12px; text-align:right;">Contributors</th>
+              </tr>
+            </thead>
+            <tbody id="contrib-monthly-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Contributor x month grid -->
+      <div class="glass-panel" style="padding:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+          <h3 style="font-size:1.15rem; font-weight:700; color:var(--text-main); margin:0; display:flex; align-items:center; gap:8px;">
+            <i data-lucide="grid-3x3" style="width:18px; height:18px; color:var(--c-emerald);"></i> Uploads per Contributor per Month
+          </h3>
+          <span style="font-size:0.75rem; color:var(--text-muted);">Latest 12 months in the current filters</span>
+        </div>
+        <div id="contrib-month-grid" style="overflow-x:auto; max-height:460px; overflow-y:auto;"></div>
+      </div>
+
       <!-- Contributor Leaderboard Table -->
       <div class="glass-panel" style="padding:24px;">
         <h3 style="font-size:1.15rem; font-weight:700; color:var(--text-main); margin-bottom:14px; display:flex; align-items:center; gap:8px;">
@@ -933,9 +978,39 @@
                 <th style="padding:12px 14px;">Role</th>
                 <th style="padding:12px 14px;">Uploads</th>
                 <th style="padding:12px 14px;">Product Distribution</th>
+                <th style="padding:12px 14px;">Views</th>
+                <th style="padding:12px 14px;">Latest Upload</th>
+                <th style="padding:12px 14px; text-align:right;">Action</th>
               </tr>
             </thead>
             <tbody id="admin-contrib-table-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Article-level log for the current filters -->
+      <div class="glass-panel" style="padding:24px;">
+        <h3 style="font-size:1.15rem; font-weight:700; color:var(--text-main); margin-bottom:14px; display:flex; align-items:center; gap:8px;">
+          <i data-lucide="file-text" style="width:18px; height:18px; color:var(--c-sky);"></i> Uploaded Articles
+          <span id="contrib-articles-count" style="font-size:0.75rem; font-weight:600; color:var(--text-muted);"></span>
+        </h3>
+        <div style="overflow-x:auto; max-height:420px; overflow-y:auto;">
+          <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.84rem;">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border-strong); color:var(--text-muted);">
+                <th style="padding:10px 12px;">ID</th>
+                <th style="padding:10px 12px;">Title</th>
+                <th style="padding:10px 12px;">Author</th>
+                <th style="padding:10px 12px;">Space</th>
+                <th style="padding:10px 12px;">Format</th>
+                <th style="padding:10px 12px;">Status</th>
+                <th style="padding:10px 12px;">Views</th>
+                <th style="padding:10px 12px;">Uploaded</th>
+              </tr>
+            </thead>
+            <tbody id="contrib-articles-body">
               <!-- Dynamically populated -->
             </tbody>
           </table>
@@ -1961,6 +2036,6 @@
       if (modal) modal.classList.add('hide');
     }
   </script>
-  <script src="app.js?v=35.0"></script>
+  <script src="app.js?v=45.0"></script>
 </body>
 </html>

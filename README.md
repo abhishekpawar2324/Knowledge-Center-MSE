@@ -88,4 +88,4 @@ The UI is served by the same process, so there is nothing else to start.
 Open your browser at:
 - **Knowledge Center**: `http://localhost:8000`
 - **Backend API Docs**: `http://localhost:8000/docs`
-- **Default Administrator**: `superadmin` / `admin@123`
+- **Default Administrator**: `admin` / `admin` (set `ADMIN_USERNAME` / `ADMIN_PASSWORD` before first start, and change it after signing in)

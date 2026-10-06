@@ -9,6 +9,7 @@ build/
 
 # Environment & Secrets
 .env
+.jwt_secret
 .env.local
 .env.development.local
 .env.production.local
@@ -43,6 +44,7 @@ Thumbs.db
 # Misc logs & temporary files
 copy_log.txt
 *.log
+logs/
 scratch/
 Mock Images/
 863301644/

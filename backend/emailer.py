@@ -1,4 +1,5 @@
 import os
+import html
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -32,7 +33,8 @@ def send_superadmin_alert(subject: str, html_body: str, recipient: str = SUPER_A
             msg["To"] = recipient
             msg.attach(MIMEText(html_body, "html"))
             
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            # Bounded wait: an unreachable relay must not hang the request that sent the mail.
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
                 server.starttls()
                 server.login(SMTP_USER, SMTP_PASSWORD)
                 server.sendmail(FROM_EMAIL, recipient, msg.as_string())
@@ -47,6 +49,8 @@ def send_superadmin_alert(subject: str, html_body: str, recipient: str = SUPER_A
 
 def notify_document_uploaded(doc_title: str, product_space: str, author: str, file_type: str):
     subject = f"[Magic Knowledge Center] New Document Uploaded: {doc_title}"
+    # User-supplied values go into HTML mail, so escape them.
+    doc_title, product_space, author, file_type = (html.escape(str(v or "")) for v in (doc_title, product_space, author, file_type))
     body = f"""
     <div style="font-family:Arial,sans-serif; max-width:600px; padding:20px; border:1px solid #008DC7; border-radius:10px; background:#0f172a; color:#f8fafc;">
         <h2 style="color:#38bdf8; margin-top:0;">Magic Knowledge Center Alert</h2>
@@ -68,6 +72,7 @@ def notify_document_uploaded(doc_title: str, product_space: str, author: str, fi
 
 def notify_new_comment(doc_title: str, username: str, comment_text: str):
     subject = f"[Magic Knowledge Center] User Feedback on: {doc_title}"
+    doc_title, username, comment_text = (html.escape(str(v or "")) for v in (doc_title, username, comment_text))
     body = f"""
     <div style="font-family:Arial,sans-serif; max-width:600px; padding:20px; border:1px solid #008DC7; border-radius:10px; background:#0f172a; color:#f8fafc;">
         <h2 style="color:#38bdf8; margin-top:0;">New Technical Discussion / Comment</h2>
