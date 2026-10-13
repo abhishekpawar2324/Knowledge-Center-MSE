@@ -2324,8 +2324,12 @@ def get_pinned(product: Optional[str] = None, db: Session = Depends(get_db)):
     } for d in docs]
 
 @app.post("/api/document/{doc_id}/pin")
-def toggle_pin(doc_id: int, db: Session = Depends(get_db)):
-    """Allow pinning for all users (accessible without forced admin role)."""
+def toggle_pin(doc_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Pinning stays open to every signed-in role, not just Admin - but it does
+    require a session. is_pinned is a global flag: it adds +20 to the search
+    score (see the ranking block above), puts the document on the public landing
+    page and into the Pinned SOPs rail, so an anonymous POST could promote any
+    document for every visitor at once."""
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -2455,7 +2459,10 @@ def get_my_contributions(limit: int = 8, current_user: User = Depends(get_curren
     } for d in docs]
 
 @app.post("/api/document/{doc_id}/like")
-def like_document(doc_id: int, db: Session = Depends(get_db)):
+def like_document(doc_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Requires a session. The count is still not per-user, so a signed-in
+    caller can repeat it - worth a likes table if the number is ever used for
+    anything beyond display."""
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")

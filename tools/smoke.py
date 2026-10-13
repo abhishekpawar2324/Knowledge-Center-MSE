@@ -547,6 +547,33 @@ def check_api(base: str) -> None:
         code, _ = http(base + path, data=b"{}")
         record(code in (401, 403), f"anonymous cannot write {path}", f"HTTP {code}")
 
+    # Pinning is a global flag: it adds +20 to the search score, puts the
+    # document on the landing page and into the Pinned SOPs rail. Neither of
+    # these endpoints took a session at all, so an anonymous POST could promote
+    # any document for every visitor, and repeat it.
+    #
+    # Aimed at an id that does not exist, so the check cannot mutate anything
+    # even when it fails - an earlier version used a live id and, under a
+    # deliberately broken build, left two likes behind. The auth dependency is
+    # evaluated before the document lookup, which is what makes this work:
+    # no session gives 401, a real session gives 404.
+    GHOST = 999999999
+    for ep in ("pin", "like"):
+        code, _ = http(f"{base}/api/document/{GHOST}/{ep}", data=b"")
+        record(code in (401, 403),
+               f"anonymous cannot POST /api/document/<id>/{ep}", f"HTTP {code}")
+        code, _ = http(f"{base}/api/document/{GHOST}/{ep}", data=b"",
+                       token="not.a.real.jwt")
+        record(code in (401, 403),
+               f"a bogus token cannot POST /api/document/<id>/{ep}", f"HTTP {code}")
+        # Without this the 401s above would also pass if the route had been
+        # deleted or were rejecting everyone: a real session must get past the
+        # auth gate and fail on the missing document instead.
+        code, _ = http(f"{base}/api/document/{GHOST}/{ep}", data=b"", token=token)
+        record(code == 404,
+               f"a real session reaches /api/document/<id>/{ep}",
+               f"HTTP {code} (want 404 for a missing document)")
+
 
 SCRIPT_SRC_RE = re.compile(r'<script[^>]+src="(https://[^"]+)"')
 

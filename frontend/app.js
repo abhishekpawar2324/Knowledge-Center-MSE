@@ -211,8 +211,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ==================== 2. PINNED SOPS ====================
   async function unpinDocument(docId) {
+    if (!token) {
+      alert('Please sign in to change pinned SOPs.')
+      return
+    }
     try {
-      await fetch(`/api/document/${docId}/pin`, { method: 'POST' })
+      await fetch(`/api/document/${docId}/pin`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      })
       if (currentDoc && currentDoc.id === docId) {
         currentDoc.is_pinned = false
         updatePinButtonState(false)
@@ -2354,8 +2361,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // Pin Button in Reader
   document.getElementById('btn-doc-pin').addEventListener('click', async () => {
     if (!currentDoc) return
+    // Pinning is global - it boosts the document for every visitor - so the
+    // server now requires a session. Say so instead of doing nothing: both of
+    // these handlers swallow failures, so an unauthenticated click used to
+    // leave the button looking fine and silently change nothing.
+    if (!token) {
+      alert('Please sign in to pin this document.')
+      return
+    }
     try {
-      const res = await fetch(`/api/document/${currentDoc.id}/pin`, { method: 'POST' })
+      const res = await fetch(`/api/document/${currentDoc.id}/pin`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      })
       if (!res.ok) return
       const data = await res.json()
       currentDoc.is_pinned = data.is_pinned
@@ -2367,8 +2385,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // Like Button
   document.getElementById('btn-doc-like').addEventListener('click', async () => {
     if (!currentDoc) return
+    if (!token) {
+      alert('Please sign in to mark this document helpful.')
+      return
+    }
     try {
-      const res = await fetch(`/api/document/${currentDoc.id}/like`, { method: 'POST' })
+      const res = await fetch(`/api/document/${currentDoc.id}/like`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      })
       if (!res.ok) return
       const data = await res.json()
       document.getElementById('btn-doc-like-label').textContent = `${data.likes} Helpful`
