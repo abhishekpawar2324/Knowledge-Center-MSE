@@ -266,6 +266,40 @@ h1, h2, h3, h4, h5, h6 {
   line-height: 1.35;
 }
 
+/* Right rail: Pinned SOPs, Favourites, My Bookmarks.
+   These three lists used to stack above the Space Documents tree in the left
+   pane. Empty they cost 303px, but at their render caps (5/5/6 rows) they grow
+   that pane from 914px to 1417px and push the tree header to y=1024 - below the
+   fold on a 1440x900 screen (280px of scrolling) and still below it on 1920x1080
+   (100px). The tree is the primary navigation, so it keeps the top of its own
+   column. Slightly wider than the left pane because these rows carry a title
+   plus a remove control, where the tree carries one title. */
+.right-sidebar-pane {
+  width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Three fixed columns stop paying their way once the reader gets narrow. Above
+   the 900px breakpoint - where the whole layout already goes to one column -
+   the rail instead wraps to its own full-width row underneath rather than being
+   hidden: these are the user's own saved documents, so they must stay
+   reachable. Inside that row the three panels sit side by side and share it. */
+@media (min-width: 901px) and (max-width: 1280px) {
+  .workspace-layout { flex-wrap: wrap; }
+  .right-sidebar-pane {
+    width: 100%;
+    flex-direction: row;
+    align-items: flex-start;
+  }
+  .right-sidebar-pane > .glass-panel {
+    flex: 1 1 240px;
+    min-width: 0;
+  }
+}
+
 .badge-kb-doc {
   background: rgba(14, 165, 233, 0.18) !important;
   color: var(--c-sky) !important;
@@ -644,15 +678,27 @@ select option:checked, select option:hover {
   padding: 6px;
   z-index: 1000;
   min-width: 140px;
+  width: max-content;
   display: flex;
   flex-direction: column;
   gap: 3px;
+}
+
+/* Opens upward, for a menu anchored near the bottom of a panel - the KB
+   footer's Templates menu would otherwise drop off the bottom of the modal. */
+.kb-dropdown-menu.kb-dropdown-up {
+  top: auto;
+  bottom: calc(100% + 4px);
 }
 
 .kb-dropdown-item {
   display: flex;
   align-items: center;
   gap: 8px;
+  /* One line per option. The menu's min-width is narrower than several of these
+     labels, so without this "Connector Setup" and "Troubleshooting & RCA"
+     wrapped onto two lines; the menu now widens to fit its longest option. */
+  white-space: nowrap;
   padding: 6px 10px;
   border-radius: 6px;
   color: var(--text-soft);
@@ -668,6 +714,29 @@ select option:checked, select option:hover {
 .kb-dropdown-item:hover {
   background: rgba(0, 141, 199, 0.25);
   color: #fff;
+}
+
+/* KB studio footer groups.
+   Both were shrink-to-fit (the flex default), and together they wanted ~1264px
+   in a 1158px content box, so every button in the row - including the Publish
+   CTA - was compressed below its natural width. flex:0 0 auto stops that; the
+   footer itself wraps instead, so a narrow modal gets two honest rows rather
+   than one squeezed one.
+   The templates group must NOT clip: its dropdown opens upward, well outside
+   this element's own ~30px box, so no overflow or mask belongs here. */
+.kb-footer-templates {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kb-footer-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
 }
 
 .kb-split-container {
@@ -1682,8 +1751,12 @@ select option:checked, select option:hover {
     gap: 16px;
   }
   .left-sidebar-pane,
-  .left-sidebar-pane.expanded {
+  .left-sidebar-pane.expanded,
+  .right-sidebar-pane {
     width: 100%;
+  }
+  .right-sidebar-pane {
+    flex-direction: column;
   }
   .center-content-pane {
     order: -1; /* the article / results first, the sidebar lists after them */

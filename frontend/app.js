@@ -4754,6 +4754,7 @@ ${content}
   toggleDropdown('btn-toggle-color-menu', 'kb-color-menu')
   toggleDropdown('btn-toggle-highlight-menu', 'kb-highlight-menu')
   toggleDropdown('btn-toggle-code-menu', 'kb-code-menu')
+  toggleDropdown('btn-toggle-template-menu', 'kb-template-menu')
 
   document.addEventListener('click', () => {
     document.querySelectorAll('.kb-dropdown-menu').forEach(m => m.classList.add('hide'))

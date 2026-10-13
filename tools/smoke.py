@@ -311,6 +311,80 @@ PROBE_JS = r"""
 
         out.contrast = contrastFailures();
 
+        // KB studio footer. Both groups are shrink-to-fit, and as four template
+        // buttons they together wanted ~1264px in a 1158px content box - so the
+        // browser compressed every button in the row (the Publish CTA lost 24px
+        // at 1440px, 61px at 1100px) and the last template sat flush against
+        // "Discard Changes" with 0px between them. The templates are one
+        // dropdown now, which is why nothing in the row should be shrunk.
+        out.kbFooter = (function () {
+          var k = {};
+          var modal = document.getElementById('modal-write-kb');
+          if (!modal) return k;
+          var wasHidden = modal.classList.contains('hide');
+          modal.classList.remove('hide');
+          var tpl = modal.querySelector('.kb-footer-templates');
+          var act = modal.querySelector('.kb-footer-actions');
+          k.groups = !!tpl && !!act;
+          if (tpl && act) {
+            var tr = tpl.getBoundingClientRect(), ar = act.getBoundingClientRect();
+            k.sameRow = Math.abs(tr.top - ar.top) < 4;
+            k.gap = Math.round(ar.left - tr.right);
+            // A button narrower than its own content is a squeezed button.
+            // Zero-width ones are the closed menu's items, not footer buttons.
+            k.squeezed = Array.prototype.filter
+              .call(tpl.parentElement.querySelectorAll('button'), function (b) {
+                var r = b.getBoundingClientRect();
+                if (r.width < 2) return false;
+                var c = b.cloneNode(true);
+                c.style.cssText = b.style.cssText +
+                  ';position:absolute;left:-9999px;width:max-content;flex:none;';
+                document.body.appendChild(c);
+                var natural = c.getBoundingClientRect().width;
+                c.parentNode.removeChild(c);
+                return natural > r.width + 1;
+              })
+              .map(function (b) { return b.textContent.trim().slice(0, 24); });
+          }
+          var btn = document.getElementById('btn-toggle-template-menu');
+          var menu = document.getElementById('kb-template-menu');
+          k.hasToggle = !!btn && !!menu;
+          if (btn && menu) {
+            k.closedAtRest = menu.classList.contains('hide');
+            btn.click();
+            k.opens = !menu.classList.contains('hide');
+            var mr = menu.getBoundingClientRect(), br = btn.getBoundingClientRect();
+            var shell = modal.querySelector('.kb-studio-container').getBoundingClientRect();
+            // It is anchored at the bottom of the modal, so it must open upward
+            // and still be painted inside the shell - the shell clips.
+            k.opensUpward = mr.bottom <= br.top + 1;
+            k.insideModal = mr.top >= shell.top && mr.bottom <= shell.bottom &&
+                            mr.left >= shell.left && mr.right <= shell.right;
+            k.itemCount = menu.querySelectorAll('.kb-dropdown-item').length;
+            // One line per option: a wrapped label doubles the row height.
+            k.wrappedItems = Array.prototype.filter
+              .call(menu.querySelectorAll('.kb-dropdown-item'), function (i) {
+                return i.getBoundingClientRect().height > 30;
+              }).length;
+            k.insertWired = typeof window.insertDocTemplate === 'function';
+            btn.click();
+            k.closesAgain = menu.classList.contains('hide');
+          }
+          // The toolbar's own menus share the component and must still drop down.
+          k.toolbarStillDown = ['btn-toggle-color-menu', 'btn-toggle-highlight-menu',
+                                'btn-toggle-code-menu'].every(function (id) {
+            var b = document.getElementById(id);
+            var m = b && b.parentElement.querySelector('.kb-dropdown-menu');
+            if (!b || !m) return false;
+            b.click();
+            var down = m.getBoundingClientRect().top >= b.getBoundingClientRect().bottom - 2;
+            b.click();
+            return down;
+          });
+          if (wasHidden) modal.classList.add('hide');
+          return k;
+        })();
+
         // Open a space and check the workspace panes. The sidebar panels are
         // rendered by id, so a panel that has been moved to another column
         // still populates - which means only an explicit "is it in the pane I
@@ -588,6 +662,32 @@ def check_browser(browser: str, base: str) -> None:
                    f"{len(wbad)} below 3:1 -> " + "; ".join(wbad[:3]))
         else:
             record(False, f"{who}: workspace probe ran", "no workspace data returned")
+
+        k = r.get("kbFooter") or {}
+        if k.get("groups"):
+            record(k.get("sameRow") is True and (k.get("gap") or 0) > 16,
+                   f"{who}: KB footer groups sit apart on one row",
+                   f"sameRow={k.get('sameRow')} gap={k.get('gap')}px")
+            record(not k.get("squeezed"),
+                   f"{who}: no KB footer button is squeezed below its content",
+                   str(k.get("squeezed")))
+            record(k.get("opens") is True and k.get("closedAtRest") is True
+                   and k.get("closesAgain") is True,
+                   f"{who}: Templates menu opens and closes",
+                   f"rest={k.get('closedAtRest')} opens={k.get('opens')} "
+                   f"closes={k.get('closesAgain')}")
+            record(k.get("opensUpward") is True and k.get("insideModal") is True,
+                   f"{who}: Templates menu opens upward, inside the modal",
+                   f"up={k.get('opensUpward')} inside={k.get('insideModal')}")
+            record(k.get("itemCount") == 4 and k.get("wrappedItems") == 0
+                   and k.get("insertWired") is True,
+                   f"{who}: 4 template options, each on one line, wired up",
+                   f"items={k.get('itemCount')} wrapped={k.get('wrappedItems')} "
+                   f"wired={k.get('insertWired')}")
+            record(k.get("toolbarStillDown") is True,
+                   f"{who}: toolbar menus still drop downward")
+        else:
+            print(f"  SKIP  {who}: no KB studio footer in this layout")
 
         errs = r.get("consoleErrors") or []
         record(not errs, f"{who}: no console errors", "; ".join(errs[:3]))

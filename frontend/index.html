@@ -282,39 +282,9 @@
   <!-- ==================== VIEW 2: DEDICATED PRODUCT SEARCH & EXPLORATION WORKSPACE ==================== -->
   <div id="page-product-workspace" class="workspace-layout hide">
     
-    <!-- Left Explorer Sidebar (Pinned, Favourites, Bookmarks, Space Documents) -->
+    <!-- Left Explorer Sidebar (Space Documents tree) -->
     <aside class="left-sidebar-pane">
       
-      <!-- 1. Pinned SOPs -->
-      <div class="glass-panel" style="padding:16px;">
-        <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px; color:var(--c-amber); font-size:0.85rem; font-weight:700;">
-          <i data-lucide="star" style="width:15px; height:15px; fill:#f59e0b; color:var(--c-amber);"></i>
-          <span>Pinned SOPs</span>
-        </div>
-        <div id="left-pinned-list" style="display:flex; flex-direction:column; gap:6px;"></div>
-      </div>
-
-      <!-- 3. Favourites / Top Rated -->
-      <div class="glass-panel" style="padding:16px;">
-        <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px; color:var(--c-rose); font-size:0.85rem; font-weight:700;">
-          <i data-lucide="heart" style="width:15px; height:15px; fill:#f43f5e; color:var(--c-rose);"></i>
-          <span>Favourites & Top SOPs</span>
-        </div>
-        <div id="left-top-favorites-list" style="display:flex; flex-direction:column; gap:6px;"></div>
-      </div>
-
-      <!-- 4. My Saved Bookmarks -->
-      <div class="glass-panel" style="padding:16px;">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-          <div style="display:flex; align-items:center; gap:6px; color:var(--c-sky); font-size:0.85rem; font-weight:700;">
-            <i data-lucide="bookmark" style="width:15px; height:15px; fill:#38bdf8; color:var(--c-sky);"></i>
-            <span>My Bookmarks</span>
-          </div>
-          <span id="left-bookmarks-count" style="font-size:0.72rem; padding:1px 6px; border-radius:10px; background:rgba(0,141,199,0.15); color:var(--c-sky); font-weight:700;">0</span>
-        </div>
-        <div id="left-favorites-list" style="display:flex; flex-direction:column; gap:6px;"></div>
-      </div>
-
       <!-- 5. Space Documents Tree (Confluence Style) -->
       <div class="glass-panel" style="padding:16px;">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
@@ -463,6 +433,45 @@
       </div>
 
     </main>
+
+    <!-- Right rail: the reader's own saved documents.
+         These three panels used to stack above the Space Documents tree in the
+         left pane. Empty they cost 303px, but at their render caps (5/5/6 rows)
+         they grow that pane from 914px to 1417px and push the tree header down
+         to y=1024 - below the fold on a 1440x900 screen and still below it on
+         1920x1080. The tree is the primary navigation, so it keeps the top of
+         its own column and the saved lists get theirs. -->
+    <aside class="right-sidebar-pane">
+      <!-- 1. Pinned SOPs -->
+      <div class="glass-panel" style="padding:16px;">
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px; color:var(--c-amber); font-size:0.85rem; font-weight:700;">
+          <i data-lucide="star" style="width:15px; height:15px; fill:#f59e0b; color:var(--c-amber);"></i>
+          <span>Pinned SOPs</span>
+        </div>
+        <div id="left-pinned-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+      </div>
+
+      <!-- 3. Favourites / Top Rated -->
+      <div class="glass-panel" style="padding:16px;">
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px; color:var(--c-rose); font-size:0.85rem; font-weight:700;">
+          <i data-lucide="heart" style="width:15px; height:15px; fill:#f43f5e; color:var(--c-rose);"></i>
+          <span>Favourites & Top SOPs</span>
+        </div>
+        <div id="left-top-favorites-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+      </div>
+
+      <!-- 4. My Saved Bookmarks -->
+      <div class="glass-panel" style="padding:16px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+          <div style="display:flex; align-items:center; gap:6px; color:var(--c-sky); font-size:0.85rem; font-weight:700;">
+            <i data-lucide="bookmark" style="width:15px; height:15px; fill:#38bdf8; color:var(--c-sky);"></i>
+            <span>My Bookmarks</span>
+          </div>
+          <span id="left-bookmarks-count" style="font-size:0.72rem; padding:1px 6px; border-radius:10px; background:rgba(0,141,199,0.15); color:var(--c-sky); font-weight:700;">0</span>
+        </div>
+        <div id="left-favorites-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+      </div>
+    </aside>
   </div>
 
   <!-- ==================== VIEW 3: UPLOAD PORTAL ==================== -->
@@ -1656,16 +1665,34 @@
         </div>
 
         <!-- Studio Footer Action Bar -->
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:var(--bg-card); border-top:1px solid var(--border-color);">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">Templates:</span>
-            <button type="button" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="insertDocTemplate('connector')">🔌 Connector Setup</button>
-            <button type="button" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="insertDocTemplate('troubleshooting')">⚠️ Troubleshooting & RCA</button>
-            <button type="button" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="insertDocTemplate('cloud_sop')">☁️ Cloud Native SOP</button>
-            <button type="button" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="insertDocTemplate('salesforce_case')">📋 Salesforce Case SOP</button>
+        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; padding:12px 20px; background:var(--bg-card); border-top:1px solid var(--border-color);">
+          <!-- Templates as one dropdown, reusing the same kb-tool-dropdown /
+               kb-dropdown-menu component the toolbar's "Code" menu already uses.
+               These were four side-by-side buttons. Both footer groups are
+               shrink-to-fit, and their natural width (~1264px) exceeds the
+               footer's content box (1158px at a 1200px modal), so the browser
+               compressed every button in the row - the Publish CTA lost 24px at
+               1440px and 61px at 1100px, and the last template sat flush against
+               "Discard Changes" with 0px between them. One narrow control removes
+               that competition and leaves room for more templates later.
+               The menu opens upward - it sits at the bottom of the modal. -->
+          <div class="kb-footer-templates">
+            <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700; flex-shrink:0;">Templates:</span>
+            <div class="kb-tool-dropdown">
+              <button type="button" class="btn btn-secondary" id="btn-toggle-template-menu" style="font-size:0.72rem; padding:5px 10px;" title="Insert a document template">
+                <i data-lucide="file-plus-2" style="width:13px; height:13px;"></i> Insert Template
+                <i data-lucide="chevron-down" style="width:11px; height:11px;"></i>
+              </button>
+              <div id="kb-template-menu" class="kb-dropdown-menu kb-dropdown-up hide">
+                <button type="button" class="kb-dropdown-item" onclick="insertDocTemplate('connector')"><i data-lucide="plug" style="width:13px; height:13px;"></i>Connector Setup</button>
+                <button type="button" class="kb-dropdown-item" onclick="insertDocTemplate('troubleshooting')"><i data-lucide="alert-triangle" style="width:13px; height:13px;"></i>Troubleshooting &amp; RCA</button>
+                <button type="button" class="kb-dropdown-item" onclick="insertDocTemplate('cloud_sop')"><i data-lucide="cloud" style="width:13px; height:13px;"></i>Cloud Native SOP</button>
+                <button type="button" class="kb-dropdown-item" onclick="insertDocTemplate('salesforce_case')"><i data-lucide="clipboard-list" style="width:13px; height:13px;"></i>Salesforce Case SOP</button>
+              </div>
+            </div>
           </div>
 
-          <div style="display:flex; align-items:center; gap:10px;">
+          <div class="kb-footer-actions">
             <span id="kb-draft-save-status" style="font-size:0.75rem; color:var(--c-emerald); font-weight:600; display:none;">✓ Draft Saved</span>
             <button id="btn-discard-write-kb" type="button" class="btn btn-secondary" style="padding:8px 14px; font-size:0.82rem; color:var(--c-rose); border-color:rgba(239,68,68,0.3);" title="Discard all unsaved edits">
               <i data-lucide="trash-2" style="width:14px; height:14px;"></i> Discard Changes
