@@ -685,6 +685,55 @@ def check_sanitizer() -> None:
     record("<!--" not in out and "<p>a</p>" in out and "<p>b</p>" in out,
            "comments stripped, surrounding content kept", out[:70])
 
+    # RoboHelp spec tables take a different route: format_robohelp_topic_html
+    # builds its own markup and the caller assigns it WITHOUT passing it through
+    # sanitize_html_fragment. It is safe because every field comes from
+    # get_text() and is then html.escape()d - audited and confirmed inert in a
+    # real browser - but nothing structural enforces that, so pin it here.
+    try:
+        from bs4 import BeautifulSoup as _BS
+        from backend.main import format_robohelp_topic_html
+    except Exception as e:
+        record(False, "import format_robohelp_topic_html", f"{type(e).__name__}: {e}")
+        return
+    # Two shapes. Raw markup is dropped by get_text() because an <img> carries no
+    # text - correct, and not what this guards. The entity-encoded form is the
+    # real case: a spec table that documents "DbDel(<generic table>)" is text
+    # that looks like markup, and it must come back escaped rather than live.
+    payload = ("&lt;img src=x onerror=alert(1)&gt; <img src=y onerror=alert(2)> "
+               "\" onmouseover=alert(3) x=\" <script>alert(4)</script>")
+    fixture = (
+        "<html><body><table>"
+        f"<tr><td colspan='2'>Overview {payload}</td></tr>"
+        f"<tr><td>Syntax:</td><td>{payload}</td></tr>"
+        f"<tr><td>Parameters:</td><td>pname - {payload}</td></tr>"
+        f"<tr><td>Returns:</td><td>{payload}</td></tr>"
+        f"<tr><td>Notes:</td><td>{payload}</td></tr>"
+        f"<tr><td>Example:</td><td>{payload}</td></tr>"
+        "</table></body></html>")
+    built = format_robohelp_topic_html(_BS(fixture, "html.parser"), "T") or ""
+    record(bool(built), "RoboHelp formatter produced a view", f"{len(built)} chars")
+    if built:
+        # The formatter's own Copy button carries a legitimate onclick, so count
+        # elements rather than substrings: no tag may be built from the payload.
+        rendered = _BS(built, "html.parser")
+        injected = [t.name for t in rendered.find_all(["img", "script", "iframe"])]
+        record(not injected, "RoboHelp formatter injects no tags from field text",
+               f"built: {injected}")
+        stray = [t.name for t in rendered.find_all(True)
+                 if any(a.lower().startswith("on") for a in t.attrs)
+                 and t.name != "button"]
+        record(not stray, "RoboHelp formatter leaks no on* handlers", f"on {stray}")
+        # It must escape the payload, not silently drop it: the reader should
+        # still see what the source document said, rendered literally.
+        # Checked as the output's *text*, not as a substring - a substring test
+        # passes for the wrong reason, because the Copy button's onclick escapes
+        # its value separately and keeps an "&lt;img" in the string even when
+        # every display field has been left raw.
+        record("<img src=x onerror=alert(1)>" in rendered.get_text(),
+               "RoboHelp formatter renders payload as escaped text",
+               "payload did not survive as literal text")
+
 
 def check_browser(browser: str, base: str) -> None:
     for authed, theme, want_sections in ((False, "dark", 2), (True, "light", 4)):
