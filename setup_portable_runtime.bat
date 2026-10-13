@@ -1,11 +1,11 @@
 @echo off
-title Magic Knowledge Center - Setup Portable Python & Git Environment
+title Magic Knowledge Center - Setup Portable Python ^& Git Environment
 echo ======================================================================
-echo     MAGIC SOFTWARE ENTERPRISES - BUILD 100% PORTABLE BUNDLE
+echo     MAGIC SOFTWARE ENTERPRISES - BUILD 100%% PORTABLE BUNDLE
 echo                 (PORTABLE PYTHON + PORTABLE GIT)
 echo ======================================================================
 echo.
-echo This script creates a 100% SELF-CONTAINED portable environment:
+echo This script creates a 100%% SELF-CONTAINED portable environment:
 echo  1. Portable Python 3.11 with all backend dependencies in 'runtime\'
 echo  2. Portable Git for Windows in 'git_tools\portable_git\'
 echo.
@@ -84,7 +84,7 @@ if exist "temp" rmdir /s /q "temp"
 
 echo.
 echo ======================================================================
-echo [SUCCESS] 100% PORTABLE BUNDLE IS READY!
+echo [SUCCESS] 100%% PORTABLE BUNDLE IS READY!
 echo.
 echo - Python:   runtime\python.exe (FastAPI, Uvicorn, SQLite, PDF/Docx)
 echo - Git:      git_tools\portable_git\cmd\git.exe

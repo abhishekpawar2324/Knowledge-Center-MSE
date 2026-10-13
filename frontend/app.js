@@ -51,6 +51,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sessionTimer) {
       clearTimeout(sessionTimer)
       sessionTimer = null
+      // Drop out of an admin-only Copilot pane right away rather than
+      // leaving it on screen until the modal is next opened.
+      try {
+        if (currentCopilotTab === 'settings') switchCopilotTab('chat')
+      } catch (e) {}
     }
   }
 
@@ -2679,6 +2684,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.openCopilotWithQuery = function(initialQ = '', product = '') {
     updateAuthUI()
+    // Re-assert which pane is showing, every time the modal opens.
+    // updateAuthUI() hides the Settings *button* for non-admins, but the panes
+    // keep whatever visibility they were last left with - so after an admin
+    // opened Settings and signed out, the modal reopened straight onto the
+    // configuration screen with no button in sight. switchCopilotTab() applies
+    // the role check itself and downgrades 'settings' to 'chat'.
+    switchCopilotTab(currentCopilotTab || 'chat')
     const modal = document.getElementById('modal-copilot')
     if (modal) modal.classList.remove('hide')
     const thread = document.getElementById('copilot-messages-thread')

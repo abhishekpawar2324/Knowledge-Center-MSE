@@ -5,14 +5,16 @@ regression net: run it before and after any change to frontend/ or backend/.
 
     runtime\\python.exe tools\\smoke.py
 
-It checks four things:
+It checks five things:
 
   1. API      - the documented endpoints answer, public and authenticated
-  2. Function - the app boots, renders the right sections per auth state,
+  2. Vendors  - every third-party script is pinned to an exact version and
+                that version actually resolves on the CDN
+  3. Function - the app boots, renders the right sections per auth state,
                 navigation resolves to exactly one page, the theme toggle
-                round-trips and persists
-  3. Console  - no uncaught JS errors while the app loads and is driven
-  4. Contrast - no body text below WCAG AA against its own background
+                round-trips and persists, and lucide/marked/Chart all work
+  4. Console  - no uncaught JS errors while the app loads and is driven
+  5. Contrast - no body text below WCAG AA against its own background
 
 Exit code is 0 when everything passes, 1 otherwise, so it can be wired into a
 pipeline later. The browser checks are skipped automatically (not failed) when
@@ -53,7 +55,7 @@ BROWSERS = [
 PUBLIC_ENDPOINTS = [
     "/", "/api/products/overview", "/api/stats", "/api/spaces", "/api/tags",
     "/api/notifications", "/api/pinned", "/api/search?q=connector&product=xpi",
-    "/api/document/42", "/magic_logo.png", "/favicon.ico",
+    "/magic_logo.png", "/favicon.ico",
 ]
 AUTHED_ENDPOINTS = [
     "/api/favorites", "/api/my/contributions", "/api/review/queue",
@@ -195,6 +197,34 @@ PROBE_JS = r"""
     return bad;
   }
 
+  // The three CDN libraries. Each is exercised, not merely checked for
+  // existence: a script tag that 404s still leaves the page loading, and the
+  // failure only shows up later as unrendered icons or raw markdown on screen.
+  function vendorChecks() {
+    var v = {};
+    try {
+      v.lucide = false;
+      if (window.lucide && typeof lucide.createIcons === 'function') {
+        var probe = document.createElement('div');
+        probe.innerHTML = '<i data-lucide="search"></i>';
+        probe.style.cssText = 'position:absolute;left:-9999px';
+        document.body.appendChild(probe);
+        lucide.createIcons();
+        v.lucide = !!probe.querySelector('svg');
+        probe.parentNode.removeChild(probe);
+      }
+    } catch (e) { v.lucide = 'threw: ' + e.message; }
+    try {
+      var parse = window.marked && (marked.parse || marked);
+      v.marked = typeof parse === 'function' && /<strong>ok<\/strong>/.test(parse('**ok**'));
+    } catch (e) { v.marked = 'threw: ' + e.message; }
+    try {
+      v.chart = typeof window.Chart === 'function' && !!window.Chart.version;
+      v.chartVersion = window.Chart ? window.Chart.version : null;
+    } catch (e) { v.chart = 'threw: ' + e.message; }
+    return v;
+  }
+
   function visiblePages() {
     return ['page-home-landing', 'page-product-workspace', 'page-upload-portal',
             'page-utilities-hub', 'page-admin-suite', 'page-login']
@@ -223,6 +253,7 @@ PROBE_JS = r"""
 
     setTimeout(function () {
       var out = {};
+      var deferred = false;          // the workspace pass emits asynchronously
       try {
         out.theme = document.documentElement.getAttribute('data-theme');
         out.signedIn = !!localStorage.getItem('token');
@@ -249,11 +280,104 @@ PROBE_JS = r"""
           out.themeFlipped = out.themeAfterToggle !== before;
           t.click();
         }
+        // An admin who visited Copilot > Settings left that pane un-hidden;
+        // signing out hid the tab button but not the pane, so the modal
+        // reopened onto the configuration screen for the next visitor.
+        var copilotBtn = document.getElementById('btn-open-copilot');
+        if (copilotBtn) {
+          copilotBtn.click();
+          var sPane = document.getElementById('copilot-pane-settings');
+          var sBtn = document.getElementById('copilot-tab-btn-settings');
+          function shown(el) {
+            if (!el) return false;
+            var cs = getComputedStyle(el);
+            return !el.classList.contains('hide') && cs.display !== 'none';
+          }
+          out.copilotSettingsPaneShown = shown(sPane);
+          out.copilotSettingsBtnShown = shown(sBtn);
+          var close = document.getElementById('btn-close-copilot');
+          if (close) close.click();
+        }
+
+        out.vendors = vendorChecks();
+
+        // lucide.createIcons() swaps every <i data-lucide="name"> for an <svg>,
+        // but silently skips a name it does not know. A misspelled icon is
+        // therefore invisible rather than broken, so anything still sitting
+        // here as an <i> is a bad icon name.
+        out.unrenderedIcons = Array.prototype.slice
+          .call(document.querySelectorAll('i[data-lucide]'))
+          .map(function (el) { return el.getAttribute('data-lucide'); });
+
         out.contrast = contrastFailures();
+
+        // Open a space and check the workspace panes. The sidebar panels are
+        // rendered by id, so a panel that has been moved to another column
+        // still populates - which means only an explicit "is it in the pane I
+        // expect" check can catch a botched relocation.
+        var tab = document.querySelector('.product-tab-btn[data-product="xpi"]');
+        if (tab) {
+          tab.click();
+          deferred = true;
+          setTimeout(function () {
+            try {
+              var ws = document.getElementById('page-product-workspace');
+              var w = {};
+              w.visible = !!ws && !ws.classList.contains('hide');
+              w.leftPanes = document.querySelectorAll('.left-sidebar-pane').length;
+              w.rightPanes = document.querySelectorAll('.right-sidebar-pane').length;
+              var tree = document.getElementById('left-space-tree-container');
+              w.treeInLeftPane = !!(tree && tree.closest('.left-sidebar-pane'));
+              w.treeItems = tree ? tree.children.length : 0;
+              w.railPanels = ['left-pinned-list', 'left-top-favorites-list', 'left-favorites-list']
+                .filter(function (id) {
+                  var el = document.getElementById(id);
+                  return el && el.closest('.right-sidebar-pane');
+                });
+              // Nothing may be left stranded in the old column.
+              w.strayInLeftPane = ['left-pinned-list', 'left-top-favorites-list', 'left-favorites-list']
+                .filter(function (id) {
+                  var el = document.getElementById(id);
+                  return el && el.closest('.left-sidebar-pane');
+                });
+              // The expand toggle widens .left-sidebar-pane and unwraps titles
+              // via a descendant rule, so it only works while the tree is a
+              // child of that pane - the one structural coupling in the sidebar.
+              var pane = document.querySelector('.left-sidebar-pane');
+              var exp = document.getElementById('btn-toggle-sidebar-expand');
+              if (pane && exp) {
+                // The pane animates width over 0.25s, so measuring straight
+                // after the click reads the start of the transition, not the
+                // target. Suppress the transition for the measurement.
+                var prevTransition = pane.style.transition;
+                pane.style.transition = 'none';
+                var before = pane.getBoundingClientRect().width;
+                exp.click();
+                void pane.offsetWidth;                        // force reflow
+                w.expandAddsClass = pane.classList.contains('expanded');
+                w.widthBefore = Math.round(before);
+                w.widthAfter = Math.round(pane.getBoundingClientRect().width);
+                w.expandWidens = w.widthAfter > w.widthBefore;
+                var titleEl = pane.querySelector('.doc-title-text');
+                w.expandUnwrapsTitles = titleEl
+                  ? getComputedStyle(titleEl).whiteSpace === 'normal'
+                  : null;
+                exp.click();                       // leave it as we found it
+                void pane.offsetWidth;
+                pane.style.transition = prevTransition;
+              }
+              w.contrast = contrastFailures();
+              out.workspace = w;
+            } catch (e) {
+              out.workspace = { error: String(e && e.message || e) };
+            }
+            emit(out);
+          }, 2500);
+        }
       } catch (e) {
         out.fatal = String(e && e.message || e);
       }
-      emit(out);
+      if (!deferred) emit(out);
     }, 1200);
   });
 })();
@@ -273,6 +397,13 @@ def run_probe(browser: str, base: str, authed: bool, theme: str) -> dict:
         out = subprocess.run(
             [browser, "--headless=new", "--disable-gpu", "--no-first-run",
              f"--user-data-dir={profile}", "--virtual-time-budget=20000",
+             # Pin the viewport. Headless Chrome defaults to 800x600, which is
+             # below the 900px breakpoint where the workspace deliberately
+             # stacks and the sidebar goes full width - so the layout
+             # assertions were measuring the mobile layout and reporting the
+             # expand toggle as broken. Responsive behaviour deserves its own
+             # pass rather than being the accidental default.
+             "--window-size=1440,900",
              "--dump-dom", f"{base}/{PROBE_NAME}"],
             capture_output=True, text=True, timeout=180,
             encoding="utf-8", errors="replace",
@@ -301,6 +432,20 @@ def check_api(base: str) -> None:
     for path in PUBLIC_ENDPOINTS:
         code, body = http(base + path)
         record(code == 200, f"public  {path}", f"HTTP {code} {body[:90] if code == 0 else ''}")
+    # Fetch a real document id rather than hardcoding one. This used to assert
+    # /api/document/42, which silently became a 404 the moment re-indexing
+    # removed that row - a failing test that pointed at nothing.
+    # Scraped with a regex, not json.loads: http() caps the body at 80 KB and a
+    # full search response is larger, so parsing the truncated text would fail.
+    code, body = http(base + "/api/search?q=connector&product=xpi")
+    m = re.search(r'"id"\s*:\s*(\d+)', body) if code == 200 else None
+    doc_id = int(m.group(1)) if m else None
+    if doc_id is None:
+        record(False, "public  /api/document/<id>", "could not resolve a document id from search")
+    else:
+        code, _ = http(f"{base}/api/document/{doc_id}")
+        record(code == 200, f"public  /api/document/<id> (resolved {doc_id})", f"HTTP {code}")
+
     token = login(base)
     if not record(bool(token), "login as admin"):
         return
@@ -309,6 +454,65 @@ def check_api(base: str) -> None:
         record(code == 200, f"authed  {path}", f"HTTP {code} {body[:90] if code == 0 else ''}")
     code, _ = http(base + "/api/favorites")
     record(code == 401, "authed endpoint rejects anonymous", f"HTTP {code} (want 401)")
+
+    # The AI provider config is admin-only to write, but the GET was public and
+    # returned the masked provider key (its first six and last four characters)
+    # plus the whole system prompt. Anonymous callers get provider and model
+    # only - the Copilot engine badge needs those and nothing else.
+    code, body = http(base + "/api/ai/settings")
+    try:
+        payload = json.loads(body) if code == 200 else {}
+    except ValueError:
+        payload = {}
+    secret = [k for k in ("masked_api_key", "system_prompt", "api_base_url", "temperature")
+              if k in payload]
+    record(code == 200 and not secret,
+           "anonymous AI settings withhold key and prompt",
+           f"HTTP {code}, exposed: {', '.join(secret) or 'none'}")
+    for path in ("/api/ai/settings", "/api/ai/test-connection"):
+        code, _ = http(base + path, data=b"{}")
+        record(code in (401, 403), f"anonymous cannot write {path}", f"HTTP {code}")
+
+
+SCRIPT_SRC_RE = re.compile(r'<script[^>]+src="(https://[^"]+)"')
+
+
+def check_vendor_urls() -> None:
+    """Every third-party <script> must name an exact version and must resolve.
+
+    Both halves have already bitten this project. An unpinned jsDelivr path
+    silently resolves to whatever version still ships that filename, so the app
+    can change underneath you with no commit; and a pin typed from the registry
+    without checking can point at a release that never published that file,
+    which 404s with no visible error beyond a missing global.
+
+    Google Fonts is deliberately not checked - its css2 endpoint is versionless
+    by design and negotiates formats per browser.
+    """
+    print("\nVendor scripts")
+    src = open(os.path.join(FRONTEND, "index.html"), encoding="utf-8").read()
+    urls = sorted(set(SCRIPT_SRC_RE.findall(src)))
+    if not urls:
+        record(True, "no third-party scripts referenced")
+        return
+
+    codes = []
+    for url in urls:
+        pkg = (url.split("/npm/", 1)[1] if "/npm/" in url else url.split("/", 4)[3]).split("/")[0]
+        # "@" alone is not a version: lucide@latest contains one and still
+        # floats. A pin has to name something immutable.
+        ver = pkg.rsplit("@", 1)[1] if "@" in pkg.lstrip("@") else ""
+        pinned = bool(ver) and ver[0].isdigit()
+        record(pinned, f"pinned  {pkg}",
+               "floating - the CDN picks the version, so behaviour can change without a commit")
+        code, detail = http(url, timeout=25, retries=1)
+        codes.append(code)
+        if code == 0:
+            continue                      # offline; reported once below
+        record(code == 200, f"resolves  {pkg}", f"HTTP {code} for {url}")
+
+    if codes and all(c == 0 for c in codes):
+        print("  SKIP  no network - could not confirm the CDN URLs resolve")
 
 
 def check_browser(browser: str, base: str) -> None:
@@ -332,10 +536,63 @@ def check_browser(browser: str, base: str) -> None:
             record(r.get("theme") == theme, f"{who}: stored theme applied", str(r.get("theme")))
             record(r.get("themeFlipped") is True, "theme toggle flips")
             record(r.get("themeStored") == r.get("themeAfterToggle"), "theme choice persists")
+        v = r.get("vendors") or {}
+        for lib in ("lucide", "marked", "chart"):
+            record(v.get(lib) is True, f"{who}: {lib} loaded and working", str(v.get(lib)))
+        if not authed:
+            record(r.get("copilotSettingsPaneShown") is False,
+                   "guest: Copilot does not open on the settings pane",
+                   str(r.get("copilotSettingsPaneShown")))
+            record(r.get("copilotSettingsBtnShown") is False,
+                   "guest: Copilot settings tab hidden",
+                   str(r.get("copilotSettingsBtnShown")))
+        bad_icons = r.get("unrenderedIcons")
+        record(bad_icons == [], f"{who}: every lucide icon name resolves",
+               f"{len(bad_icons or [])} unknown -> " + ", ".join(sorted(set(bad_icons or []))[:5]))
+        w = r.get("workspace") or {}
+        if w.get("error"):
+            record(False, f"{who}: workspace probe ran", w["error"])
+        elif w:
+            record(w.get("visible") is True, f"{who}: opening a space shows the workspace")
+            # The right rail is an optional layout. Where it is absent the
+            # personal lists legitimately live in the left pane, so assert its
+            # internals only when the rail is actually present - otherwise
+            # these would be three permanent failures describing a design
+            # choice rather than a defect.
+            has_rail = (w.get("rightPanes") or 0) > 0
+            record(w.get("leftPanes") == 1,
+                   f"{who}: workspace has exactly one left pane",
+                   f"left={w.get('leftPanes')}")
+            record(w.get("treeInLeftPane") is True,
+                   f"{who}: space tree is in the left pane")
+            record((w.get("treeItems") or 0) > 0,
+                   f"{who}: space tree populated", str(w.get("treeItems")))
+            if has_rail:
+                record(len(w.get("railPanels") or []) == 3,
+                       f"{who}: Pinned/Favourites/Bookmarks are in the right rail",
+                       str(w.get("railPanels")))
+                record(not w.get("strayInLeftPane"),
+                       f"{who}: no sidebar panel left behind in the left pane",
+                       str(w.get("strayInLeftPane")))
+            else:
+                print(f"  SKIP  {who}: no right rail in this layout "
+                      f"(personal lists are in the left pane)")
+            record(w.get("expandAddsClass") is True and w.get("expandWidens") is True,
+                   f"{who}: sidebar expand toggle widens the pane",
+                   f"class={w.get('expandAddsClass')} {w.get('widthBefore')}px -> {w.get('widthAfter')}px")
+            record(w.get("expandUnwrapsTitles") is True,
+                   f"{who}: expanding unwraps document titles",
+                   str(w.get("expandUnwrapsTitles")))
+            wbad = w.get("contrast") or []
+            record(not wbad, f"{who}: workspace text contrast >= AA",
+                   f"{len(wbad)} below 3:1 -> " + "; ".join(wbad[:3]))
+        else:
+            record(False, f"{who}: workspace probe ran", "no workspace data returned")
+
         errs = r.get("consoleErrors") or []
         record(not errs, f"{who}: no console errors", "; ".join(errs[:3]))
         bad = r.get("contrast") or []
-        record(not bad, f"{who}: text contrast >= AA", f"{len(bad)} below 3:1 -> " + "; ".join(bad[:3]))
+        record(not bad, f"{who}: landing text contrast >= AA", f"{len(bad)} below 3:1 -> " + "; ".join(bad[:3]))
 
 
 # --------------------------------------------------------------------------- main
@@ -357,6 +614,7 @@ def main() -> int:
     proc = start_server(base)
     try:
         check_api(base)
+        check_vendor_urls()
         if args.no_browser:
             print("\nBrowser\n  SKIP  --no-browser given")
         else:
