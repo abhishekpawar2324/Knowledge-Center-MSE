@@ -13,7 +13,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, CData, Declaration, Doctype, ProcessingInstruction
+# Aliased: backend.database exports a Comment ORM model below, which would
+# otherwise shadow this one and silently empty _COMMENT_LIKE.
+from bs4 import Comment as HtmlComment
 
 from backend.database import (
     get_db, 
@@ -100,6 +103,22 @@ _DANGEROUS_TAGS = ["script", "style", "iframe", "frame", "frameset", "object", "
                    "animate", "set", "foreignobject"]
 _URL_ATTRS = {"href", "src", "action", "formaction", "xlink:href", "background", "poster", "srcset"}
 
+# Node types that hide markup from this sanitiser but not from a browser.
+# html.parser is not the HTML5 spec parser, and comment boundaries are where the
+# two disagree most sharply:
+#   <!--><img src=x onerror=...>-->   html.parser: one Comment node, find_all(True)
+#                                     returns NOTHING, so the attribute scrubber
+#                                     never runs. A browser ends the comment at
+#                                     <!--> and the <img> is a live element.
+#   <svg><desc><![CDATA[</desc><img src=x onerror=...>]]>
+#                                     html.parser: a CData node swallowing the img.
+#                                     A browser makes <![CDATA[ a bogus comment that
+#                                     ends at the first >, freeing the <img>.
+# Both were demonstrated executing after sanitising. Document content has no use
+# for comments, so dropping these node types removes the disagreement entirely
+# rather than trying to out-guess it.
+_COMMENT_LIKE = (HtmlComment, CData, Declaration, Doctype, ProcessingInstruction)
+
 
 def sanitize_html_fragment(html_fragment: str) -> str:
     """Strip script-capable markup from user-supplied document HTML.
@@ -110,7 +129,22 @@ def sanitize_html_fragment(html_fragment: str) -> str:
     """
     if not html_fragment:
         return html_fragment
+    # Sanitise to a fixed point. Re-serialising can change how the markup parses
+    # the next time round, so keep going until a pass stops changing anything;
+    # the bound stops a pathological input looping.
+    current = html_fragment
+    for _ in range(4):
+        cleaned = _sanitize_once(current)
+        if cleaned == current:
+            break
+        current = cleaned
+    return current
+
+
+def _sanitize_once(html_fragment: str) -> str:
     soup = BeautifulSoup(html_fragment, "html.parser")
+    for node in soup.find_all(string=lambda t: isinstance(t, _COMMENT_LIKE)):
+        node.extract()
     for tag in soup.find_all(_DANGEROUS_TAGS):
         tag.decompose()
     for tag in soup.find_all(True):

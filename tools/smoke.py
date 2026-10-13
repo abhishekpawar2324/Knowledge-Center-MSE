@@ -616,6 +616,76 @@ def check_vendor_urls() -> None:
         print("  SKIP  no network - could not confirm the CDN URLs resolve")
 
 
+# Markup that a browser parses differently from BeautifulSoup's html.parser.
+# Each of these hides an onerror handler inside something html.parser calls a
+# comment, so find_all(True) never visits it and the attribute scrubber never
+# runs - while the browser ends the comment early and the <img> goes live.
+# The first two were demonstrated executing after sanitising; the rest are the
+# same shape. Verified end to end by assigning the sanitised output via
+# innerHTML in headless Chrome, which is what app.js:2335 does with it.
+MXSS_PAYLOADS = [
+    "<!--><img src=x onerror=alert(1)>-->",
+    "<svg><desc><![CDATA[</desc><img src=x onerror=alert(1)>]]></desc></svg>",
+    "<svg><!--><circle/></svg><img src=x onerror=alert(1)>-->",
+    "<!--- --><img src=x onerror=alert(1)>",
+    "<!--> --><img src=x onerror=alert(1)>",
+    "<!foo><img src=x onerror=alert(1)>",
+    "<?foo><img src=x onerror=alert(1)>",
+    "<![CDATA[<img src=x onerror=alert(1)>]]>",
+    "<!DOCTYPE html><img src=x onerror=alert(1)>",
+    "<img src=x onerror=alert(1)>",
+    "<script>alert(1)</script>",
+    '<iframe srcdoc="&lt;img src=x onerror=alert(1)&gt;"></iframe>',
+]
+
+# Markup that must come through intact - a sanitiser that eats real content is
+# its own kind of failure.
+SANITIZER_KEEPS = [
+    ("<h2>Steps</h2>", "h2"),
+    ('<a href="https://example.com">here</a>', "href"),
+    ("<table><tr><td>cell</td></tr></table>", "<td>"),
+    ('<img src="/uploads/shot.png" alt="shot">', "/uploads/shot.png"),
+    ("<p>Open <b>Studio</b></p>", "<b>"),
+]
+
+
+def check_sanitizer() -> None:
+    """Document HTML is assigned straight to innerHTML with no client-side
+    sanitising, so this server-side function is the only gate."""
+    print("\nHTML sanitizer")
+    sys.path.insert(0, REPO)
+    try:
+        from backend.main import sanitize_html_fragment, _COMMENT_LIKE
+    except Exception as e:
+        record(False, "import sanitize_html_fragment", f"{type(e).__name__}: {e}")
+        return
+
+    # backend.database also exports a Comment ORM model. Importing bs4's Comment
+    # unaliased lets that shadow it, which silently empties this tuple of the one
+    # node type that matters - the sanitiser then looks correct and strips
+    # nothing. That exact mistake was made and only caught by re-running the
+    # browser check, so assert the types rather than trusting the import order.
+    wrong = [t.__name__ for t in _COMMENT_LIKE
+             if getattr(t, "__module__", "").split(".")[0] != "bs4"]
+    record(not wrong, "sanitizer comment types all come from bs4",
+           f"not bs4: {wrong}")
+
+    for raw in MXSS_PAYLOADS:
+        out = (sanitize_html_fragment(raw) or "").lower()
+        bad = [s for s in ("onerror", "onload", "<script", "javascript:", "srcdoc")
+               if s in out]
+        record(not bad, f"sanitised: {raw[:46]}", f"survived: {bad} -> {out[:70]}")
+
+    for markup, needle in SANITIZER_KEEPS:
+        out = sanitize_html_fragment(markup) or ""
+        record(needle in out, f"kept legitimate markup: {needle}", f"got {out[:70]}")
+
+    # Comments themselves must not survive - that is what closed the hole.
+    out = sanitize_html_fragment("<p>a</p><!-- note --><p>b</p>") or ""
+    record("<!--" not in out and "<p>a</p>" in out and "<p>b</p>" in out,
+           "comments stripped, surrounding content kept", out[:70])
+
+
 def check_browser(browser: str, base: str) -> None:
     for authed, theme, want_sections in ((False, "dark", 2), (True, "light", 4)):
         who = "signed in" if authed else "guest"
@@ -742,6 +812,7 @@ def main() -> int:
     try:
         check_api(base)
         check_vendor_urls()
+        check_sanitizer()
         if args.no_browser:
             print("\nBrowser\n  SKIP  --no-browser given")
         else:
