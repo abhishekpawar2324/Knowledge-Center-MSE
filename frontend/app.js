@@ -192,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const row = document.createElement('div')
           row.className = 'sidebar-item-row'
           row.innerHTML = `
-            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-soft);">🕒 ${r.title}</span>
+            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-soft);">🕒 ${escapeHtmlText(r.title)}</span>
             <button class="sidebar-item-remove" title="Remove from Recent">✕</button>
           `
           row.onclick = (e) => {
@@ -263,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const row = document.createElement('div')
       row.className = 'sidebar-item-row'
       row.innerHTML = `
-        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--c-amber);">⭐ ${doc.title}</span>
+        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--c-amber);">⭐ ${escapeHtmlText(doc.title)}</span>
         <button class="sidebar-item-remove" title="Unpin SOP">✕</button>
       `
       row.onclick = (e) => {
@@ -346,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
         row.className = 'sidebar-item-row'
         row.style.borderColor = 'rgba(244,63,94,0.15)'
         row.innerHTML = `
-          <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--c-rose-soft);">❤️ ${f.title}</span>
+          <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--c-rose-soft);">❤️ ${escapeHtmlText(f.title)}</span>
           <button class="sidebar-item-remove" title="Remove from Favourites">✕</button>
         `
         row.onclick = (e) => {
@@ -526,7 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
       row.className = 'sidebar-item-row'
       row.style.borderColor = 'rgba(0,141,199,0.15)'
       row.innerHTML = `
-        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--c-sky);">🔖 ${b.title}</span>
+        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--c-sky);">🔖 ${escapeHtmlText(b.title)}</span>
         <button class="sidebar-item-remove" title="Remove Bookmark">✕</button>
       `
       row.onclick = (e) => {
@@ -822,12 +822,12 @@ document.addEventListener('DOMContentLoaded', () => {
         card.innerHTML = `
           <div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-              <span style="font-size:0.72rem; font-weight:700; padding:3px 8px; border-radius:6px; background:rgba(56,189,248,0.15); color:var(--c-sky); text-transform:uppercase;">${item.product || 'GENERAL'}</span>
-              <span style="font-size:0.75rem; padding:3px 8px; border-radius:6px; background:rgba(16,185,129,0.15); color:var(--c-emerald); font-weight:700;">${ext} • ${item.file_size || 'N/A'}</span>
+              <span style="font-size:0.72rem; font-weight:700; padding:3px 8px; border-radius:6px; background:rgba(56,189,248,0.15); color:var(--c-sky); text-transform:uppercase;">${escapeHtmlText(item.product || 'GENERAL')}</span>
+              <span style="font-size:0.75rem; padding:3px 8px; border-radius:6px; background:rgba(16,185,129,0.15); color:var(--c-emerald); font-weight:700;">${escapeHtmlText(ext)} • ${escapeHtmlText(item.file_size || 'N/A')}</span>
             </div>
-            <h3 style="font-size:1.15rem; font-weight:800; color:var(--text-main); margin:0 0 8px 0; word-break:break-word;">${item.title}</h3>
-            <div style="font-size:0.82rem; color:var(--text-muted); font-family:monospace; margin-bottom:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">📁 ${item.file_name || ''}</div>
-            ${item.description ? `<p style="font-size:0.85rem; color:var(--text-soft); line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin:0;">${item.description}</p>` : ''}
+            <h3 style="font-size:1.15rem; font-weight:800; color:var(--text-main); margin:0 0 8px 0; word-break:break-word;">${escapeHtmlText(item.title)}</h3>
+            <div style="font-size:0.82rem; color:var(--text-muted); font-family:monospace; margin-bottom:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">📁 ${escapeHtmlText(item.file_name || '')}</div>
+            ${item.description ? `<p style="font-size:0.85rem; color:var(--text-soft); line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin:0;">${escapeHtmlText(item.description)}</p>` : ''}
           </div>
 
           <div style="border-top:1px solid var(--border-color); padding-top:14px; display:flex; justify-content:space-between; align-items:center;">
@@ -1200,18 +1200,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         tr.innerHTML = `
-          <td style="padding:12px 16px; color:var(--text-soft); white-space:nowrap; font-size:0.82rem;">${item.timestamp}</td>
+          <td style="padding:12px 16px; color:var(--text-soft); white-space:nowrap; font-size:0.82rem;">${escapeHtmlText(item.timestamp)}</td>
           <td style="padding:12px 16px; font-weight:600; color:var(--text-main); white-space:nowrap;">
-            ${item.username} <span style="font-size:0.72rem; color:var(--text-muted); font-weight:normal;">(${item.user_role})</span>
+            ${escapeHtmlText(item.username)} <span style="font-size:0.72rem; color:var(--text-muted); font-weight:normal;">(${escapeHtmlText(item.user_role)})</span>
           </td>
           <td style="padding:12px 16px;">
             <span style="padding:3px 8px; border-radius:6px; font-size:0.72rem; font-weight:700; background:${catBg}; color:${catColor}; border:1px solid ${catBorder};">
-              ${item.action_category}
+              ${escapeHtmlText(item.action_category)}
             </span>
           </td>
-          <td style="padding:12px 16px; font-weight:700; color:var(--c-sky); font-size:0.82rem;">${item.action}</td>
-          <td style="padding:12px 16px; color:var(--text-soft); font-size:0.84rem; max-width:340px; word-break:break-word;">${item.details || '-'}</td>
-          <td style="padding:12px 16px; color:var(--text-muted); font-family:monospace; font-size:0.78rem;">${item.ip_address}</td>
+          <td style="padding:12px 16px; font-weight:700; color:var(--c-sky); font-size:0.82rem;">${escapeHtmlText(item.action)}</td>
+          <td style="padding:12px 16px; color:var(--text-soft); font-size:0.84rem; max-width:340px; word-break:break-word;">${escapeHtmlText(item.details || '-')}</td>
+          <td style="padding:12px 16px; color:var(--text-muted); font-family:monospace; font-size:0.78rem;">${escapeHtmlText(item.ip_address)}</td>
         `
         container.appendChild(tr)
       })
@@ -1284,6 +1284,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
   }
+
 
   // Remove script-capable markup from HTML produced from user / AI text (marked
   // output). Mirrors the server-side sanitizer used for document bodies.
@@ -1606,7 +1607,7 @@ document.addEventListener('DOMContentLoaded', () => {
     container.innerHTML = '<div style="padding:20px; color:var(--text-muted); text-align:center;">Loading space documents...</div>'
 
     try {
-      const res = await fetch(`/api/search?q=*&product=${encodeURIComponent(activeProduct)}`)
+      const res = await fetch(`/api/search?q=*&product=${encodeURIComponent(activeProduct)}&track=false`)
       if (!res.ok) throw new Error('Failed to load docs')
       const docs = await res.json()
 
@@ -2023,7 +2024,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!q || searchInput.value.trim() !== q) return
     let url = `/api/search?q=${encodeURIComponent(q)}`
     if (activeProduct !== 'all') url += `&product=${encodeURIComponent(activeProduct)}`
-    fetch(url).catch(() => {})
+    fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).catch(() => {})
   }
 
   clearSearchBtn.addEventListener('click', () => {
@@ -2104,17 +2105,297 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // ---- Smart search ----
+  // The server returns every match as one list; filtering, sorting and paging run
+  // here so other callers of /api/search keep the response shape they rely on.
+  const SEARCH_PAGE_SIZE = 10
+  const searchState = {
+    results: [], query: '', page: 1, sort: 'relevance',
+    facets: { product: new Set(), version: new Set(), doc_type: new Set(), source: new Set() }
+  }
+  let suggestTimer = null
+  let suggestSeq = 0
+
+  const FACET_PRODUCT_LABELS = { xpa: 'Magic xpa', xpi: 'Magic xpi', cloud_native: 'Cloud Native', general: 'General' }
+  const DOC_TYPE_LABELS = { troubleshooting: 'Troubleshooting', how_to: 'How-to / SOP', connector: 'Connector', release_note: 'Release note', general: 'General', function: 'Function', reference: 'Reference' }
+  const FACET_GROUPS = [
+    { key: 'product', title: 'Product', value: r => r.product || 'general', label: v => FACET_PRODUCT_LABELS[v] || v },
+    { key: 'version', title: 'Version', value: r => r.version || 'Universal', label: v => v },
+    { key: 'doc_type', title: 'Type', value: r => r.doc_type || 'general', label: v => DOC_TYPE_LABELS[v] || String(v).replace(/_/g, ' ') },
+    { key: 'source', title: 'Source', value: r => (r.is_help || r.source === 'help') ? 'help' : 'kb', label: v => v === 'help' ? 'Official product help' : 'Knowledge base' }
+  ]
+
+  function searchFacetsActive() {
+    return FACET_GROUPS.some(g => searchState.facets[g.key].size > 0)
+  }
+
+  function filteredSearchResults() {
+    const list = searchState.results.filter(r => FACET_GROUPS.every(g => {
+      const sel = searchState.facets[g.key]
+      return !sel.size || sel.has(g.value(r))
+    }))
+    if (searchState.sort === 'newest') {
+      return [...list].sort((a, b) => String(b.raw_created_at || '').localeCompare(String(a.raw_created_at || '')))
+    }
+    if (searchState.sort === 'views') {
+      return [...list].sort((a, b) => (b.views || 0) - (a.views || 0))
+    }
+    return list
+  }
+
+  function searchAgeInfo(raw) {
+    const t = Date.parse(raw || '')
+    if (!raw || isNaN(t)) return null
+    const months = Math.floor((Date.now() - t) / (30.44 * 86400000))
+    let label
+    if (months < 1) label = 'Updated this month'
+    else if (months < 12) label = `Updated ${months} month${months === 1 ? '' : 's'} ago`
+    else {
+      const years = Math.floor(months / 12)
+      label = `Updated ${years} year${years === 1 ? '' : 's'} ago`
+    }
+    // Neutral age only: most of the library is archive content dated by when it
+    // was written, so a 12-month "may be outdated" flag would mark nearly every
+    // result. A real outdated signal needs reader reports, not the authoring date.
+    return { label }
+  }
+
+  function searchClientId() {
+    try {
+      let id = localStorage.getItem('kc_client_id')
+      if (!id) {
+        id = 'client_' + Math.random().toString(36).substring(2, 12)
+        localStorage.setItem('kc_client_id', id)
+      }
+      return id
+    } catch (_) { return '' }
+  }
+
+  function helpfulVotes() {
+    try { return JSON.parse(localStorage.getItem('kc_helpful_votes') || '{}') || {} } catch (_) { return {} }
+  }
+
+  function helpfulVoteHtml(docId) {
+    const v = helpfulVotes()[docId]
+    return `
+      <span class="helpful-vote" onclick="event.stopPropagation()">
+        <span id="helpful-label-${Number(docId)}">${v === undefined ? 'Helpful?' : 'Thanks for the feedback'}</span>
+        <button type="button" aria-pressed="${v === true}" aria-label="Yes, this was helpful" title="Helpful" onclick="event.stopPropagation(); voteHelpful(${jsArg(docId)}, true, this)"><i data-lucide="thumbs-up" style="width:13px; height:13px;"></i></button>
+        <button type="button" aria-pressed="${v === false}" aria-label="No, this was not helpful" title="Not helpful" onclick="event.stopPropagation(); voteHelpful(${jsArg(docId)}, false, this)"><i data-lucide="thumbs-down" style="width:13px; height:13px;"></i></button>
+      </span>`
+  }
+
+  window.voteHelpful = async function(docId, helpful, btn) {
+    const label = document.getElementById(`helpful-label-${Number(docId)}`)
+    try {
+      const headers = { 'Content-Type': 'application/json', 'X-Client-Id': searchClientId() }
+      if (token) headers.Authorization = `Bearer ${token}`
+      const res = await fetch(`/api/document/${encodeURIComponent(docId)}/feedback`, {
+        method: 'POST', headers, body: JSON.stringify({ helpful })
+      })
+      if (!res.ok) throw new Error('HTTP ' + res.status)
+      const votes = helpfulVotes()
+      votes[docId] = helpful
+      try { localStorage.setItem('kc_helpful_votes', JSON.stringify(votes)) } catch (_) {}
+      const group = btn && btn.parentElement
+      if (group) group.querySelectorAll('button').forEach((b, i) => b.setAttribute('aria-pressed', String(i === 0 ? helpful : !helpful)))
+      if (label) label.textContent = 'Thanks for the feedback'
+    } catch (e) {
+      if (label) label.textContent = "Couldn't save your vote"
+    }
+  }
+
+  function renderSearchFacets() {
+    const box = document.getElementById('search-facets')
+    if (!box) return
+    const all = searchState.results
+    if (!all.length) { box.innerHTML = ''; return }
+    const groupsHtml = FACET_GROUPS.map(g => {
+      const counts = new Map()
+      all.forEach(r => { const v = g.value(r); counts.set(v, (counts.get(v) || 0) + 1) })
+      const selected = searchState.facets[g.key]
+      if (counts.size < 2 && !selected.size) return ''   // a filter with one choice filters nothing
+      const values = [...counts.entries()].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0]))).slice(0, 8)
+      return `
+        <div class="facet-group" role="group" aria-label="${escapeHtmlText(g.title)}">
+          <p class="facet-title">${escapeHtmlText(g.title)}</p>
+          ${values.map(([v, n]) => `
+            <label class="facet-option">
+              <input type="checkbox" data-facet="${escapeHtmlText(g.key)}" data-value="${escapeHtmlText(v)}" ${selected.has(v) ? 'checked' : ''}>
+              <span>${escapeHtmlText(g.label(v))}</span>
+              <span class="facet-count">${n}</span>
+            </label>`).join('')}
+        </div>`
+    }).join('')
+    if (!groupsHtml.trim()) { box.innerHTML = ''; return }
+    box.innerHTML = (searchFacetsActive() ? '<button type="button" class="facet-clear" id="btn-clear-facets">Clear filters</button>' : '') + groupsHtml
+    box.querySelectorAll('input[data-facet]').forEach(inp => {
+      inp.addEventListener('change', () => {
+        const set = searchState.facets[inp.dataset.facet]
+        if (inp.checked) set.add(inp.dataset.value); else set.delete(inp.dataset.value)
+        searchState.page = 1
+        renderSearchView()
+      })
+    })
+    const clearBtn = document.getElementById('btn-clear-facets')
+    if (clearBtn) clearBtn.addEventListener('click', clearSearchFacets)
+  }
+
+  function clearSearchFacets() {
+    FACET_GROUPS.forEach(g => searchState.facets[g.key].clear())
+    searchState.page = 1
+    renderSearchView()
+  }
+  window.clearSearchFacets = clearSearchFacets
+
+  function renderSearchPager(totalPages) {
+    const pager = document.getElementById('search-pager')
+    if (!pager) return
+    if (totalPages <= 1) { pager.innerHTML = ''; return }
+    const cur = searchState.page
+    let from = Math.max(1, cur - 3), to = Math.min(totalPages, from + 6)
+    from = Math.max(1, to - 6)
+    const pages = []
+    for (let p = from; p <= to; p++) pages.push(p)
+    pager.innerHTML = `
+      <button type="button" data-page="${cur - 1}" ${cur <= 1 ? 'disabled' : ''} aria-label="Previous page">‹ Prev</button>
+      ${pages.map(p => `<button type="button" data-page="${p}" ${p === cur ? 'aria-current="page"' : ''}>${p}</button>`).join('')}
+      <button type="button" data-page="${cur + 1}" ${cur >= totalPages ? 'disabled' : ''} aria-label="Next page">Next ›</button>`
+    pager.querySelectorAll('button[data-page]').forEach(b => {
+      b.addEventListener('click', () => {
+        searchState.page = Number(b.dataset.page)
+        renderSearchView()
+        document.getElementById('view-search-results')?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+      })
+    })
+  }
+
+  function renderRequestBox(show, prominent) {
+    const box = document.getElementById('search-request-box')
+    if (!box) return
+    if (!show) { box.innerHTML = ''; return }
+    const q = searchState.query || ''
+    const prodOpts = [['all', 'Any product'], ['xpa', 'Magic xpa'], ['xpi', 'Magic xpi'], ['cloud_native', 'Cloud Native'], ['general', 'General']]
+    box.innerHTML = `
+      <div class="request-article-box">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <i data-lucide="file-plus" style="width:20px; height:20px; color:var(--c-sky);"></i>
+          <div style="flex:1; min-width:200px;">
+            <div style="font-weight:700; color:var(--text-main);">${prominent ? 'Nothing matched? Request an article' : "Didn't find what you need?"}</div>
+            <div style="font-size:0.82rem; color:var(--text-muted);">Your request goes to the authoring team's queue.</div>
+          </div>
+          <button type="button" class="btn btn-secondary" id="btn-open-article-request" aria-expanded="false" aria-controls="form-article-request">Request article</button>
+        </div>
+        <form id="form-article-request" class="hide" style="display:flex; flex-direction:column; gap:8px;" novalidate>
+          <label for="req-query" style="font-size:0.8rem; font-weight:700; color:var(--text-soft);">What were you looking for?</label>
+          <input id="req-query" maxlength="300" value="${escapeHtmlText(q)}" style="width:100%;">
+          <span id="req-query-error" class="hide" style="font-size:0.78rem; color:var(--c-rose);">Tell us what you were looking for.</span>
+          <label for="req-product" style="font-size:0.8rem; font-weight:700; color:var(--text-soft);">Product</label>
+          <select id="req-product" style="width:100%;">
+            ${prodOpts.map(([v, l]) => `<option value="${v}" ${v === (activeProduct || 'all') ? 'selected' : ''}>${l}</option>`).join('')}
+          </select>
+          <label for="req-details" style="font-size:0.8rem; font-weight:700; color:var(--text-soft);">Details (optional)</label>
+          <textarea id="req-details" rows="3" maxlength="2000" placeholder="Error message, version, what you were trying to do" style="width:100%;"></textarea>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <button type="submit" class="btn btn-primary" id="btn-submit-article-request">Send request</button>
+            <span id="req-feedback" aria-live="polite" style="font-size:0.82rem; color:var(--text-muted);"></span>
+          </div>
+        </form>
+      </div>`
+    const openBtn = document.getElementById('btn-open-article-request')
+    const form = document.getElementById('form-article-request')
+    openBtn.addEventListener('click', () => {
+      const open = form.classList.toggle('hide') === false
+      openBtn.setAttribute('aria-expanded', String(open))
+      if (open) document.getElementById('req-query')?.focus()
+    })
+    document.getElementById('req-query').addEventListener('input', () => document.getElementById('req-query-error').classList.add('hide'))
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const query = document.getElementById('req-query').value.trim()
+      if (query.length < 2) {
+        document.getElementById('req-query-error').classList.remove('hide')
+        return
+      }
+      const submitBtn = document.getElementById('btn-submit-article-request')
+      const fb = document.getElementById('req-feedback')
+      submitBtn.disabled = true
+      fb.textContent = 'Sending...'
+      try {
+        const headers = { 'Content-Type': 'application/json' }
+        if (token) headers.Authorization = `Bearer ${token}`
+        const res = await fetch('/api/article-requests', {
+          method: 'POST', headers,
+          body: JSON.stringify({ query, product: document.getElementById('req-product').value, details: document.getElementById('req-details').value })
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status))
+        box.innerHTML = `
+          <div class="request-article-box" style="flex-direction:row; align-items:center; gap:10px;">
+            <i data-lucide="check-circle" style="width:20px; height:20px; color:var(--c-emerald);"></i>
+            <span style="color:var(--text-main);">${data.duplicate ? 'Someone already asked for this. Your vote moves it up the queue.' : 'Request sent. The authoring team will see it in their queue.'}</span>
+          </div>`
+        if (window.lucide) lucide.createIcons()
+      } catch (err) {
+        submitBtn.disabled = false
+        fb.style.color = 'var(--c-rose)'
+        fb.textContent = "Couldn't send the request: " + err.message
+      }
+    })
+    if (window.lucide) lucide.createIcons()
+  }
+
+  function scheduleSearchSuggestion(query, count) {
+    const el = document.getElementById('search-suggestion')
+    if (el) { el.classList.add('hide'); el.innerHTML = '' }
+    clearTimeout(suggestTimer)
+    // Asked even when results came back: the server quietly widens a misspelled
+    // query, so "conector" finds results without the reader learning the spelling.
+    if (!query || query === '*') return
+    suggestTimer = setTimeout(async () => {
+      const seq = ++suggestSeq
+      try {
+        const res = await fetch('/api/search/suggest?q=' + encodeURIComponent(query))
+        if (!res.ok || seq !== suggestSeq || query !== searchState.query) return
+        const data = await res.json()
+        const s = data && data.suggestion
+        if (!s || !el || s.toLowerCase() === query.toLowerCase()) return
+        el.innerHTML = `Did you mean <a href="#" id="search-suggestion-link" style="color:var(--link); font-weight:700;">${escapeHtmlText(s)}</a>?`
+        el.classList.remove('hide')
+        document.getElementById('search-suggestion-link').addEventListener('click', (e) => {
+          e.preventDefault()
+          searchWithKeyword(s)
+        })
+      } catch (_) {}
+    }, 500)
+  }
+
   function renderSearchResults(results, query) {
     document.getElementById('view-product-doc-listing').classList.add('hide')
     document.getElementById('view-document-reader').classList.add('hide')
     document.getElementById('view-search-results').classList.remove('hide')
+    if (query !== searchState.query) {
+      FACET_GROUPS.forEach(g => searchState.facets[g.key].clear())
+      searchState.page = 1
+    }
+    searchState.results = Array.isArray(results) ? results : []
+    searchState.query = query
+    renderSearchView()
+    scheduleSearchSuggestion(query, searchState.results.length)
+  }
 
+  function renderSearchView() {
+    const query = searchState.query
+    const all = searchState.results
+    const list = filteredSearchResults()
     const counter = document.getElementById('search-results-counter')
     const container = document.getElementById('search-results-container')
-    counter.textContent = `Found ${results.length} result(s) in this product space for "${query}"`
+    const where = activeProduct === 'all' ? 'across all products' : 'in this product space'
+    renderSearchFacets()
     container.innerHTML = ''
 
-    if (results.length === 0) {
+    if (all.length === 0) {
+      counter.textContent = `No results ${where} for "${query}"`
       container.innerHTML = `
         <div class="glass-panel" style="padding:36px; text-align:center;">
           <h3 style="font-size:1.15rem; font-weight:700; color:var(--text-main); margin-bottom:8px;">No matching documents found</h3>
@@ -2124,13 +2405,36 @@ document.addEventListener('DOMContentLoaded', () => {
           </button>
         </div>
       `
+      renderSearchPager(0)
+      renderRequestBox(true, true)
       if (window.lucide) lucide.createIcons()
       return
     }
 
+    if (list.length === 0) {
+      counter.textContent = `No results match these filters (${all.length} result${all.length === 1 ? '' : 's'} ${where} for "${query}")`
+      container.innerHTML = `
+        <div class="glass-panel" style="padding:28px; text-align:center;">
+          <p style="font-size:0.9rem; color:var(--text-soft); margin-bottom:12px;">None of the results match the filters you picked.</p>
+          <button type="button" class="btn btn-secondary" onclick="clearSearchFacets()">Clear filters</button>
+        </div>`
+      renderSearchPager(0)
+      renderRequestBox(false)
+      return
+    }
+
+    const totalPages = Math.max(1, Math.ceil(list.length / SEARCH_PAGE_SIZE))
+    searchState.page = Math.min(Math.max(1, searchState.page), totalPages)
+    const startIdx = (searchState.page - 1) * SEARCH_PAGE_SIZE
+    const pageItems = list.slice(startIdx, startIdx + SEARCH_PAGE_SIZE)
+    counter.textContent = `Showing ${startIdx + 1}–${startIdx + pageItems.length} of ${list.length} result${list.length === 1 ? '' : 's'}`
+      + (list.length < all.length ? ` (filtered from ${all.length})` : '') + ` ${where} for "${query}"`
+
+    const results = pageItems
     const trimmedQ = (query || '').trim().toLowerCase()
     const top = results[0]
-    const hasHero = top && (top.doc_type === 'function' || top.syntax || top.title.toLowerCase().trim() === trimmedQ)
+    const hasHero = searchState.page === 1 && searchState.sort === 'relevance' && top &&
+      (top.doc_type === 'function' || top.syntax || String(top.title || '').toLowerCase().trim() === trimmedQ)
 
     if (hasHero) {
       const heroCard = document.createElement('div')
@@ -2214,19 +2518,45 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         ${doc.syntax ? `<div class="syntax-pill" style="margin-bottom:4px;"><span style="color:var(--text-muted);">Syntax: </span>${escapeHtmlText(doc.syntax)}</div>` : ''}
         ${doc.snippet ? `<p style="font-size:0.88rem; color:var(--text-soft); line-height:1.6;">${doc.snippet}</p>` : ''}
-        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-color); padding-top:8px; font-size:0.78rem; color:var(--text-faint);">
+        <div class="result-meta-row" style="border-top:1px solid var(--border-color); padding-top:8px; font-size:0.78rem; color:var(--text-faint);">
           <span>By ${escapeHtmlText(doc.author || 'Engineering')} • ${escapeHtmlText(doc.created_at)}</span>
-          <span style="color:var(--link); font-weight:600;">${isHelpTopic ? 'View Reference Specification →' : 'Read Document →'}</span>
+          ${(() => { const a = isHelpTopic ? null : searchAgeInfo(doc.raw_created_at); return a ? `<span class="age-badge">${a.label}</span>` : '' })()}
+          ${isHelpTopic ? '' : helpfulVoteHtml(doc.id)}
+          <span style="color:var(--link); font-weight:600; ${isHelpTopic ? 'margin-left:auto;' : ''}">${isHelpTopic ? 'View Reference Specification →' : 'Read Document →'}</span>
         </div>
       `
       card.onclick = () => openDocument(doc.id)
       container.appendChild(card)
     })
+    renderSearchPager(totalPages)
+    renderRequestBox(searchState.page === totalPages, false)
     if (window.lucide) lucide.createIcons()
   }
 
+  const searchSortSel = document.getElementById('search-sort')
+  if (searchSortSel) {
+    searchSortSel.addEventListener('change', () => {
+      searchState.sort = searchSortSel.value
+      searchState.page = 1
+      renderSearchView()
+    })
+  }
+
   // ==================== 12. DOCUMENT READER VIEW ====================
-  async function openDocument(docId) {
+  // Unpublished documents (drafts, items in review) are only served to signed-in
+// staff, and an <iframe> or plain link can't send the session token. Fetch the
+// file with the token instead and point them at a local blob URL.
+async function swapRawLinksForBlob(container, docId) {
+  try {
+    const res = await fetch(`/api/document/raw/${docId}`, { headers: { Authorization: `Bearer ${token}` } })
+    if (!res.ok || !container) return
+    const url = URL.createObjectURL(await res.blob())
+    container.querySelectorAll('iframe[src^="/api/document/raw/"]').forEach(f => { f.src = url + '#toolbar=1&navpanes=1' })
+    container.querySelectorAll('a[href^="/api/document/raw/"]').forEach(a => { a.href = url })
+  } catch (_) {}
+}
+
+async function openDocument(docId) {
     // Hide all modal overlays if open
     const copilotModal = document.getElementById('modal-copilot')
     if (copilotModal) copilotModal.classList.add('hide')
@@ -2250,7 +2580,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('view-document-reader').classList.remove('hide')
 
     try {
-      const res = await fetch(`/api/document/${docId}`)
+      const res = await fetch(`/api/document/${docId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
       if (!res.ok) return
       currentDoc = await res.json()
 
@@ -2280,7 +2612,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isLast) {
               return `<span style="color:var(--text-main); font-weight:700;">${escapeHtmlText(item)}</span>`
             }
-            return `<span style="cursor:pointer; color:var(--c-sky); transition:color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color = 'var(--c-sky)'" onclick="searchWithKeyword(${jsArg(item)});">${escapeHtmlText(item)}</span> <span style="color:var(--text-faint);">›</span>`
+            return `<span style="cursor:pointer; color:var(--c-sky); transition:color 0.15s;" onmouseover="this.style.color='var(--text-main)'" onmouseout="this.style.color = 'var(--c-sky)'" onclick="searchWithKeyword(${jsArg(item)});">${escapeHtmlText(item)}</span> <span style="color:var(--text-faint);">›</span>`
           }).join(' ')
         } else {
           bcContainer.innerHTML = `<span style="color:var(--text-muted);">Home</span> <span style="color:var(--text-faint);">›</span> <span style="color:var(--c-sky); text-transform:uppercase;">${(currentDoc.product || 'xpi').toUpperCase()}</span> <span style="color:var(--text-faint);">›</span> <span style="color:var(--text-main); font-weight:700;">${escapeHtmlText(currentDoc.title)}</span>`
@@ -2311,6 +2643,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ${currentDoc.html_content || `<pre style="white-space:pre-wrap; font-family:inherit;">${escapeHtmlText(currentDoc.content)}</pre>`}
           </div>
         `
+        if ((currentDoc.status || 'published') !== 'published' && token) swapRawLinksForBlob(bodyContainer, currentDoc.id)
         document.getElementById('btn-toggle-pdf-view').onclick = () => {
           document.getElementById('pdf-view-frame-container').classList.remove('hide')
           document.getElementById('pdf-view-text-container').classList.add('hide')
@@ -3141,12 +3474,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return
       }
       listContainer.innerHTML = sessions.map(s => `
-        <div class="sidebar-item-row" onclick="loadCopilotSession('${s.id}')" style="background:${s.id === activeSessionId ? 'rgba(0,141,199,0.18)' : 'rgba(255,255,255,0.02)'}; border-color:${s.id === activeSessionId ? 'rgba(0,141,199,0.4)' : 'transparent'};">
+        <div class="sidebar-item-row" onclick="loadCopilotSession(${jsArg(s.id)})" style="background:${s.id === activeSessionId ? 'rgba(0,141,199,0.18)' : 'rgba(255,255,255,0.02)'}; border-color:${s.id === activeSessionId ? 'rgba(0,141,199,0.4)' : 'transparent'};">
           <div style="display:flex; align-items:center; gap:6px; min-width:0; flex:1;">
             <i data-lucide="message-square" style="width:13px; height:13px; color:var(--c-sky); flex-shrink:0;"></i>
-            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-soft); font-size:0.78rem;">${s.title}</span>
+            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-soft); font-size:0.78rem;">${escapeHtmlText(s.title)}</span>
           </div>
-          <button type="button" class="sidebar-item-remove" onclick="deleteCopilotSession('${s.id}', event)" title="Delete session">×</button>
+          <button type="button" class="sidebar-item-remove" onclick="deleteCopilotSession(${jsArg(s.id)}, event)" title="Delete session">×</button>
         </div>
       `).join('')
       if (window.lucide) lucide.createIcons()
@@ -3185,9 +3518,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div style="font-size:0.72rem; color:var(--c-sky); font-weight:700; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">📖 Matched Knowledge Center Articles (${sources.length})</div>
                 <div style="display:flex; flex-direction:column; gap:4px;">
                   ${sources.map(s => `
-                    <div onclick="openDocument(${s.id})" style="padding:4px 8px; border-radius:6px; background:var(--bg-card); color:var(--c-sky); font-size:0.75rem; cursor:pointer; display:flex; align-items:center; justify-content:space-between;">
-                      <span>📖 ${s.title}</span>
-                      <span style="font-size:0.65rem; color:var(--text-muted); background:rgba(0,141,199,0.2); padding:1px 6px; border-radius:4px;">${(s.product || 'MSE').toUpperCase()}</span>
+                    <div onclick="openDocument(${jsArg(s.id)})" style="padding:4px 8px; border-radius:6px; background:var(--bg-card); color:var(--c-sky); font-size:0.75rem; cursor:pointer; display:flex; align-items:center; justify-content:space-between;">
+                      <span>📖 ${escapeHtmlText(s.title)}</span>
+                      <span style="font-size:0.65rem; color:var(--text-muted); background:rgba(0,141,199,0.2); padding:1px 6px; border-radius:4px;">${escapeHtmlText((s.product || 'MSE').toUpperCase())}</span>
                     </div>
                   `).join('')}
                 </div>
@@ -3254,14 +3587,14 @@ document.addEventListener('DOMContentLoaded', () => {
           <div style="display:flex; flex-direction:column; gap:5px;">
             ${relevantSources.map(s => {
               const isHelp = s.is_help || String(s.id).startsWith('help_')
-              const clickArg = isHelp ? `'help_${s.id}'` : s.id
+              const clickArg = jsArg(isHelp ? (String(s.id).startsWith('help_') ? String(s.id) : `help_${s.id}`) : s.id)
               const badge = isHelp ? 'HELP' : (s.product || 'KB').toUpperCase()
               const badgeBg = isHelp ? 'rgba(168,85,247,0.2)' : 'rgba(0,141,199,0.2)'
               const badgeColor = isHelp ? '#c084fc' : '#38bdf8'
               return `
                 <div onclick="openDocument(${clickArg})" style="padding:6px 10px; border-radius:6px; background:var(--bg-subtle); color:var(--text-soft); font-size:0.78rem; cursor:pointer; display:flex; align-items:center; justify-content:space-between;" onmouseover="this.style.background = 'var(--bg-subtle)'" onmouseout="this.style.background = 'var(--bg-subtle)'">
-                  <span>${isHelp ? '📚' : '📖'} ${s.title}</span>
-                  <span style="font-size:0.65rem; color:${badgeColor}; background:${badgeBg}; padding:2px 8px; border-radius:4px; font-weight:700;">${badge}</span>
+                  <span>${isHelp ? '📚' : '📖'} ${escapeHtmlText(s.title)}</span>
+                  <span style="font-size:0.65rem; color:${badgeColor}; background:${badgeBg}; padding:2px 8px; border-radius:4px; font-weight:700;">${escapeHtmlText(badge)}</span>
                 </div>
               `
             }).join('')}
@@ -3279,7 +3612,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ${extractedFiles.map(f => `
             <div style="display:inline-flex; align-items:center; gap:5px; padding:3px 8px; border-radius:6px; background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.3); font-size:0.72rem; color:var(--text-soft);">
               <i data-lucide="file-text" style="width:12px; height:12px; color:var(--c-sky);"></i>
-              <span>${f.name}</span>
+              <span>${escapeHtmlText(f.name)}</span>
               <span style="opacity:0.6;">(${Math.round((f.size || 0) / 1024)} KB)</span>
             </div>
           `).join('')}
@@ -3308,7 +3641,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px; color:var(--c-sky); border-color:rgba(56,189,248,0.4);" onclick="copyTextToClipboard(\`${encodeURIComponent(rawAnswer).replace(/`/g, '\\`')}\`, this, true)">
               <i data-lucide="copy" style="width:13px; height:13px;"></i> Copy Analysis
             </button>
-            <button type="button" class="btn btn-primary" style="font-size:0.75rem; padding:6px 14px; background:linear-gradient(135deg, #10b981, #06b6d4); font-weight:700; gap:6px;" onclick="openPublishAiKbModal(${resId || 'null'}, \`${encodeURIComponent(kbTitle).replace(/`/g, '\\`')}\`, '${product.toLowerCase()}', \`${encodeURIComponent(kbSteps).replace(/`/g, '\\`')}\`, '4.14', \`${encodeURIComponent(kbDesc).replace(/`/g, '\\`')}\`, \`${encodeURIComponent(kbRoot).replace(/`/g, '\\`')}\`)">
+            <button type="button" class="btn btn-primary" style="font-size:0.75rem; padding:6px 14px; background:linear-gradient(135deg, #10b981, #06b6d4); font-weight:700; gap:6px;" onclick="openPublishAiKbModal(${resId || 'null'}, \`${encodeURIComponent(kbTitle).replace(/`/g, '\\`')}\`, ${jsArg(String(product).toLowerCase())}, \`${encodeURIComponent(kbSteps).replace(/`/g, '\\`')}\`, '4.14', \`${encodeURIComponent(kbDesc).replace(/`/g, '\\`')}\`, \`${encodeURIComponent(kbRoot).replace(/`/g, '\\`')}\`)">
               <i data-lucide="file-check" style="width:13px; height:13px;"></i> Publish as KB
             </button>
           </div>
@@ -3429,7 +3762,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div style="display:flex; align-items:center; gap:6px; min-width:0; flex:1;">
             <i data-lucide="file-search" style="width:12px; height:12px; color:var(--c-purple); flex-shrink:0;"></i>
             <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-soft); font-size:0.75rem;">
-              ${c.case_number ? `Case #${c.case_number}` : 'Diag'}: ${c.problem_summary || (c.product || 'MSE').toUpperCase()}
+              ${c.case_number ? `Case #${escapeHtmlText(c.case_number)}` : 'Diag'}: ${escapeHtmlText(c.problem_summary || (c.product || 'MSE').toUpperCase())}
             </span>
           </div>
           <button type="button" class="sidebar-item-remove" onclick="deleteCaseDiagnostic(${c.id}, event)" title="Delete diagnostic">×</button>
@@ -3598,7 +3931,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Render user message bubble
       const userMsg = document.createElement('div')
       userMsg.style.cssText = 'align-self:flex-end; max-width:82%; padding:10px 14px; border-radius:10px; background:linear-gradient(135deg,#008DC7,#2DBCEE); color:#fff; font-size:0.88rem;'
-      userMsg.innerHTML = `<div>${prompt}</div>`
+      userMsg.innerHTML = `<div>${escapeHtmlText(prompt)}</div>`
       if (thread) thread.appendChild(userMsg)
       input.value = ''
 
@@ -3674,12 +4007,12 @@ document.addEventListener('DOMContentLoaded', () => {
               </div>
               <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:8px;">
                 ${kbDocs.map(s => `
-                  <div onclick="openDocument(${s.id})" style="padding:8px 12px; border-radius:8px; background:var(--bg-card); border:1px solid rgba(56,189,248,0.2); cursor:pointer; transition:all 0.2s ease; display:flex; flex-direction:column; gap:4px;">
+                  <div onclick="openDocument(${jsArg(s.id)})" style="padding:8px 12px; border-radius:8px; background:var(--bg-card); border:1px solid rgba(56,189,248,0.2); cursor:pointer; transition:all 0.2s ease; display:flex; flex-direction:column; gap:4px;">
                     <div style="font-size:0.78rem; font-weight:600; color:var(--text-main); line-height:1.3; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">
-                      📄 ${s.title}
+                      📄 ${escapeHtmlText(s.title)}
                     </div>
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-top:4px; font-size:0.68rem; color:var(--text-muted);">
-                      <span style="padding:1px 6px; border-radius:4px; font-weight:700; background:rgba(0,141,199,0.2); color:var(--c-sky);">${(s.product || 'MSE').toUpperCase()}</span>
+                      <span style="padding:1px 6px; border-radius:4px; font-weight:700; background:rgba(0,141,199,0.2); color:var(--c-sky);">${escapeHtmlText((s.product || 'MSE').toUpperCase())}</span>
                       <span style="color:var(--text-faint); font-size:0.68rem;">Knowledge Article</span>
                     </div>
                   </div>
@@ -3702,7 +4035,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   <div style="display:flex; flex-wrap:wrap; gap:6px;">
                     ${helpDocs.map(h => `
                       <span style="padding:3px 8px; border-radius:6px; background:rgba(15,23,42,0.8); border:1px solid rgba(56,189,248,0.25); color:#7dd3fc; font-size:0.72rem; font-weight:600;">
-                        📘 ${h.title}
+                        📘 ${escapeHtmlText(h.title)}
                       </span>
                     `).join('')}
                   </div>
@@ -3753,7 +4086,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ⚙️ Auto-Remediate
               </button>
             </div>
-            <span style="font-size:0.7rem; color:var(--text-faint);">Provider: <strong style="color:var(--c-sky);">${data.provider || 'Groq'}</strong></span>
+            <span style="font-size:0.7rem; color:var(--text-faint);">Provider: <strong style="color:var(--c-sky);">${escapeHtmlText(data.provider || 'Groq')}</strong></span>
           </div>
         `
         fetchCopilotSessions()
@@ -4234,7 +4567,11 @@ ${content}
     if (keyEl) keyEl.value = 'gsk_69L5...DPfLiS'
 
     try {
-      const res = await fetch('/api/ai/settings')
+      // Send the token: without it the server returns only the public fields, so
+      // the form showed placeholders and a save would blank the system prompt.
+      const res = await fetch('/api/ai/settings', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
       if (!res.ok) {
         updateEngineIndicator()
         return
@@ -4321,7 +4658,7 @@ ${content}
       const feedback = document.getElementById('ai-settings-feedback')
       const prov = (document.getElementById('ai-setting-provider') || {}).value || 'groq'
       let model = (document.getElementById('ai-setting-model') || {}).value
-      const key = (document.getElementById('ai-setting-apikey') || {}).value
+      let key = (document.getElementById('ai-setting-apikey') || {}).value
       let base = (document.getElementById('ai-setting-baseurl') || {}).value
       const temp = (document.getElementById('ai-setting-temp') || {}).value
       const prompt = (document.getElementById('ai-setting-prompt') || {}).value
@@ -4349,7 +4686,10 @@ ${content}
       try {
         const res = await fetch('/api/ai/settings', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
           body: JSON.stringify({
             provider: prov,
             model_name: model,
@@ -4375,10 +4715,12 @@ ${content}
         }
         updateEngineIndicator()
       } catch (err) {
+        // Report the real outcome. This used to print a green "saved" message on
+        // every failure, so a rejected save looked identical to a successful one.
         if (feedback) {
-          feedback.style.background = 'rgba(16,185,129,0.15)'
-          feedback.style.color = 'var(--c-emerald)'
-          feedback.textContent = '✓ AI Configuration saved with Groq AI (' + model + ') active.'
+          feedback.style.background = 'rgba(244,63,94,0.15)'
+          feedback.style.color = 'var(--c-rose)'
+          feedback.textContent = '✗ Settings were not saved: ' + err.message
         }
         updateEngineIndicator()
       }
@@ -4391,7 +4733,7 @@ ${content}
       const feedback = document.getElementById('ai-settings-feedback')
       const prov = (document.getElementById('ai-setting-provider') || {}).value || 'groq'
       let model = (document.getElementById('ai-setting-model') || {}).value
-      const key = (document.getElementById('ai-setting-apikey') || {}).value
+      let key = (document.getElementById('ai-setting-apikey') || {}).value
       let base = (document.getElementById('ai-setting-baseurl') || {}).value
 
       if (prov === 'groq') {
@@ -4417,7 +4759,10 @@ ${content}
       try {
         const res = await fetch('/api/ai/test-connection', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
           body: JSON.stringify({
             provider: prov,
             model_name: model,
@@ -4425,7 +4770,9 @@ ${content}
             api_base_url: base
           })
         })
-        const data = await res.json()
+        let data = {}
+        try { data = await res.json() } catch (_) {}
+        if (!res.ok) throw new Error(data.detail || data.message || ('HTTP ' + res.status))
         if (feedback) {
           if (data.success) {
             feedback.style.background = 'rgba(16,185,129,0.15)'
@@ -6026,7 +6373,67 @@ Inspection of \`server.log\` indicated thread pool saturation under GigaSpaces G
   }
 
   // --- Admin Tab 4: Search Analytics & Knowledge Gaps ---
+  // Article requests from search: the authoring queue, most-wanted first.
+  async function fetchArticleRequests() {
+    const list = document.getElementById('admin-article-requests-list')
+    if (!list) return
+    const filterEl = document.getElementById('admin-article-requests-filter')
+    const status = filterEl ? filterEl.value : 'open'
+    list.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem;">Loading requests...</div>'
+    try {
+      const res = await fetch(`/api/admin/article-requests?status_filter=${encodeURIComponent(status)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (!res.ok) {
+        list.innerHTML = `<div style="color:var(--c-rose); font-size:0.85rem;">${escapeHtmlText(await apiErrorMessage(res, 'Could not load article requests'))}</div>`
+        return
+      }
+      const rows = await res.json()
+      if (!rows.length) {
+        list.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem;">No ${status === 'all' ? '' : escapeHtmlText(status) + ' '}requests yet. Readers can request an article from the search results.</div>`
+        return
+      }
+      const prodLabel = { all: 'Any product', xpa: 'xpa', xpi: 'xpi', cloud_native: 'Cloud', general: 'General' }
+      list.innerHTML = rows.map(r => `
+        <div style="display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; padding:10px 12px; border:1px solid var(--border-color); border-radius:10px;">
+          <div style="flex:1; min-width:220px;">
+            <div style="font-weight:700; color:var(--text-main);">${escapeHtmlText(r.query)}</div>
+            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
+              ${escapeHtmlText(prodLabel[r.product] || r.product)} · ${Number(r.votes) || 1} request${Number(r.votes) === 1 ? '' : 's'} · first by ${escapeHtmlText(r.requested_by)} · ${escapeHtmlText(r.created_at)} · ${escapeHtmlText(r.status)}
+            </div>
+            ${r.details ? `<div style="font-size:0.82rem; color:var(--text-soft); margin-top:6px; white-space:pre-wrap;">${escapeHtmlText(r.details)}</div>` : ''}
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-secondary" style="padding:4px 10px; font-size:0.75rem;" onclick="createKbForGap(${jsArg(r.query)})">Write KB</button>
+            ${r.status !== 'done' ? `<button type="button" class="btn btn-secondary" style="padding:4px 10px; font-size:0.75rem;" onclick="setArticleRequestStatus(${Number(r.id)}, 'done')">Mark done</button>` : ''}
+            ${r.status !== 'dismissed' ? `<button type="button" class="btn btn-secondary" style="padding:4px 10px; font-size:0.75rem;" onclick="setArticleRequestStatus(${Number(r.id)}, 'dismissed')">Dismiss</button>` : ''}
+            ${r.status !== 'open' ? `<button type="button" class="btn btn-secondary" style="padding:4px 10px; font-size:0.75rem;" onclick="setArticleRequestStatus(${Number(r.id)}, 'open')">Reopen</button>` : ''}
+          </div>
+        </div>`).join('')
+    } catch (e) {
+      list.innerHTML = '<div style="color:var(--c-rose); font-size:0.85rem;">Could not load article requests. Check the connection and try again.</div>'
+    }
+  }
+
+  window.setArticleRequestStatus = async function(id, status) {
+    try {
+      const res = await fetch(`/api/admin/article-requests/${Number(id)}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status })
+      })
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Update failed'))
+    } catch (e) {
+      alert("Couldn't update the request: " + e.message)
+    }
+    fetchArticleRequests()
+  }
+
+  const articleReqFilter = document.getElementById('admin-article-requests-filter')
+  if (articleReqFilter) articleReqFilter.addEventListener('change', fetchArticleRequests)
+
   async function fetchAdminAnalytics() {
+    fetchArticleRequests()
     const grid = document.getElementById('admin-analytics-metrics-grid')
     const zeroGrid = document.getElementById('admin-zero-queries-grid')
     const scopeEl = document.getElementById('analytics-filter-scope')
@@ -6191,6 +6598,120 @@ zeroGrid.innerHTML = ''
   // --- Admin Tab 5: User Contributions & Uploads Analytics ---
   const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
+  // ---- Contributions dashboard: time window ----
+  // One control picks the window and the bucket size of the trend chart / grid:
+  // week = last 12 weeks by week, month = last 12 months by month, year = every
+  // year by year, all = all time by month, custom = the From/To dates.
+  let contribPeriod = 'month'
+  let contribFetchSeq = 0
+
+  function contribIsoDay(d) {
+    const p = n => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+  }
+
+  function contribWindow() {
+    const today = new Date()
+    if (contribPeriod === 'week') {
+      const s = new Date(today)
+      s.setDate(s.getDate() - ((s.getDay() + 6) % 7) - 7 * 11)   // Monday, 11 weeks back
+      return { start: contribIsoDay(s), end: contribIsoDay(today), groupBy: 'week', label: 'Last 12 weeks' }
+    }
+    if (contribPeriod === 'month') {
+      const s = new Date(today.getFullYear(), today.getMonth() - 11, 1)
+      return { start: contribIsoDay(s), end: contribIsoDay(today), groupBy: 'month', label: 'Last 12 months' }
+    }
+    if (contribPeriod === 'year') return { start: '', end: '', groupBy: 'year', label: 'All years, by year' }
+    if (contribPeriod === 'all') return { start: '', end: '', groupBy: 'month', label: 'All time, by month' }
+    const start = (document.getElementById('contrib-filter-start') || {}).value || ''
+    const end = (document.getElementById('contrib-filter-end') || {}).value || ''
+    let groupBy = 'month'
+    if (start && end) {
+      const days = (new Date(end) - new Date(start)) / 86400000
+      groupBy = days <= 92 ? 'week' : (days <= 1100 ? 'month' : 'year')
+    }
+    const label = start && end ? `${start} to ${end}` : (start ? `From ${start}` : (end ? `Up to ${end}` : 'Custom range'))
+    return { start, end, groupBy, label }
+  }
+
+  function setContribPeriod(period, opts = {}) {
+    contribPeriod = period
+    document.querySelectorAll('.contrib-period-btn').forEach(b => {
+      const on = b.dataset.period === period
+      b.classList.toggle('active', on)
+      b.setAttribute('aria-pressed', on ? 'true' : 'false')
+    })
+    const custom = period === 'custom'
+    const range = document.getElementById('contrib-custom-range')
+    if (range) range.classList.toggle('is-disabled', !custom)
+    const startInp = document.getElementById('contrib-filter-start')
+    const endInp = document.getElementById('contrib-filter-end')
+    if (startInp) startInp.disabled = !custom
+    if (endInp) endInp.disabled = !custom
+    if (custom && startInp && endInp && !startInp.value && !endInp.value) {
+      // Start the custom range from the last 12 months rather than empty boxes.
+      const today = new Date()
+      startInp.value = contribIsoDay(new Date(today.getFullYear(), today.getMonth() - 11, 1))
+      endInp.value = contribIsoDay(today)
+    }
+    if (!opts.silent) fetchAdminContributions()
+  }
+
+  function contribParams(extra = {}) {
+    const val = id => (document.getElementById(id) || {}).value
+    const win = contribWindow()
+    const params = new URLSearchParams()
+    if (val('contrib-filter-scope')) params.append('scope', val('contrib-filter-scope'))
+    if (val('contrib-filter-user') && val('contrib-filter-user') !== 'all') params.append('username', val('contrib-filter-user'))
+    if (val('contrib-filter-product') && val('contrib-filter-product') !== 'all') params.append('product', val('contrib-filter-product'))
+    if (val('contrib-filter-status') && val('contrib-filter-status') !== 'all') params.append('contributor_status', val('contrib-filter-status'))
+    if (val('contrib-filter-docstatus') && val('contrib-filter-docstatus') !== 'all') params.append('doc_status', val('contrib-filter-docstatus'))
+    if (val('contrib-filter-doctype') && val('contrib-filter-doctype') !== 'all') params.append('doc_type', val('contrib-filter-doctype'))
+    if (win.start) params.append('start_date', win.start)
+    if (win.end) params.append('end_date', win.end)
+    params.append('group_by', win.groupBy)
+    Object.entries(extra).forEach(([k, v]) => params.append(k, v))
+    return params
+  }
+
+  // The window a clicked bucket covers, so a bar or month row can drill into it.
+  function contribBucketRange(key, groupBy) {
+    if (groupBy === 'week') {
+      const s = new Date(key + 'T00:00:00')
+      const e = new Date(s); e.setDate(e.getDate() + 6)
+      return [contribIsoDay(s), contribIsoDay(e)]
+    }
+    if (groupBy === 'year') return [`${key}-01-01`, `${key}-12-31`]
+    const [y, m] = key.split('-').map(Number)
+    return [contribIsoDay(new Date(y, m - 1, 1)), contribIsoDay(new Date(y, m, 0))]
+  }
+
+  function drillContribRange(start, end) {
+    const startInp = document.getElementById('contrib-filter-start')
+    const endInp = document.getElementById('contrib-filter-end')
+    if (startInp) startInp.value = start
+    if (endInp) endInp.value = end
+    setContribPeriod('custom')
+  }
+
+  function renderPeriodComparisonCard(cmp) {
+    if (!cmp || !cmp.current || !cmp.previous) return ''
+    const cur = cmp.current.uploads || 0
+    const prev = cmp.previous.uploads || 0
+    const diff = cur - prev
+    const arrow = diff > 0 ? '▲' : (diff < 0 ? '▼' : '•')
+    const color = diff > 0 ? 'var(--c-emerald)' : (diff < 0 ? 'var(--c-rose)' : 'var(--text-muted)')
+    const pct = prev > 0 ? ` (${diff > 0 ? '+' : ''}${Math.round((diff / prev) * 100)}%)` : ''
+    return `
+      <div class="glass-panel" style="padding:18px; border-left:4px solid #0ea5e9;">
+        <div style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">This window vs the one before</div>
+        <div style="font-size:1.8rem; font-weight:800; color:var(--text-main); margin-top:4px;">${cur} <span style="font-size:0.9rem; font-weight:700; color:${color};">${arrow} ${diff > 0 ? '+' : ''}${diff}${pct}</span></div>
+        <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">
+          vs ${prev} in ${escapeHtmlText(cmp.previous.label)} · ${Number(cmp.current.contributors) || 0} contributor(s) now, ${Number(cmp.previous.contributors) || 0} before
+        </div>
+      </div>`
+  }
+
   function renderMonthComparisonCard(cmp) {
     if (!cmp || !cmp.this_month) return ''
     const cur = cmp.this_month.uploads || 0
@@ -6220,14 +6741,12 @@ zeroGrid.innerHTML = ''
     const parts = []
     const scope = val('contrib-filter-scope')
     parts.push(scope === 'all' ? 'Live + Archive' : (scope === 'historical' ? 'Confluence archive' : 'Live platform'))
-    if (val('contrib-filter-period') && val('contrib-filter-period') !== 'all') parts.push(selText('contrib-filter-period').replace(/\s*\(.*\)$/, ''))
-    if (val('contrib-filter-year') && val('contrib-filter-year') !== 'all' && val('contrib-filter-period') === 'all') parts.push(val('contrib-filter-year'))
-    if (val('contrib-filter-month') && val('contrib-filter-month') !== 'all') parts.push(MONTH_NAMES[parseInt(val('contrib-filter-month'), 10) - 1] || '')
+    parts.push(contribWindow().label)
     if (val('contrib-filter-product') && val('contrib-filter-product') !== 'all') parts.push(selText('contrib-filter-product'))
     if (val('contrib-filter-user') && val('contrib-filter-user') !== 'all') parts.push(val('contrib-filter-user'))
     if (val('contrib-filter-status') && val('contrib-filter-status') !== 'all') parts.push(selText('contrib-filter-status'))
-    if (val('contrib-filter-start')) parts.push('from ' + val('contrib-filter-start'))
-    if (val('contrib-filter-end')) parts.push('to ' + val('contrib-filter-end'))
+    if (val('contrib-filter-docstatus') && val('contrib-filter-docstatus') !== 'all') parts.push(selText('contrib-filter-docstatus'))
+    if (val('contrib-filter-doctype') && val('contrib-filter-doctype') !== 'all') parts.push(selText('contrib-filter-doctype'))
     const s = data.summary || {}
     el.innerHTML = `
       <span>📊 Showing <strong style="color:var(--text-main);">${Number(s.total_uploads) || 0} KB(s)</strong>
@@ -6312,94 +6831,49 @@ zeroGrid.innerHTML = ''
 
   // Clicking a month row narrows the whole dashboard to that month.
   window.filterContributionsToMonth = function(year, month) {
-    const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v }
-    const yearSel = document.getElementById('contrib-filter-year')
-    if (yearSel && !Array.from(yearSel.options).some(o => o.value === String(year))) {
-      const opt = document.createElement('option')
-      opt.value = String(year)
-      opt.textContent = String(year)
-      yearSel.appendChild(opt)
-    }
-    setVal('contrib-filter-period', 'all')
-    setVal('contrib-filter-year', String(year))
-    setVal('contrib-filter-month', String(month))
-    setVal('contrib-filter-start', '')
-    setVal('contrib-filter-end', '')
-    fetchAdminContributions()
+    const y = Number(year), m = Number(month)
+    if (!y || !m) return
+    drillContribRange(contribIsoDay(new Date(y, m - 1, 1)), contribIsoDay(new Date(y, m, 0)))
   }
 
   async function fetchAdminContributions() {
-    const scopeSel = document.getElementById('contrib-filter-scope')
-    const periodSel = document.getElementById('contrib-filter-period')
     const userSel = document.getElementById('contrib-filter-user')
-    const yearSel = document.getElementById('contrib-filter-year')
-    const monthSel = document.getElementById('contrib-filter-month')
-    const prodSel = document.getElementById('contrib-filter-product')
-    const statusSel = document.getElementById('contrib-filter-status')
-    const startInp = document.getElementById('contrib-filter-start')
-    const endInp = document.getElementById('contrib-filter-end')
+    const win = contribWindow()
+    const params = contribParams()
+    // Filters fire a request on every change; only the latest response may paint.
+    const seq = ++contribFetchSeq
 
-    const params = new URLSearchParams()
-    if (scopeSel && scopeSel.value) params.append('scope', scopeSel.value)
-    if (periodSel && periodSel.value !== 'all') params.append('period', periodSel.value)
-    if (userSel && userSel.value !== 'all') params.append('username', userSel.value)
-    
-    // Only pass year if period is not overriding it
-    const selectedYear = yearSel ? yearSel.value : '2026'
-    if (selectedYear && selectedYear !== 'all' && (!periodSel || periodSel.value === 'all')) {
-      params.append('year', selectedYear)
-    }
-    
-    if (monthSel && monthSel.value !== 'all') params.append('month', monthSel.value)
-    if (prodSel && prodSel.value !== 'all') params.append('product', prodSel.value)
-    if (statusSel && statusSel.value !== 'all') params.append('contributor_status', statusSel.value)
-    if (startInp && startInp.value) params.append('start_date', startInp.value)
-    if (endInp && endInp.value) params.append('end_date', endInp.value)
+    const hint = document.getElementById('contrib-period-hint')
+    if (hint) hint.textContent = win.label + ' · grouped by ' + win.groupBy
 
     try {
       const res = await fetch(`/api/admin/contributions?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
+      if (seq !== contribFetchSeq) return
       if (!res.ok) {
         const cardsErr = document.getElementById('contrib-summary-cards')
         if (cardsErr) cardsErr.innerHTML = `<div style="color:var(--c-rose);">${escapeHtmlText(await apiErrorMessage(res, 'Failed to load contributions'))}</div>`
         return
       }
       const data = await res.json()
+      if (seq !== contribFetchSeq) return
       contribDataCache = data
 
-      // Update Period Badge Label
       const badgeEl = document.getElementById('contrib-chart-period-badge')
-      if (badgeEl) {
-        const periodVal = periodSel ? periodSel.value : 'all'
-        const labelMap = { week: 'This Week', month: 'This Month', year: `This Year (${new Date().getFullYear()})`, all: 'All Time' }
-        badgeEl.textContent = labelMap[periodVal] || 'All Time'
-      }
+      if (badgeEl) badgeEl.textContent = win.label
 
-      // 1. Populate Dropdowns dynamically
-      if (data.available_filters) {
-        if (userSel && data.available_filters.users) {
-          const currentVal = userSel.value
-          userSel.innerHTML = '<option value="all">🌟 All Contributors</option>'
-          data.available_filters.users.forEach(u => {
-            const opt = document.createElement('option')
-            opt.value = u
-            opt.textContent = u
-            if (u.toLowerCase() === (currentVal || '').toLowerCase()) opt.selected = true
-            userSel.appendChild(opt)
-          })
-        }
-        if (yearSel && data.available_filters.years) {
-          const existingYears = new Set(Array.from(yearSel.options).map(o => o.value))
-          data.available_filters.years.forEach(y => {
-            if (!existingYears.has(y)) {
-              const opt = document.createElement('option')
-              opt.value = y
-              opt.textContent = y
-              yearSel.appendChild(opt)
-            }
-          })
-        }
+      // 1. Populate the user dropdown from the current scope
+      if (data.available_filters && userSel && data.available_filters.users) {
+        const currentVal = userSel.value
+        userSel.innerHTML = '<option value="all">🌟 All Contributors</option>'
+        data.available_filters.users.forEach(u => {
+          const opt = document.createElement('option')
+          opt.value = u
+          opt.textContent = u
+          if (u.toLowerCase() === (currentVal || '').toLowerCase()) opt.selected = true
+          userSel.appendChild(opt)
+        })
       }
 
       // 2. Render KPI Summary Cards
@@ -6428,6 +6902,7 @@ zeroGrid.innerHTML = ''
             <div style="font-size:1.3rem; font-weight:800; color:var(--c-amber); margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtmlText(data.summary.top_contributor)}">${escapeHtmlText(data.summary.top_contributor)}</div>
             <div style="font-size:0.72rem; color:var(--c-amber);">${Number(data.summary.top_contributor_count) || 0} KBs uploaded</div>
           </div>
+          ${renderPeriodComparisonCard(data.period_comparison)}
           ${renderMonthComparisonCard(data.month_comparison)}
           <div class="glass-panel" style="padding:18px; border-left:4px solid #a855f7;">
             <div style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">Total Reader Views</div>
@@ -6480,37 +6955,49 @@ zeroGrid.innerHTML = ''
           })
         }
 
-        // Chart B: Upload Trend Line Chart
+        // Chart B: contributions per bucket, stacked by article status
         const ctxTimeline = document.getElementById('admin-chart-contrib-timeline')
         if (ctxTimeline) {
           if (window.chartContribTimeline) window.chartContribTimeline.destroy()
-
-          const timeItems = data.timeline || []
-          const timeLabels = timeItems.map(t => t.label || t.key)
-          const timeCounts = timeItems.map(t => t.count)
+          const groupBy = data.group_by || win.groupBy
+          const titleEl = document.getElementById('contrib-trend-title')
+          if (titleEl) titleEl.textContent = `Contributions per ${groupBy}`
+          const buckets = data.buckets || []
+          const labels = buckets.length ? buckets.map(b => b.label) : ['No data']
+          const series = (k) => buckets.length ? buckets.map(b => b[k] || 0) : [0]
 
           window.chartContribTimeline = new Chart(ctxTimeline, {
-            type: 'line',
+            type: 'bar',
             data: {
-              labels: timeLabels.length > 0 ? timeLabels : ['No Data'],
-              datasets: [{
-                label: 'KB Uploads Trend',
-                data: timeCounts.length > 0 ? timeCounts : [0],
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                fill: true,
-                tension: 0.35,
-                pointRadius: 4,
-                pointHoverRadius: 6
-              }]
+              labels,
+              datasets: [
+                { label: 'Published', data: series('published'), backgroundColor: '#10b981', borderRadius: 3 },
+                { label: 'In review', data: series('in_review'), backgroundColor: '#f59e0b', borderRadius: 3 },
+                { label: 'Rejected', data: series('rejected'), backgroundColor: '#f43f5e', borderRadius: 3 }
+              ]
             },
             options: {
               responsive: true,
               maintainAspectRatio: false,
-              plugins: { legend: { display: false } },
+              plugins: {
+                legend: { display: true, labels: { color: chartTickColor(), boxWidth: 12, font: { size: 11 } } },
+                tooltip: {
+                  callbacks: {
+                    footer: (items) => {
+                      const b = buckets[items[0].dataIndex]
+                      return b ? `Total ${b.total} · ${b.contributors} contributor(s) · click to drill in` : ''
+                    }
+                  }
+                }
+              },
+              onClick: (evt, els) => {
+                if (!els || !els.length || !buckets[els[0].index]) return
+                const [s, e] = contribBucketRange(buckets[els[0].index].key, groupBy)
+                drillContribRange(s, e)
+              },
               scales: {
-                x: { grid: { color: chartGridColor() }, ticks: { color: chartTickColor(), font: { size: 11 } } },
-                y: { grid: { color: chartGridColor() }, ticks: { color: chartTickColor(), precision: 0, beginAtZero: true } }
+                x: { stacked: true, grid: { color: chartGridColor() }, ticks: { color: chartTickColor(), font: { size: 11 } } },
+                y: { stacked: true, beginAtZero: true, grid: { color: chartGridColor() }, ticks: { color: chartTickColor(), precision: 0 } }
               }
             }
           })
@@ -6525,7 +7012,8 @@ zeroGrid.innerHTML = ''
           lbody.innerHTML = '<tr><td colspan="9" style="padding:24px; text-align:center; color:var(--text-muted);">No contributions found for selected filters.</td></tr>'
         } else {
           data.contributors.forEach((c, idx) => {
-            const rankBadge = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : `#${idx + 1}`))
+            const rankBadge = !c.upload_count ? '<span style="color:var(--text-faint);">—</span>'
+              : (idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : `#${idx + 1}`)))
             const total = data.summary.total_uploads || 0
             const share = total > 0 ? Math.round((c.upload_count / total) * 100) : 0
             // Registered-but-inactive accounts are suspended; authors with no account
@@ -6573,7 +7061,13 @@ zeroGrid.innerHTML = ''
       // 3.5 Filter summary line, month-wise table, contributor x month grid
       renderContribFilterSummary(data)
       renderContribMonthly(data.monthly || [])
-      renderContribMonthGrid(data.contributor_month_grid || { months: [], rows: [] })
+      const bg = data.bucket_grid
+      const gridTitle = document.getElementById('contrib-grid-title')
+      const gridSub = document.getElementById('contrib-grid-subtitle')
+      const unit = (bg && bg.group_by) || 'month'
+      if (gridTitle) gridTitle.textContent = `Uploads per Contributor per ${unit.charAt(0).toUpperCase() + unit.slice(1)}`
+      if (gridSub) gridSub.textContent = `Latest 12 ${unit}s in the current window`
+      renderContribMonthGrid(bg ? { months: bg.buckets || [], rows: bg.rows || [] } : (data.contributor_month_grid || { months: [], rows: [] }))
 
       // 4. Render Articles Log
       const abody = document.getElementById('contrib-articles-body')
@@ -6609,13 +7103,20 @@ zeroGrid.innerHTML = ''
       if (window.lucide) lucide.createIcons()
     } catch (e) {
       console.error("Contributions fetch failed:", e)
+      if (seq === contribFetchSeq) {
+        const cardsErr = document.getElementById('contrib-summary-cards')
+        if (cardsErr) cardsErr.innerHTML = '<div style="color:var(--c-rose);">Could not load contributions. Check the connection and try again.</div>'
+      }
     }
   }
 
   // Bind filter change events for live updates (defensive semicolon avoids ASI hazard)
-  ;['contrib-filter-scope', 'contrib-filter-period', 'contrib-filter-user', 'contrib-filter-year', 'contrib-filter-month', 'contrib-filter-product', 'contrib-filter-status', 'contrib-filter-start', 'contrib-filter-end'].forEach(id => {
+  ;['contrib-filter-scope', 'contrib-filter-user', 'contrib-filter-product', 'contrib-filter-status', 'contrib-filter-docstatus', 'contrib-filter-doctype', 'contrib-filter-start', 'contrib-filter-end'].forEach(id => {
     const el = document.getElementById(id)
     if (el) el.addEventListener('change', fetchAdminContributions)
+  })
+  document.querySelectorAll('.contrib-period-btn').forEach(b => {
+    b.addEventListener('click', () => setContribPeriod(b.dataset.period))
   })
 
   const scopeAnalyticsEl = document.getElementById('analytics-filter-scope')
@@ -6627,15 +7128,12 @@ zeroGrid.innerHTML = ''
   const resetBtn = document.getElementById('btn-contrib-reset')
   if (resetBtn) {
     resetBtn.addEventListener('click', () => {
-      if (document.getElementById('contrib-filter-scope')) document.getElementById('contrib-filter-scope').value = 'live'
-      if (document.getElementById('contrib-filter-period')) document.getElementById('contrib-filter-period').value = 'all'
-      if (document.getElementById('contrib-filter-user')) document.getElementById('contrib-filter-user').value = 'all'
-      if (document.getElementById('contrib-filter-year')) document.getElementById('contrib-filter-year').value = '2026'
-      if (document.getElementById('contrib-filter-month')) document.getElementById('contrib-filter-month').value = 'all'
-      if (document.getElementById('contrib-filter-product')) document.getElementById('contrib-filter-product').value = 'all'
-      if (document.getElementById('contrib-filter-status')) document.getElementById('contrib-filter-status').value = 'all'
-      if (document.getElementById('contrib-filter-start')) document.getElementById('contrib-filter-start').value = ''
-      if (document.getElementById('contrib-filter-end')) document.getElementById('contrib-filter-end').value = ''
+      const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v }
+      setVal('contrib-filter-scope', 'live')
+      ;['contrib-filter-user', 'contrib-filter-product', 'contrib-filter-status', 'contrib-filter-docstatus', 'contrib-filter-doctype'].forEach(id => setVal(id, 'all'))
+      setVal('contrib-filter-start', '')
+      setVal('contrib-filter-end', '')
+      setContribPeriod('month', { silent: true })
       fetchAdminContributions()
     })
   }
@@ -6643,41 +7141,42 @@ zeroGrid.innerHTML = ''
   // Export CSV button
   const exportBtn = document.getElementById('btn-contrib-export')
   if (exportBtn) {
-    exportBtn.addEventListener('click', () => {
-      const articleList = (contribDataCache && (contribDataCache.articles || contribDataCache.article_records)) || []
-      const contribList = (contribDataCache && contribDataCache.contributors) || []
+    exportBtn.addEventListener('click', async () => {
+      let exportData = contribDataCache
+      try {
+        const res = await fetch(`/api/admin/contributions?${contribParams({ export: 'true' }).toString()}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (res.ok) exportData = await res.json()
+      } catch (_) {}
+      const articleList = (exportData && (exportData.articles || exportData.article_records)) || []
+      const contribList = (exportData && exportData.contributors) || []
       if (articleList.length === 0 && contribList.length === 0) {
         alert('No data available to export under current filters.')
         return
+      }
+      // Quote every cell, and defuse values Excel would run as a formula.
+      const cell = v => {
+        let s = String(v === undefined || v === null ? '' : v)
+        if (/^[=+\-@\t\r]/.test(s)) s = "'" + s
+        return `"${s.replace(/"/g, '""')}"`
       }
 
       let csv = ''
       if (articleList.length > 0) {
         const headers = ['ID', 'Title', 'Author', 'Author Status', 'Document Status', 'Product Space', 'Format', 'Views', 'Likes', 'Date Uploaded']
         const rows = articleList.map(a => [
-          a.id,
-          `"${(a.title || '').replace(/"/g, '""')}"`,
-          `"${(a.author || 'System').replace(/"/g, '""')}"`,
-          `"${a.author_status || 'active'}"`,
-          `"${a.status || 'published'}"`,
-          (a.product || 'xpi').toUpperCase(),
-          (a.file_type || '').toUpperCase(),
-          a.views || 0,
-          a.likes || 0,
-          `"${a.created_at || a.created_date || ''}"`
-        ])
+          a.id, a.title || '', a.author || 'System', a.author_status || 'active', a.status || 'published',
+          (a.product || 'xpi').toUpperCase(), (a.file_type || '').toUpperCase(), a.views || 0, a.likes || 0,
+          a.created_at || a.created_date || ''
+        ].map(cell))
         csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
       } else {
         const headers = ['User', 'Role', 'Status', 'Upload Count', 'Views', 'Likes', 'Latest Upload']
         const rows = contribList.map(c => [
-          `"${(c.username || '').replace(/"/g, '""')}"`,
-          c.role || 'Contributor',
-          c.status || 'active',
-          c.upload_count || 0,
-          c.views || 0,
-          c.likes || 0,
-          `"${c.latest_upload || ''}"`
-        ])
+          c.username || '', c.role || 'Contributor', c.status || 'active', c.upload_count || 0,
+          c.views || 0, c.likes || 0, c.latest_upload || ''
+        ].map(cell))
         csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
       }
 

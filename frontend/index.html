@@ -351,10 +351,27 @@
 
       <!-- SEARCH RESULTS VIEW -->
       <div id="view-search-results" class="hide animate-fade-in" style="display:flex; flex-direction:column; gap:12px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:0 4px;">
-          <span id="search-results-counter" style="font-size:0.88rem; color:var(--text-muted);"></span>
+        <div class="search-layout">
+          <!-- Filters: product / version / type / source, with counts from the current results -->
+          <aside id="search-facets" class="search-facets glass-panel" aria-label="Filter search results"></aside>
+          <div class="search-main">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; padding:0 4px;">
+              <span id="search-results-counter" style="font-size:0.88rem; color:var(--text-muted);" aria-live="polite"></span>
+              <label style="font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+                Sort
+                <select id="search-sort" style="padding:4px 8px; font-size:0.8rem; width:auto;">
+                  <option value="relevance">Relevance</option>
+                  <option value="newest">Newest</option>
+                  <option value="views">Most viewed</option>
+                </select>
+              </label>
+            </div>
+            <div id="search-suggestion" class="hide" style="font-size:0.88rem; color:var(--text-soft); padding:0 4px;"></div>
+            <div id="search-results-container" style="display:flex; flex-direction:column; gap:12px;"></div>
+            <div id="search-pager" class="search-pager"></div>
+            <div id="search-request-box"></div>
+          </div>
         </div>
-        <div id="search-results-container" style="display:flex; flex-direction:column; gap:12px;"></div>
       </div>
 
       <!-- PRODUCT SEARCH WELCOME HERO -->
@@ -796,6 +813,26 @@
         </div>
         <div id="admin-zero-queries-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:10px;"></div>
       </div>
+
+      <!-- Article requests readers sent from search ("Didn't find it? Request article") -->
+      <div class="glass-panel" style="padding:24px; border:1px solid rgba(0,141,199,0.3);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+          <div>
+            <h3 style="font-size:1.15rem; font-weight:700; color:var(--text-main); margin-bottom:4px;">Article Requests</h3>
+            <p style="font-size:0.82rem; color:var(--text-muted);">Articles readers asked for from search, most-requested first.</p>
+          </div>
+          <label style="font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+            Show
+            <select id="admin-article-requests-filter" style="padding:4px 8px; font-size:0.8rem; width:auto;">
+              <option value="open">Open</option>
+              <option value="done">Done</option>
+              <option value="dismissed">Dismissed</option>
+              <option value="all">All</option>
+            </select>
+          </label>
+        </div>
+        <div id="admin-article-requests-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
     </div>
 
     <!-- TAB 5: USER CONTRIBUTIONS & UPLOADS ANALYTICS -->
@@ -807,7 +844,7 @@
           <div style="display:flex; align-items:center; gap:8px;">
             <i data-lucide="filter" style="width:18px; height:18px; color:var(--c-sky);"></i>
             <span style="font-size:0.95rem; font-weight:700; color:var(--text-main);">Filter Contributor Uploads</span>
-            <span style="font-size:0.78rem; color:var(--text-muted);">— Slice by user, year, month, or custom date range</span>
+            <span style="font-size:0.78rem; color:var(--text-muted);">— View by week, month, year, or a custom date range</span>
           </div>
           <div style="display:flex; gap:10px;">
             <button id="btn-contrib-reset" class="btn btn-secondary" style="padding:6px 12px; font-size:0.8rem;">
@@ -817,6 +854,31 @@
               <i data-lucide="download" style="width:13px; height:13px;"></i> Export CSV
             </button>
           </div>
+        </div>
+
+        <!-- Time window: one control for week / month / year / all time / custom range -->
+        <div style="display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px;">
+          <div>
+            <span id="contrib-period-label" style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-soft); margin-bottom:4px;">⏱️ View by</span>
+            <div class="contrib-period-group" role="group" aria-labelledby="contrib-period-label">
+              <button type="button" class="contrib-period-btn" data-period="week" aria-pressed="false">Week</button>
+              <button type="button" class="contrib-period-btn active" data-period="month" aria-pressed="true">Month</button>
+              <button type="button" class="contrib-period-btn" data-period="year" aria-pressed="false">Year</button>
+              <button type="button" class="contrib-period-btn" data-period="all" aria-pressed="false">All time</button>
+              <button type="button" class="contrib-period-btn" data-period="custom" aria-pressed="false">Custom</button>
+            </div>
+          </div>
+          <div id="contrib-custom-range" class="contrib-custom-range is-disabled">
+            <div>
+              <label for="contrib-filter-start" style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-soft); margin-bottom:4px;">📆 From</label>
+              <input type="date" id="contrib-filter-start" disabled style="padding:7px 10px; border-radius:8px; background:var(--bg-subtle); border:1px solid var(--border-strong); color:var(--text-main); font-size:0.8rem;">
+            </div>
+            <div>
+              <label for="contrib-filter-end" style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-soft); margin-bottom:4px;">📆 To</label>
+              <input type="date" id="contrib-filter-end" disabled style="padding:7px 10px; border-radius:8px; background:var(--bg-subtle); border:1px solid var(--border-strong); color:var(--text-main); font-size:0.8rem;">
+            </div>
+          </div>
+          <span id="contrib-period-hint" style="font-size:0.75rem; color:var(--text-muted); padding-bottom:9px;"></span>
         </div>
 
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:12px;">
@@ -829,43 +891,29 @@
             </select>
           </div>
           <div>
-            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-soft); margin-bottom:4px;">⏱️ Time Period Filter</label>
-            <select id="contrib-filter-period" style="width:100%; padding:8px 10px; border-radius:8px; background:var(--bg-subtle); border:1px solid var(--border-strong); color:var(--text-main); font-size:0.82rem;">
-              <option value="week">📅 This Week (Current Week Uploads)</option>
-              <option value="month">🗓️ This Month (Current Month Uploads)</option>
-              <option value="year">📆 This Year (Current Year Uploads)</option>
-              <option value="all" selected>🌟 All-Time Uploads</option>
-            </select>
-          </div>
-          <div>
             <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-soft); margin-bottom:4px;">👤 User</label>
             <select id="contrib-filter-user" style="width:100%; padding:8px 10px; border-radius:8px; background:var(--bg-subtle); border:1px solid var(--border-strong); color:var(--text-main); font-size:0.82rem;">
               <option value="all">🌟 All Contributors</option>
             </select>
           </div>
           <div>
-            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-soft); margin-bottom:4px;">📅 Year</label>
-            <select id="contrib-filter-year" style="width:100%; padding:8px 10px; border-radius:8px; background:var(--bg-subtle); border:1px solid var(--border-strong); color:var(--text-main); font-size:0.82rem;">
-              <option value="2026" selected>📅 2026 (Live Platform Period)</option>
-              <option value="all">🌟 All-Time (Include Pre-2026 Archives)</option>
+            <label for="contrib-filter-docstatus" style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-soft); margin-bottom:4px;">📌 Article Status</label>
+            <select id="contrib-filter-docstatus" style="width:100%; padding:8px 10px; border-radius:8px; background:var(--bg-subtle); border:1px solid var(--border-strong); color:var(--text-main); font-size:0.82rem;">
+              <option value="all">All statuses</option>
+              <option value="published">Published</option>
+              <option value="in_review">In review</option>
+              <option value="rejected">Rejected</option>
             </select>
           </div>
           <div>
-            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-soft); margin-bottom:4px;">🗓️ Month</label>
-            <select id="contrib-filter-month" style="width:100%; padding:8px 10px; border-radius:8px; background:var(--bg-subtle); border:1px solid var(--border-strong); color:var(--text-main); font-size:0.82rem;">
-              <option value="all">All Months</option>
-              <option value="1">January</option>
-              <option value="2">February</option>
-              <option value="3">March</option>
-              <option value="4">April</option>
-              <option value="5">May</option>
-              <option value="6">June</option>
-              <option value="7">July</option>
-              <option value="8">August</option>
-              <option value="9">September</option>
-              <option value="10">October</option>
-              <option value="11">November</option>
-              <option value="12">December</option>
+            <label for="contrib-filter-doctype" style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-soft); margin-bottom:4px;">🗂️ Document Type</label>
+            <select id="contrib-filter-doctype" style="width:100%; padding:8px 10px; border-radius:8px; background:var(--bg-subtle); border:1px solid var(--border-strong); color:var(--text-main); font-size:0.82rem;">
+              <option value="all">All types</option>
+              <option value="troubleshooting">Troubleshooting</option>
+              <option value="how_to">How-to / SOP</option>
+              <option value="connector">Connector</option>
+              <option value="release_note">Release note</option>
+              <option value="general">General</option>
             </select>
           </div>
           <div>
@@ -885,14 +933,6 @@
               <option value="active">🟢 Active Team Only</option>
               <option value="former">🏛️ Alumni / Former Contributors</option>
             </select>
-          </div>
-          <div>
-            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-soft); margin-bottom:4px;">📆 From Date</label>
-            <input type="date" id="contrib-filter-start" style="width:100%; padding:7px 10px; border-radius:8px; background:var(--bg-subtle); border:1px solid var(--border-strong); color:var(--text-main); font-size:0.8rem;">
-          </div>
-          <div>
-            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-soft); margin-bottom:4px;">📆 To Date</label>
-            <input type="date" id="contrib-filter-end" style="width:100%; padding:7px 10px; border-radius:8px; background:var(--bg-subtle); border:1px solid var(--border-strong); color:var(--text-main); font-size:0.8rem;">
           </div>
         </div>
       </div>
@@ -920,9 +960,9 @@
         <div class="glass-panel" style="padding:20px; border:1px solid rgba(16,185,129,0.3); display:flex; flex-direction:column;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
             <h3 style="font-size:1.05rem; font-weight:700; color:var(--text-main); margin:0; display:flex; align-items:center; gap:8px;">
-              <i data-lucide="line-chart" style="width:18px; height:18px; color:var(--c-emerald);"></i> Upload Trend & Activity Trajectory
+              <i data-lucide="bar-chart-3" style="width:18px; height:18px; color:var(--c-emerald);"></i> <span id="contrib-trend-title">Contributions per Month</span>
             </h3>
-            <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:rgba(16,185,129,0.15); color:var(--c-emerald); font-weight:700;">Timeline</span>
+            <span id="contrib-trend-badge" style="font-size:0.72rem; padding:2px 8px; border-radius:6px; background:rgba(16,185,129,0.15); color:var(--c-emerald); font-weight:700;">Published · In review · Rejected</span>
           </div>
           <div style="position:relative; height:240px; width:100%;">
             <canvas id="admin-chart-contrib-timeline"></canvas>
@@ -965,9 +1005,9 @@
       <div class="glass-panel" style="padding:24px;">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
           <h3 style="font-size:1.15rem; font-weight:700; color:var(--text-main); margin:0; display:flex; align-items:center; gap:8px;">
-            <i data-lucide="grid-3x3" style="width:18px; height:18px; color:var(--c-emerald);"></i> Uploads per Contributor per Month
+            <i data-lucide="grid-3x3" style="width:18px; height:18px; color:var(--c-emerald);"></i> <span id="contrib-grid-title">Uploads per Contributor per Month</span>
           </h3>
-          <span style="font-size:0.75rem; color:var(--text-muted);">Latest 12 months in the current filters</span>
+          <span id="contrib-grid-subtitle" style="font-size:0.75rem; color:var(--text-muted);">Latest 12 months in the current filters</span>
         </div>
         <div id="contrib-month-grid" style="overflow-x:auto; max-height:460px; overflow-y:auto;"></div>
       </div>
@@ -1786,6 +1826,7 @@
           <label style="display:block; font-size:0.75rem; color:var(--text-soft); margin-bottom:4px;">Assigned Role</label>
           <select id="admin-edit-user-role" style="width:100%;">
             <option value="Editor">Contributor / Author (Upload & Publish KBs)</option>
+            <option value="Reviewer">Reviewer (Review & Approve KBs)</option>
             <option value="Admin">Super Admin (Full Enterprise Access)</option>
             <option value="Viewer">Reader / End User (Search & View)</option>
           </select>

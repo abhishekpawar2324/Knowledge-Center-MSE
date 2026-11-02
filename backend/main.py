@@ -38,7 +38,9 @@ from backend.database import (
     SupportUtility,
     UserLoginHistory,
     EnterpriseAuditLog,
-    DeletedDocumentPath
+    DeletedDocumentPath,
+    DocumentFeedback,
+    ArticleRequest
 )
 from backend.auth import (
     get_password_hash,
@@ -571,7 +573,8 @@ def search(
     match_all: bool = True,
     username: Optional[str] = "Guest",
     track: bool = True,  # False for search-as-you-type requests; only settled searches are logged
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     raw_q = (q or "").strip()
     is_wildcard = (raw_q in ["*", ""])
@@ -862,7 +865,9 @@ def search(
             query=q.strip() if q else "*",
             product=product or "all",
             results_count=len(results),
-            username=username or "Guest"
+            # Who searched comes from the session token, not a query parameter that
+            # the frontend never sent (every row said "Guest") and anyone could spoof.
+            username=current_user.username if current_user else "Guest"
         )
         db.add(analytic)
         db.commit()
@@ -870,6 +875,174 @@ def search(
         print(f"Error logging search analytic: {e}")
         
     return results
+
+
+# ----------------- Smart search: "did you mean", feedback, article requests -----------------
+
+_SUGGEST_VOCAB = {"built": 0.0, "counts": {}}
+
+def _suggest_vocabulary(db: Session) -> dict:
+    """Word frequencies from published titles, tags and the start of each body.
+
+    Rebuilt at most every 10 minutes: it only steers spelling suggestions, so a
+    slightly stale list is fine and the hot path stays one dict lookup per word.
+    """
+    import time
+    from collections import Counter
+    if _SUGGEST_VOCAB["counts"] and time.time() - _SUGGEST_VOCAB["built"] < 600:
+        return _SUGGEST_VOCAB["counts"]
+    counts = Counter()
+    rows = db.query(Document.title, Document.tags, Document.content).filter(published_only()).all()
+    for title, tags, content in rows:
+        text = f"{title or ''} {tags or ''} {(content or '')[:3000]}"
+        counts.update(w.lower() for w in re.findall(r"[A-Za-z][A-Za-z0-9]{2,}", text))
+    _SUGGEST_VOCAB["counts"] = dict(counts)
+    _SUGGEST_VOCAB["built"] = time.time()
+    return _SUGGEST_VOCAB["counts"]
+
+
+@app.get("/api/search/suggest")
+def search_suggest(q: str = "", db: Session = Depends(get_db)):
+    """"Did you mean" for a query: each word that never appears in the library is
+    swapped for the most common close spelling that does. Returns null when every
+    word is already known (nothing to suggest)."""
+    words = re.findall(r"[A-Za-z0-9][A-Za-z0-9\-\.]*", (q or "")[:200])
+    if not words:
+        return {"suggestion": None}
+    vocab = _suggest_vocabulary(db)
+    changed = False
+    out = []
+    for w in words:
+        lw = w.lower()
+        if lw in vocab or not lw.isalpha() or len(lw) < 4:
+            out.append(w)
+            continue
+        limit = 1 if len(lw) <= 5 else 2
+        best, best_key = None, None
+        for cand, freq in vocab.items():
+            if abs(len(cand) - len(lw)) > limit or cand[0] != lw[0]:
+                continue
+            d = levenshtein_distance(lw, cand)
+            if d <= limit:
+                key = (d, -freq)
+                if best_key is None or key < best_key:
+                    best, best_key = cand, key
+        if best:
+            out.append(best)
+            changed = True
+        else:
+            out.append(w)
+    return {"suggestion": " ".join(out) if changed else None}
+
+
+@app.post("/api/document/{doc_id}/feedback")
+async def document_feedback(doc_id: int, request: Request, db: Session = Depends(get_db),
+                            current_user: Optional[User] = Depends(get_current_user_optional)):
+    """Record "was this helpful?". One vote per reader per document: signed-in users
+    are keyed by account, guests by the browser id the client sends."""
+    try:
+        data = await request.json()
+    except Exception:
+        data = None
+    if not isinstance(data, dict) or not isinstance(data.get("helpful"), bool):
+        raise HTTPException(status_code=400, detail="Send {\"helpful\": true} or {\"helpful\": false}.")
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc or not can_view_unpublished(current_user, doc):
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    if current_user:
+        voter = f"user:{current_user.username.strip().lower()}"
+    else:
+        client = re.sub(r"[^A-Za-z0-9_\-]", "", request.headers.get("X-Client-Id", ""))[:64]
+        voter = f"client:{client}" if client else f"ip:{request.client.host if request.client else 'unknown'}"
+    comment = data.get("comment")
+    comment = comment.strip()[:1000] if isinstance(comment, str) and comment.strip() else None
+
+    row = db.query(DocumentFeedback).filter(DocumentFeedback.document_id == doc_id,
+                                            DocumentFeedback.voter_key == voter).first()
+    if row:
+        row.helpful = data["helpful"]
+        row.comment = comment or row.comment
+        row.updated_at = datetime.utcnow()
+    else:
+        db.add(DocumentFeedback(document_id=doc_id, voter_key=voter, helpful=data["helpful"], comment=comment,
+                                username=current_user.username if current_user else None))
+    db.commit()
+    yes = db.query(DocumentFeedback).filter(DocumentFeedback.document_id == doc_id, DocumentFeedback.helpful == True).count()
+    no = db.query(DocumentFeedback).filter(DocumentFeedback.document_id == doc_id, DocumentFeedback.helpful == False).count()
+    return {"document_id": doc_id, "helpful": yes, "not_helpful": no, "your_vote": data["helpful"]}
+
+
+@app.post("/api/article-requests")
+async def create_article_request(request: Request, db: Session = Depends(get_db),
+                                 current_user: Optional[User] = Depends(get_current_user_optional)):
+    """"Didn't find it? Request an article." Open to guests too. A repeat request for
+    a query that is already open adds a vote rather than a duplicate row."""
+    try:
+        data = await request.json()
+    except Exception:
+        data = None
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=400, detail="Request data must be an object.")
+    query_text = str(data.get("query") or "").strip()[:300]
+    if len(query_text) < 2:
+        raise HTTPException(status_code=400, detail="Tell us what you were looking for.")
+    product_val = str(data.get("product") or "all").strip().lower()
+    if product_val not in ("all", "xpa", "xpi", "cloud_native", "general"):
+        product_val = "all"
+    details = str(data.get("details") or "").strip()[:2000] or None
+    who = current_user.username if current_user else "Guest"
+
+    existing = db.query(ArticleRequest).filter(
+        func.lower(ArticleRequest.query) == query_text.lower(),
+        ArticleRequest.product == product_val,
+        ArticleRequest.status == "open",
+    ).first()
+    if existing:
+        existing.votes = (existing.votes or 1) + 1
+        if details and not existing.details:
+            existing.details = details
+        existing.updated_at = datetime.utcnow()
+        db.commit()
+        return {"status": "ok", "id": existing.id, "votes": existing.votes, "duplicate": True}
+    req_row = ArticleRequest(query=query_text, product=product_val, details=details, requested_by=who)
+    db.add(req_row)
+    db.commit()
+    return {"status": "ok", "id": req_row.id, "votes": 1, "duplicate": False}
+
+
+@app.get("/api/admin/article-requests")
+def list_article_requests(status_filter: Optional[str] = "open", limit: int = 200, db: Session = Depends(get_db),
+                          current_user: User = Depends(require_role(CONTRIBUTOR_ROLES))):
+    """The authoring queue: requested articles, most-wanted first."""
+    q = db.query(ArticleRequest)
+    if status_filter and status_filter != "all":
+        q = q.filter(ArticleRequest.status == status_filter)
+    rows = q.order_by(ArticleRequest.votes.desc(), ArticleRequest.created_at.desc()).limit(max(1, min(limit, 500))).all()
+    return [{
+        "id": r.id, "query": r.query, "product": r.product, "details": r.details or "",
+        "requested_by": r.requested_by, "votes": r.votes or 1, "status": r.status,
+        "created_at": r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "",
+    } for r in rows]
+
+
+@app.post("/api/admin/article-requests/{request_id}/status")
+async def update_article_request(request_id: int, request: Request, db: Session = Depends(get_db),
+                                 current_user: User = Depends(require_role(CONTRIBUTOR_ROLES))):
+    try:
+        data = await request.json()
+    except Exception:
+        data = None
+    new_status = (data or {}).get("status") if isinstance(data, dict) else None
+    if new_status not in ("open", "done", "dismissed"):
+        raise HTTPException(status_code=400, detail="Status must be open, done or dismissed.")
+    row = db.query(ArticleRequest).filter(ArticleRequest.id == request_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Request not found")
+    row.status = new_status
+    row.updated_at = datetime.utcnow()
+    db.commit()
+    return {"status": "ok", "id": row.id, "new_status": new_status}
 
 # ----------------- Magic AI Assistant & Salesforce Case Analyzer -----------------
 
@@ -1462,7 +1635,8 @@ async def update_ai_settings(request: Request, current_user: User = Depends(requ
 def ai_list_resolutions(
     product: Optional[str] = None,
     limit: int = 20,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """List recent AI resolutions and institutional memory."""
     query = db.query(AIResolution)
@@ -1490,9 +1664,11 @@ def list_salesforce_cases(
     q: Optional[str] = None,
     product: Optional[str] = None,
     limit: int = 50,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    """Search and list historical Salesforce cases."""
+    """Search and list historical Salesforce cases (customer data: signed-in users only)."""
+    limit = max(1, min(limit, 500))
     query = db.query(SalesforceCase)
     if product and product.lower() not in ["all", "global", ""]:
         query = query.filter(SalesforceCase.product == product.lower())
@@ -1925,8 +2101,25 @@ def get_help_topic(topic_id: int, q: Optional[str] = None, db: Session = Depends
         "source": "help"
     }
 
+def can_view_unpublished(user: Optional[User], doc: Document) -> bool:
+    """Drafts, pending, rejected and archived documents are not public.
+
+    Contributors (Editor / Reviewer / Admin) can open them, since reviewing and
+    reworking them is their job, and so can whoever wrote the document. Published
+    documents (and legacy rows with no status) stay readable by everyone.
+    """
+    if (doc.status or "published") == "published":
+        return True
+    if not user:
+        return False
+    role = (user.role or "").strip().lower()
+    if role in {r.lower() for r in CONTRIBUTOR_ROLES}:
+        return True
+    return (doc.author or "").strip().lower() == (user.username or "").strip().lower()
+
 @app.get("/api/document/{doc_id}")
-def get_document(doc_id: str, q: Optional[str] = None, db: Session = Depends(get_db)):
+def get_document(doc_id: str, q: Optional[str] = None, db: Session = Depends(get_db),
+                 current_user: Optional[User] = Depends(get_current_user_optional)):
     # Handle Help topic requests seamlessly
     if str(doc_id).startswith("help_") or (not str(doc_id).isdigit() and "help" in str(doc_id).lower()):
         t_id_match = re.search(r'\d+', str(doc_id))
@@ -1939,7 +2132,8 @@ def get_document(doc_id: str, q: Optional[str] = None, db: Session = Depends(get
     except (TypeError, ValueError):
         raise HTTPException(status_code=404, detail="Document not found")
     doc = db.query(Document).filter(Document.id == int_id).first()
-    if not doc:
+    # 404, not 403, for an unpublished document: don't confirm that the id exists.
+    if not doc or not can_view_unpublished(current_user, doc):
         raise HTTPException(status_code=404, detail="Document not found")
 
     doc.views = (doc.views or 0) + 1
@@ -2028,13 +2222,15 @@ def get_document(doc_id: str, q: Optional[str] = None, db: Session = Depends(get
         "views": doc.views,
         "likes": doc.likes,
         "tags": doc.tags,
-        "is_pinned": bool(doc.is_pinned)
+        "is_pinned": bool(doc.is_pinned),
+        "status": doc.status or "published"
     }
 
 @app.get("/api/document/raw/{doc_id}")
-def get_raw_document(doc_id: int, q: Optional[str] = None, db: Session = Depends(get_db)):
+def get_raw_document(doc_id: int, q: Optional[str] = None, db: Session = Depends(get_db),
+                     current_user: Optional[User] = Depends(get_current_user_optional)):
     doc = db.query(Document).filter(Document.id == doc_id).first()
-    if not doc:
+    if not doc or not can_view_unpublished(current_user, doc):
         raise HTTPException(status_code=404, detail="Document not found")
     if not os.path.exists(doc.file_path):
         raise HTTPException(status_code=404, detail="File not found on disk")
@@ -2746,12 +2942,28 @@ async def upload_kb_asset(
     if blocked_ext in ['html', 'htm', 'xhtml', 'svg', 'xml', 'js', 'mjs', 'php', 'exe', 'bat', 'cmd', 'ps1', 'vbs', 'py']:
         # These would be served from this origin and could run script in users' sessions.
         raise HTTPException(status_code=400, detail=f"File type '.{blocked_ext}' is not allowed as an asset.")
+    # Guests can still attach screenshots to the Copilot / Log Analyzer, but only
+    # images; any other file type needs a signed-in user.
+    if not current_user and blocked_ext not in ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp']:
+        raise HTTPException(status_code=401, detail="Sign in to upload this type of file.")
     timestamp = int(datetime.utcnow().timestamp())
     saved_filename = f"{timestamp}_{clean_name}"
     dest_path = os.path.join(UPLOADS_ASSETS, saved_filename)
 
+    # Copy in chunks with a hard cap, so one request cannot fill the disk.
+    max_bytes = 50 * 1024 * 1024
+    written = 0
     with open(dest_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        while True:
+            chunk = file.file.read(1024 * 1024)
+            if not chunk:
+                break
+            written += len(chunk)
+            if written > max_bytes:
+                buffer.close()
+                os.remove(dest_path)
+                raise HTTPException(status_code=413, detail="File is larger than the 50 MB limit.")
+            buffer.write(chunk)
 
     ext = clean_name.split('.')[-1].lower() if '.' in clean_name else ''
     is_img = ext in ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp']
@@ -2891,6 +3103,10 @@ def get_user_contributions(
     month: Optional[str] = None,
     period: Optional[str] = None, # "week", "month", "year", "all"
     contributor_status: Optional[str] = None, # "all", "active", "former"
+    group_by: Optional[str] = None, # bucket size for the trend chart and grid: "week", "month", "year"
+    doc_status: Optional[str] = None, # "published", "in_review", "rejected"
+    doc_type: Optional[str] = None, # e.g. "troubleshooting", "how_to"
+    export: Optional[bool] = False, # True returns every matching article, not just the latest 500
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -2944,6 +3160,21 @@ def get_user_contributions(
     # 2. Filter by product
     if product and product.lower() not in ["all", "global", ""]:
         query = query.filter(Document.product == product.lower().strip())
+
+    # 2.1 Filter by document status and document type
+    in_review_status_values = ("pending_review", "pending", "changes_requested")
+    def _apply_doc_filters(q):
+        ds = (doc_status or "").lower().strip()
+        if ds == "published":
+            q = q.filter(published_only())
+        elif ds == "in_review":
+            q = q.filter(Document.status.in_(in_review_status_values))
+        elif ds == "rejected":
+            q = q.filter(Document.status == "rejected")
+        if doc_type and doc_type.lower() not in ["all", ""]:
+            q = q.filter(Document.doc_type == doc_type.lower().strip())
+        return q
+    query = _apply_doc_filters(query)
         
     # 3. Filter by date range (start_date, end_date)
     if start_date and start_date.strip():
@@ -3131,6 +3362,91 @@ def get_user_contributions(
         
     timeline = sorted(timeline_map.values(), key=lambda x: x["key"])
 
+    # ---- Trend buckets at the chosen granularity (week / month / year) ----
+    # Every bucket in the window is listed, including empty ones, so the chart
+    # shows quiet periods as gaps instead of silently joining their neighbours.
+    gb = (group_by or "month").lower().strip()
+    if gb not in ("week", "month", "year"):
+        gb = "month"
+
+    def _bucket_start(dt):
+        if gb == "week":
+            return (dt - timedelta(days=dt.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+        if gb == "year":
+            return dt.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        return dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    def _next_bucket(dt):
+        if gb == "week":
+            return dt + timedelta(days=7)
+        if gb == "year":
+            return dt.replace(year=dt.year + 1)
+        return (dt.replace(day=28) + timedelta(days=4)).replace(day=1)
+
+    def _bucket_key(dt):
+        return dt.strftime("%Y-%m-%d") if gb == "week" else (dt.strftime("%Y") if gb == "year" else dt.strftime("%Y-%m"))
+
+    def _bucket_label(dt):
+        if gb == "week":
+            return "Wk " + dt.strftime("%d %b %y")
+        return dt.strftime("%Y") if gb == "year" else dt.strftime("%b %Y")
+
+    def _parse_day(s):
+        try:
+            return datetime.strptime(s.strip(), "%Y-%m-%d") if s and s.strip() else None
+        except ValueError:
+            return None
+
+    dated_docs = [d for d in docs if d.created_at]
+    range_start = _parse_day(start_date) or (min(d.created_at for d in dated_docs) if dated_docs else None)
+    range_end = _parse_day(end_date) or (max(now, max(d.created_at for d in dated_docs)) if dated_docs else None)
+    bucket_keys = []
+    if range_start and range_end and range_start <= range_end:
+        cur = _bucket_start(range_start)
+        while cur <= range_end and len(bucket_keys) < 5000:
+            bucket_keys.append((_bucket_key(cur), _bucket_label(cur)))
+            cur = _next_bucket(cur)
+        bucket_keys = bucket_keys[-160:]   # keep the chart readable: newest buckets win
+    bucket_map = {k: {"key": k, "label": lbl, "total": 0, "published": 0, "in_review": 0,
+                      "rejected": 0, "_people": set()} for k, lbl in bucket_keys}
+    for d in dated_docs:
+        k = _bucket_key(_bucket_start(d.created_at))
+        b = bucket_map.get(k)
+        if b is None:
+            continue
+        b["total"] += 1
+        st = d.status or "published"
+        if st == "published":
+            b["published"] += 1
+        elif st in in_review_status_values:
+            b["in_review"] += 1
+        elif st == "rejected":
+            b["rejected"] += 1
+        b["_people"].add(canonical_author(d.author))
+    buckets = []
+    for k, _ in bucket_keys:
+        b = bucket_map[k]
+        b["contributors"] = len(b.pop("_people"))
+        buckets.append(b)
+
+    # Contributor x bucket grid over the latest 12 buckets of the window.
+    grid_keys = [k for k, _ in bucket_keys][-12:]
+    grid_key_set = set(grid_keys)
+    bucket_rows = {}
+    for d in dated_docs:
+        k = _bucket_key(_bucket_start(d.created_at))
+        if k not in grid_key_set:
+            continue
+        name = canonical_author(d.author)
+        r = bucket_rows.setdefault(name, {"username": name, "counts": {}, "total": 0})
+        r["counts"][k] = r["counts"].get(k, 0) + 1
+        r["total"] += 1
+    bucket_grid = {
+        "group_by": gb,
+        "buckets": [{"key": k, "label": bucket_map[k]["label"]} for k in grid_keys],
+        "rows": sorted(bucket_rows.values(), key=lambda r: (-r["total"], r["username"].lower())),
+    }
+
     # ---- Month-wise breakdown for the current filters (newest month first) ----
     in_review_statuses = ("pending_review", "pending", "changes_requested")
     monthly_map = {}
@@ -3201,6 +3517,24 @@ def get_user_contributions(
             "published": sum(1 for d in docs_in_period if (d.status or "published") == "published"),
             "contributors": len({canonical_author(d.author) for d in docs_in_period}),
         }
+    # ---- Selected window vs the window of equal length just before it ----
+    period_comparison = None
+    win_start, win_end = _parse_day(start_date), _parse_day(end_date)
+    if win_start and win_end and win_start <= win_end:
+        win_end = win_end.replace(hour=23, minute=59, second=59)
+        span = (win_end - win_start) + timedelta(seconds=1)
+        prev_start, prev_end = win_start - span, win_start - timedelta(seconds=1)
+        prev_query = cmp_query
+        prev_query = _apply_doc_filters(prev_query)
+        prev_docs = prev_query.filter(Document.created_at >= prev_start, Document.created_at <= prev_end).all()
+        if contributor_status and contributor_status.lower() in ["active", "former"]:
+            want_active_prev = contributor_status.lower() == "active"
+            prev_docs = [d for d in prev_docs if is_active_contributor(d.author) == want_active_prev]
+        period_comparison = {
+            "current": _period_stats(docs, f"{win_start:%d %b %Y} - {win_end:%d %b %Y}"),
+            "previous": _period_stats(prev_docs, f"{prev_start:%d %b %Y} - {prev_end:%d %b %Y}"),
+        }
+
     month_comparison = {
         "this_month": _period_stats([d for d in cmp_docs if d.created_at and d.created_at >= this_month_start],
                                     this_month_start.strftime("%b %Y")),
@@ -3239,7 +3573,7 @@ def get_user_contributions(
         "likes": d.likes or 0,
         "created_at": d.created_at.strftime("%Y-%m-%d %H:%M") if d.created_at else "N/A",
         "created_date": d.created_at.strftime("%Y-%m-%d") if d.created_at else ""
-    } for d in docs[:500]]
+    } for d in (docs[:20000] if export else docs[:500])]
     
     return {
         "scope": scope_clean,
@@ -3262,6 +3596,10 @@ def get_user_contributions(
         "monthly": monthly,
         "contributor_month_grid": contributor_month_grid,
         "month_comparison": month_comparison,
+        "group_by": gb,
+        "buckets": buckets,
+        "bucket_grid": bucket_grid,
+        "period_comparison": period_comparison,
         "articles": article_records,
         "available_filters": {
             "users": author_options,

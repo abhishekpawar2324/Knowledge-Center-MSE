@@ -47,16 +47,17 @@ if %ERRORLEVEL% EQU 0 (
     echo ======================================================================
 ) else (
     echo.
-    echo [NOTICE] Normal push rejected. Syncing with --force to update GitHub branch...
-    "%GIT_CMD%" push origin Dev-Abhishek --force
+    echo [NOTICE] Normal push rejected. Retrying with --force-with-lease (refuses to overwrite teammates' commits)...
+    "%GIT_CMD%" push origin Dev-Abhishek --force-with-lease
     if %ERRORLEVEL% EQU 0 (
         echo.
         echo ======================================================================
-        echo [SUCCESS] Code successfully pushed with --force to 'Dev-Abhishek' on GitHub!
+        echo [SUCCESS] Code successfully pushed (with lease) to 'Dev-Abhishek' on GitHub!
         echo ======================================================================
     ) else (
         echo.
-        echo [ERROR] Push failed. Please check your GitHub credentials or connection.
+        echo [ERROR] Push failed. GitHub has commits you do not have yet - run 4_pull_updates.bat first,
+        echo         then push again. Also check your GitHub credentials and connection.
     )
 )
 

@@ -247,6 +247,37 @@ class EnterpriseAuditLog(Base):
     details = Column(Text, nullable=True)
     target_id = Column(String, nullable=True)
 
+class DocumentFeedback(Base):
+    """One "was this helpful?" vote per reader per document (a re-vote updates it)."""
+    __tablename__ = "document_feedback"
+
+    id = Column(Integer, primary_key=True, index=True)
+    document_id = Column(Integer, index=True, nullable=False)
+    voter_key = Column(String, index=True, nullable=False)  # "user:<name>" or "client:<browser id>"
+    username = Column(String, nullable=True)
+    helpful = Column(Boolean, nullable=False)
+    comment = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+class ArticleRequest(Base):
+    """A reader asking for an article that search could not find.
+
+    Repeat requests for the same open query add a vote instead of a new row, so the
+    authoring queue is ranked by demand.
+    """
+    __tablename__ = "article_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    query = Column(String, nullable=False, index=True)
+    product = Column(String, default="all")
+    details = Column(Text, nullable=True)
+    requested_by = Column(String, default="Guest")
+    votes = Column(Integer, default=1)
+    status = Column(String, default="open", index=True)  # open, done, dismissed
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
 def init_db():
     Base.metadata.create_all(bind=engine)
     # Manual schema migrations for existing SQLite databases

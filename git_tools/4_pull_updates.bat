@@ -48,7 +48,11 @@ if %ERRORLEVEL% EQU 0 (
 ) else (
     echo.
     echo [INFO] Direct pull rejected. Syncing cleanly with remote origin/Dev-Abhishek...
+    "%GIT_CMD%" merge --abort >nul 2>&1
     "%GIT_CMD%" fetch origin Dev-Abhishek
+    rem Keep a recoverable copy of the local state before discarding it.
+    "%GIT_CMD%" branch -f backup-before-sync HEAD >nul 2>&1
+    echo [INFO] Local state saved to branch 'backup-before-sync' before syncing.
     "%GIT_CMD%" reset --hard origin/Dev-Abhishek
     if %ERRORLEVEL% EQU 0 (
         echo.

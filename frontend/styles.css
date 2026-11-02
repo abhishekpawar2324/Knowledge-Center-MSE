@@ -1694,7 +1694,15 @@ select option:checked, select option:hover {
   border-color: rgba(0, 141, 199, 0.5);
   color: #075985;
 }
-[data-theme="light"] .product-tab-btn.active { color: #ffffff; }
+/* White on the translucent cyan gradient composited to about 1.3:1 on the light
+   ground, so the selected product's name all but vanished. A solid deep primary
+   gives white text 7.75:1 - the same fix the KB toolbar's active button uses. */
+[data-theme="light"] .product-tab-btn.active {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+  color: #ffffff;
+  box-shadow: none;
+}
 [data-theme="light"] .badge-kb-doc { color: #0369a1 !important; }
 [data-theme="light"] .badge-help-doc { color: #7e22ce !important; }
 [data-theme="light"] .user-menu-item-danger { color: #b91c1c; }
@@ -1786,4 +1794,63 @@ select option:checked, select option:hover {
     padding: 6px 6px;
     font-size: 0.76rem;
   }
+}
+/* Contributions dashboard: week / month / year / all time / custom switch.
+   The active segment uses the deep primary so white text stays above AA in both
+   themes (the lighter #008DC7 gives white only 3.7:1). */
+.contrib-period-group {
+  display: inline-flex;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.contrib-period-btn {
+  padding: 7px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: transparent;
+  color: var(--text-main);
+  border: none;
+  border-left: 1px solid var(--border-strong);
+  cursor: pointer;
+}
+.contrib-period-btn:first-child { border-left: none; }
+.contrib-period-btn:hover { background: var(--bg-subtle-hover); }
+.contrib-period-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.contrib-period-btn.active,
+.contrib-period-btn.active:hover {
+  background: var(--primary-hover);
+  color: #ffffff;
+}
+.contrib-custom-range { display: flex; gap: 8px; align-items: flex-end; }
+.contrib-custom-range.is-disabled { opacity: 0.5; }
+
+/* Smart search: filter panel beside the results, stacked on narrow screens. */
+.search-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: start; }
+.search-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.search-facets { padding: 14px 16px; position: sticky; top: 12px; }
+.search-facets:empty { display: none; }
+.search-layout:has(.search-facets:empty) { grid-template-columns: minmax(0, 1fr); }
+.facet-group { margin-bottom: 14px; }
+.facet-group:last-child { margin-bottom: 0; }
+.facet-title { font-size: 0.75rem; font-weight: 700; color: var(--text-soft); text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 6px; }
+.facet-option { display: flex; align-items: center; gap: 8px; font-size: 0.84rem; color: var(--text-main); padding: 3px 0; cursor: pointer; }
+.facet-option input { accent-color: var(--primary-hover); margin: 0; }
+.facet-count { margin-left: auto; font-size: 0.75rem; color: var(--text-muted); }
+.facet-clear { background: none; border: none; color: var(--link); font-size: 0.8rem; cursor: pointer; padding: 0; margin-bottom: 10px; }
+.search-pager { display: flex; justify-content: center; align-items: center; gap: 6px; flex-wrap: wrap; }
+.search-pager:empty { display: none; }
+.search-pager button { min-width: 34px; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border-strong); background: transparent; color: var(--text-main); font-size: 0.82rem; cursor: pointer; }
+.search-pager button[aria-current="page"] { background: var(--primary-hover); border-color: var(--primary-hover); color: #ffffff; }
+.search-pager button:disabled { opacity: 0.45; cursor: default; }
+.result-meta-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.age-badge { font-size: 0.72rem; padding: 2px 8px; border-radius: 6px; background: var(--bg-subtle); color: var(--text-muted); }
+.age-badge.is-stale { background: rgba(217, 119, 6, 0.15); color: var(--c-amber); font-weight: 700; }
+.helpful-vote { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: 0.78rem; color: var(--text-muted); }
+.helpful-vote button { border: 1px solid var(--border-strong); background: transparent; color: var(--text-soft); border-radius: 6px; padding: 2px 8px; font-size: 0.78rem; cursor: pointer; }
+.helpful-vote button[aria-pressed="true"] { background: var(--primary-hover); border-color: var(--primary-hover); color: #ffffff; }
+.request-article-box { border: 1px dashed var(--border-strong); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+@media (max-width: 900px) {
+  .search-layout { grid-template-columns: minmax(0, 1fr); }
+  .search-facets { position: static; }
 }
